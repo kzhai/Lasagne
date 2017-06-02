@@ -5,7 +5,6 @@ import theano.tensor
 import timeit
 
 from .base import DiscriminativeNetwork
-from .dae import DenoisingAutoEncoder
 from .. import layers
 from ..layers import noise
 from .. import init, nonlinearities, objectives, updates, regularization
@@ -227,6 +226,7 @@ class MultiLayerPerceptron(DiscriminativeNetwork):
         return denoising_auto_encoders;
     '''
 
+    '''
     def pretrain_with_dae(self,
                           pretrain_data,
                           number_of_epochs=50,
@@ -240,12 +240,6 @@ class MultiLayerPerceptron(DiscriminativeNetwork):
                           ):
         #denoising_auto_encoders = self.__build_dae_network(layer_corruption_levels);
         network_layers = self.get_network_layers();
-
-        '''
-        if layer_corruption is None:
-            layer_corruption = numpy.zeros((len(layers) - 1) / 2 - 1)
-        assert len(layer_corruption) == (len(layers) - 1) / 2 - 1;
-        '''
 
         denoising_auto_encoders = [];
         for input_layer, dropout_layer, dense_layer in zip(network_layers[:-2], network_layers[1:-1], network_layers[2:]):
@@ -286,6 +280,7 @@ class MultiLayerPerceptron(DiscriminativeNetwork):
         pretrain_time = timeit.default_timer() - pretrain_time;
         logging.info('pretrain network denoising auto-encoder finishes in %fs' % pretrain_time)
         print 'pretrain network denoising auto-encoder finishes in %fs' % pretrain_time
+    '''
 
 def main():
     from ..experiments import load_mnist
