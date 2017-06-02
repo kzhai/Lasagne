@@ -5,9 +5,7 @@ import theano.tensor
 import timeit
 
 from .base import DiscriminativeNetwork
-#from .dae import DenoisingAutoEncoder
 from .. import layers
-#from ..layers import noise
 from .. import init, nonlinearities, objectives, updates, regularization
 
 __all__ = [

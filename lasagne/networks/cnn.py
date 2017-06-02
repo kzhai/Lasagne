@@ -4,7 +4,7 @@ import theano.tensor
 
 from .base import Network, DiscriminativeNetwork
 from .. import layers
-from ..layers import noise, dae
+from ..layers import noise
 from .. import init, nonlinearities, objectives, updates
 
 __all__ = [

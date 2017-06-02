@@ -5,7 +5,7 @@ import theano.tensor
 
 from .base import Network, DiscriminativeNetwork, decay_learning_rate
 from .. import layers
-from ..layers import noise, dae
+from ..layers import noise
 from .. import init, nonlinearities, objectives, updates
 
 __all__ = [
