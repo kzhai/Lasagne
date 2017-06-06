@@ -40,7 +40,9 @@ def compile_generic_parser():
                                 help="update function to minimize [nesterov_momentum], example, 'sgd' represents the stochastic gradient descent");
     generic_parser.add_argument("--regularize_function", dest='regularize_functions', action='append',
                                 default=[],
-                                help='regularize function')
+                                help="regularize function [None], example, " +
+                                     "'l2:0.1'=l2-regularizer with lambda 0.1 applied over all layers, " +
+                                     "'l1:0.1,0.2,0.3'=l1-regularizer with lambda 0.1, 0.2, 0.3 applied over three layers")
 
     # generic argument set 3
     generic_parser.add_argument("--minibatch_size", dest="minibatch_size", type=int, action='store', default=-1,
