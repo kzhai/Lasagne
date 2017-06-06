@@ -210,7 +210,7 @@ def regularize_network_params(layer, penalty,
 #
 
 import numpy
-from .layers import DenseLayer, LinearDropoutLayer
+from .layers import get_output, DenseLayer, LinearDropoutLayer
 
 def regularize_layer_weighted(layers, penalty, tags={'regularizable': True}, **kwargs):
     """
@@ -237,6 +237,8 @@ def regularize_layer_weighted(layers, penalty, tags={'regularizable': True}, **k
 
 def rademacher(network, **kwargs):
     rademacher_regularization = linf(network._input_variable);
+    #print network._input_layer;
+    #print network._input_variable;
 
     first_hidden_layer = True;
     #dense_layers = [];
