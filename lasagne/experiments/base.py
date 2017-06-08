@@ -11,14 +11,15 @@ from .. import networks
 from .. import nonlinearities, objectives, updates, utils, regularization
 
 __all__ = [
-    "compile_generic_parser",
+    "construct_generic_parser",
+    "validate_generic_arguments",
     "load_data_to_train_validate",
     "load_data",
     "Configuration",
     "load_mnist",
 ]
 
-def compile_generic_parser():
+def construct_generic_parser():
     generic_parser = argparse.ArgumentParser(description="generic neural network arguments", add_help=True)
 
     # generic argument set 1
@@ -28,19 +29,19 @@ def compile_generic_parser():
                                 help="output directory [None]");
     # generic_parser.add_argument("--logging_file", dest="logging_file", action='store', default=None,
     # help="logging file [None]");
-    generic_parser.add_argument("--validation_data", dest="validation_data", type=int, action='store', default=-1,
+    generic_parser.add_argument("--validation_data", dest="validation_data", type=int, action='store', default=0,
                                 help="validation data [-1 - load validate.(feature|label).npy for validation], 0 - no validation data used");
 
     # generic argument set 2
-    generic_parser.add_argument("--objective_function", dest="objective_function", action='store',
+    generic_parser.add_argument("--objective", dest="objective", action='store',
                                 default="categorical_crossentropy",
                                 help="objective function [categorical_crossentropy], example, 'squared_error' represents the neural network optimizes squared error");
-    generic_parser.add_argument("--update_function", dest="update_function", action='store',
+    generic_parser.add_argument("--update", dest="update", action='store',
                                 default="nesterov_momentum",
                                 help="update function to minimize [nesterov_momentum], example, 'sgd' represents the stochastic gradient descent");
-    generic_parser.add_argument("--regularize_function", dest='regularize_functions', action='append',
+    generic_parser.add_argument("--regularizer", dest='regularizer', action='append',
                                 default=[],
-                                help="regularize function [None], example, " +
+                                help="regularizer function [None], example, " +
                                      "'l2:0.1'=l2-regularizer with lambda 0.1 applied over all layers, " +
                                      "'l1:0.1,0.2,0.3'=l1-regularizer with lambda 0.1, 0.2, 0.3 applied over three layers")
 
@@ -49,8 +50,8 @@ def compile_generic_parser():
                                 help="mini-batch size [-1]");
     generic_parser.add_argument("--number_of_epochs", dest="number_of_epochs", type=int, action='store', default=-1,
                                 help="number of epochs [-1]");
-    generic_parser.add_argument("--snapshot_interval", dest="snapshot_interval", type=int, action='store', default=-1,
-                                help="snapshot interval in number of epochs [-1 - no snapshot]");
+    generic_parser.add_argument("--snapshot_interval", dest="snapshot_interval", type=int, action='store', default=0,
+                                help="snapshot interval in number of epochs [0 - no snapshot]");
 
     # generic argument set 4
     generic_parser.add_argument("--learning_rate", dest="learning_rate", type=float, action='store', default=1e-2,
@@ -160,6 +161,63 @@ class Configuration(object):
         self.output_directory = output_directory;
 
         self.validation_data = arguments.validation_data;
+
+def validate_generic_arguments(arguments):
+    # generic argument set 4
+    #self.learning_rate = arguments.learning_rate;
+    assert arguments.learning_rate > 0;
+    #self.learning_rate_decay_style = arguments.learning_rate_decay_style;
+    assert arguments.learning_rate_decay_style == None or arguments.learning_rate_decay_style in ["inverse_t", "exponential"];
+    #self.learning_rate_decay_parameter = arguments.learning_rate_decay_parameter;
+    assert arguments.learning_rate_decay_parameter >= 0;
+
+    # generic argument set 3
+    assert arguments.minibatch_size > 0;
+    assert arguments.number_of_epochs > 0;
+    assert arguments.snapshot_interval >= 0;
+
+    # generic argument set 2
+    arguments.objective = getattr(objectives, arguments.objective)
+    arguments.update = getattr(updates, arguments.update)
+
+    regularizers = {};
+    for regularizer_weight_mapping in arguments.regularizer:
+        fields = regularizer_weight_mapping.split(":");
+        regularizer_function = getattr(regularization, fields[0]);
+        if len(fields)==1:
+            regularizers[regularizer_function] = 1.0;
+        elif len(fields)==2:
+            tokens = fields[1].split(",");
+            if len(tokens)==1:
+                weight = float(tokens[0]);
+            else:
+                weight = [float(token) for token in tokens];
+            regularizers[regularizer_function] = weight;
+        else:
+            logging.error("unrecognized regularizer function setting %s..." % (regularizer_weight_mapping));
+    arguments.regularizer = regularizers;
+
+    # generic argument set 1
+    #self.input_directory = arguments.input_directory;
+    assert os.path.exists(arguments.input_directory)
+
+    output_directory = arguments.output_directory;
+    assert (output_directory != None);
+    if not os.path.exists(output_directory):
+        os.mkdir(os.path.abspath(output_directory));
+    # adjusting output directory
+    now = datetime.datetime.now();
+    suffix = now.strftime("%y%m%d-%H%M%S-%f") + "";
+    #suffix += "-%s" % ("mlp");
+    output_directory = os.path.join(output_directory, suffix);
+    assert not os.path.exists(output_directory)
+    #os.mkdir(os.path.abspath(output_directory));
+    arguments.output_directory = output_directory;
+
+    #self.validation_data = arguments.validation_data;
+    assert arguments.validation_data >= -1;
+
+    return arguments;
 
 def load_data(input_directory, dataset="test"):
     data_set_x = numpy.load(os.path.join(input_directory, "%s.feature.npy" % dataset))

@@ -11,7 +11,6 @@ from .. import init, nonlinearities, objectives, updates
 
 __all__ = [
     "FastDropoutNetwork",
-    "main",
 ]
 
 class FastDropoutNetwork(DiscriminativeNetwork):

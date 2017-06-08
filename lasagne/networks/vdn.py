@@ -11,7 +11,6 @@ from .. import init, nonlinearities, objectives, updates, regularization
 __all__ = [
     "VariationalDropoutTypeANetwork",
     "VariationalDropoutTypeBNetwork",
-    "main",
 ]
 
 class VariationalDropoutTypeANetwork(DiscriminativeNetwork):

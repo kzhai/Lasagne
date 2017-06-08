@@ -22,6 +22,7 @@ __all__ = [
     "validate_activation_probability",
     "sample_activation_probability",
     "AdaptiveDropoutLayer",
+    "TrainableDropoutLayer",
     "LinearDropoutLayer",
     "GaussianDropoutLayer",
     "FastDropoutLayer",
@@ -426,6 +427,54 @@ class AdaptiveDropoutLayer(Layer):
             activation_probability = activation_probability + self.b.dimshuffle('x', 0)
         return activation_probability
     '''
+
+class TrainableDropoutLayer(Layer):
+    """Trainable Dropout layer
+    """
+    def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)),
+                 num_leading_axes=1, shared_axes=(), **kwargs):
+        super(TrainableDropoutLayer, self).__init__(incoming, **kwargs)
+        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+
+        num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
+        #self.activation_probability = theano.shared(value=activation_probability, );
+        self.activation_probability = self.add_param(activation_probability, (num_inputs,), name="r", trainableDropout=True);
+
+        #self.rescale = rescale
+        self.shared_axes = tuple(shared_axes)
+
+        '''
+        if b is None:
+            self.b = None
+        else:
+            self.b = self.add_param(b, (num_units,), name="b", regularizable=False)
+        '''
+
+    def get_output_for(self, input, deterministic=False, **kwargs):
+        #if deterministic or self.activation_probability == 1:
+        if deterministic:
+            return input * self.activation_probability;
+        else:
+            # Using theano constant to prevent upcasting
+            retain_prob = self.activation_probability.eval();
+
+            # use nonsymbolic shape for dropout mask if possible
+            mask_shape = self.input_shape
+            if any(s is None for s in mask_shape):
+                mask_shape = input.shape
+
+            # apply dropout, respecting shared axes
+            if self.shared_axes:
+                shared_axes = tuple(a if a >= 0 else a + input.ndim
+                                    for a in self.shared_axes)
+                mask_shape = tuple(1 if a in shared_axes else s
+                                   for a, s in enumerate(mask_shape))
+            mask = self._srng.binomial(mask_shape, p=retain_prob,
+                                       dtype=input.dtype)
+            if self.shared_axes:
+                bcast = tuple(bool(s == 1) for s in mask_shape)
+                mask = T.patternbroadcast(mask, bcast)
+            return input * mask
 
 class LinearDropoutLayer(Layer):
     """Dropout layer
