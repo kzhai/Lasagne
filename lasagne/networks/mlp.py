@@ -279,9 +279,6 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
                 minibatch_running_time = timeit.default_timer() - minibatch_running_time;
                 epoch_running_time += minibatch_running_time
 
-                #test_function_output = self._test_function(minibatch_x, minibatch_y)
-                #print test_function_output, train_dropout_function_outputs
-
             # And a full pass over the validation data:
             if validate_dataset != None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
                 average_train_accuracy = total_train_accuracy / number_of_data;
@@ -317,14 +314,6 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
             average_train_accuracy * 100)
 
         self.epoch_index += 1;
-
-        '''
-        if self._dropout_rate_update_interval>0:
-            for network_layer in self.get_network_layers():
-                if not isinstance(network_layer, noise.TrainableDropoutLayer):
-                    continue;
-                print network_layer.activation_probability.eval();
-        '''
 
         return epoch_running_time;
 

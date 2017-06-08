@@ -455,8 +455,8 @@ class TrainableDropoutLayer(Layer):
         if deterministic:
             return input * self.activation_probability;
         else:
-            # Using theano constant to prevent upcasting
             retain_prob = self.activation_probability.eval();
+            retain_prob = numpy.clip(retain_prob, 0, 1);
 
             # use nonsymbolic shape for dropout mask if possible
             mask_shape = self.input_shape
