@@ -1,72 +1,21 @@
-import argparse
-
+import cPickle
+import logging
+import numpy
 import os
 import sys
-import shutil
-import re
-
-import cPickle
-
 import timeit
-import datetime
-
-import logging
-
-import numpy
 
 from .. import networks
-from .. import nonlinearities, objectives, updates, utils
-from .base import Configuration, load_data, load_data_to_train_validate
+from .. import nonlinearities
+from .base import load_data, load_data_to_train_validate
 
 __all__ = [
     "train_fdn",
 ]
 
-'''
-model_parser = argparse.ArgumentParser(parents=[generic_parser], description="multi-layer perceptron argument")
-
-# model argument set 1
-model_parser.add_argument("--layer_dimensions", dest="layer_dimensions", action='store', default=None,
-                          help="dimension of different layer [None], example, '100,500,10' represents 3 layers contains 100, 500, and 10 neurons respectively");
-model_parser.add_argument("--layer_nonlinearities", dest="layer_nonlinearities", action='store', default=None,
-                          help="activation functions of different layer [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively");
-
-# model argument set 2
-model_parser.add_argument("--layer_activation_parameters", dest="layer_activation_parameters", action='store', default="1.0",
-                          help="dropout probability of different layer [1], either one number of a list of numbers, example, '0.2' represents 0.2 dropout rate for all input+hidden layers, or '0.2,0.5' represents 0.2 dropout rate for input layer and 0.5 dropout rate for first hidden layer respectively");
-model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store', default="bernoulli",
-                          help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively");
-
-#
-#
-#
-#
-#
-
-# model argument set 3
-model_parser.add_argument("--L1_regularizer_lambdas", dest="L1_regularizer_lambdas", nargs="+", type=float, action='store', default=0,
-                          help="L1 regularization lambda [0]")
-model_parser.add_argument("--L2_regularizer_lambdas", dest="L2_regularizer_lambdas", nargs="+", type=float, action='store', default=0,
-                          help="L2 regularization lambda [0]")
-model_parser.add_argument("--max_norm_regularizer_lambdas", dest="max_norm_regularizer_lambdas", nargs="+", type=float, action='store', default=0,
-                          help="max norm regularizer [0 - no max norm regularization, normally set to a value between 3 and 4]")
-
-# model argument set
-model_parser.add_argument("--validation_interval", dest="validation_interval", type=int, action='store', default=1000,
-                          help="validation interval in number of mini-batches [1000]");
-
-model_parser.add_argument("--pretrained_model_file", dest="pretrained_model_file",
-                          help="pretrained model file [None]");
-
-model_parser.add_argument("--dae_regularizer_lambdas", dest="dae_regularizer_lambdas", nargs="+", type=float, action='store', default=0,
-                          help="dae regularization lambda [0]")
-model_parser.add_argument("--layer_corruption_levels", dest="layer_corruption_levels", nargs="+", type=float, action='store', default=0,
-                          help="layer corruption level for pre-training [0], either one number of a list of numbers, example, '0.2' represents 0.2 corruption level for all denoising auto encoders, or '0.2,0.5' represents 0.2 corruption level for first denoising auto encoder layer and 0.5 for second one respectively");
-'''
-
-def compile_model_parser():
-    from .base import compile_generic_parser
-    model_parser = compile_generic_parser();
+def construct_fdn_parser():
+    from .base import construct_generic_parser
+    model_parser = construct_generic_parser();
 
     # model argument set 1
     model_parser.add_argument("--layer_dimensions", dest="layer_dimensions", action='store', default=None,
@@ -104,6 +53,7 @@ def compile_model_parser():
 
     return model_parser;
 
+'''
 class FDNConfiguration(Configuration):
     def __init__(self, arguments):
         super(FDNConfiguration, self).__init__(arguments);
@@ -130,31 +80,6 @@ class FDNConfiguration(Configuration):
         layer_activation_parameters = [float(layer_activation_parameter_tokens) for layer_activation_parameter_tokens in layer_activation_parameters]
         self.layer_activation_parameters = layer_activation_parameters;
 
-        '''
-        # model argument set 3
-        L1_regularizer_lambdas = arguments.L1_regularizer_lambdas
-        if isinstance(L1_regularizer_lambdas, int):
-            L1_regularizer_lambdas = [L1_regularizer_lambdas] * number_of_layers
-        assert len(L1_regularizer_lambdas) == number_of_layers
-        assert (L1_regularizer_lambda >= 0 for L1_regularizer_lambda in L1_regularizer_lambdas)
-        self.L1_regularizer_lambdas = L1_regularizer_lambdas;
-
-        L2_regularizer_lambdas = arguments.L2_regularizer_lambdas
-        if isinstance(L2_regularizer_lambdas, int):
-            L2_regularizer_lambdas = [L2_regularizer_lambdas] * number_of_layers
-        assert len(L2_regularizer_lambdas) == number_of_layers;
-        assert (L2_regularizer_lambda >= 0 for L2_regularizer_lambda in L2_regularizer_lambdas)
-        self.L2_regularizer_lambdas = L2_regularizer_lambdas;
-
-        #assert arguments.max_norm_regularizer_lambdas >= 0;
-        max_norm_regularizer_lambdas = arguments.max_norm_regularizer_lambdas;
-        if isinstance(max_norm_regularizer_lambdas, int):
-            max_norm_regularizer_lambdas = [max_norm_regularizer_lambdas] * number_of_layers
-        assert len(max_norm_regularizer_lambdas) == number_of_layers;
-        assert (max_norm_regularizer_lambda >= 0 for max_norm_regularizer_lambda in max_norm_regularizer_lambdas)
-        self.max_norm_regularizer_lambdas = max_norm_regularizer_lambdas;
-        '''
-
         # model argument set
         assert (arguments.validation_interval > 0);
         self.validation_interval = arguments.validation_interval;
@@ -179,6 +104,88 @@ class FDNConfiguration(Configuration):
         if pretrained_model_file != None:
             assert os.path.exists(pretrained_model_file)
             pretrained_model = cPickle.load(open(pretrained_model_file, 'rb'));
+'''
+
+def validate_fdn_arguments(arguments):
+    from .base import validate_generic_arguments;
+    arguments = validate_generic_arguments(arguments);
+
+    # model argument set 1
+    assert arguments.layer_dimensions != None
+    arguments.layer_dimensions = [int(dimensionality) for dimensionality in arguments.layer_dimensions.split(",")]
+    number_of_layers = len(arguments.layer_dimensions);
+
+    assert arguments.layer_nonlinearities != None
+    layer_nonlinearities = arguments.layer_nonlinearities.split(",")
+    layer_nonlinearities = [getattr(nonlinearities, layer_nonlinearity) for layer_nonlinearity in
+                            layer_nonlinearities]
+    assert len(layer_nonlinearities) == number_of_layers;
+    arguments.layer_nonlinearities = layer_nonlinearities;
+
+    # model argument set 2
+    layer_activation_parameters = arguments.layer_activation_parameters;
+    layer_activation_parameter_tokens = layer_activation_parameters.split(",")
+    if len(layer_activation_parameter_tokens) == 1:
+        layer_activation_parameters = [layer_activation_parameters for layer_index in xrange(number_of_layers)]
+    elif len(layer_activation_parameter_tokens) == number_of_layers:
+        layer_activation_parameters = layer_activation_parameter_tokens
+    assert len(layer_activation_parameters) == number_of_layers;
+    layer_activation_parameters = [float(layer_activation_parameter_tokens) for layer_activation_parameter_tokens in
+                                   layer_activation_parameters]
+    arguments.layer_activation_parameters = layer_activation_parameters;
+
+    '''
+    # model argument set 3
+    L1_regularizer_lambdas = arguments.L1_regularizer_lambdas
+    if isinstance(L1_regularizer_lambdas, int):
+        L1_regularizer_lambdas = [L1_regularizer_lambdas] * number_of_layers
+    assert len(L1_regularizer_lambdas) == number_of_layers
+    assert (L1_regularizer_lambda >= 0 for L1_regularizer_lambda in L1_regularizer_lambdas)
+    self.L1_regularizer_lambdas = L1_regularizer_lambdas;
+
+    L2_regularizer_lambdas = arguments.L2_regularizer_lambdas
+    if isinstance(L2_regularizer_lambdas, int):
+        L2_regularizer_lambdas = [L2_regularizer_lambdas] * number_of_layers
+    assert len(L2_regularizer_lambdas) == number_of_layers;
+    assert (L2_regularizer_lambda >= 0 for L2_regularizer_lambda in L2_regularizer_lambdas)
+    self.L2_regularizer_lambdas = L2_regularizer_lambdas;
+
+    #assert arguments.max_norm_regularizer_lambdas >= 0;
+    max_norm_regularizer_lambdas = arguments.max_norm_regularizer_lambdas;
+    if isinstance(max_norm_regularizer_lambdas, int):
+        max_norm_regularizer_lambdas = [max_norm_regularizer_lambdas] * number_of_layers
+    assert len(max_norm_regularizer_lambdas) == number_of_layers;
+    assert (max_norm_regularizer_lambda >= 0 for max_norm_regularizer_lambda in max_norm_regularizer_lambdas)
+    self.max_norm_regularizer_lambdas = max_norm_regularizer_lambdas;
+    '''
+
+    # model argument set
+    assert (arguments.validation_interval > 0);
+
+    '''
+    dae_regularizer_lambdas = arguments.dae_regularizer_lambdas
+    if isinstance(dae_regularizer_lambdas, int):
+        dae_regularizer_lambdas = [dae_regularizer_lambdas] * (number_of_layers - 1)
+    assert len(dae_regularizer_lambdas) == number_of_layers - 1;
+    assert (dae_regularizer_lambda >= 0 for dae_regularizer_lambda in dae_regularizer_lambdas)
+    self.dae_regularizer_lambdas = dae_regularizer_lambdas;
+
+    layer_corruption_levels = arguments.layer_corruption_levels;
+    if isinstance(layer_corruption_levels, int):
+        layer_corruption_levels = [layer_corruption_levels] * (number_of_layers - 1)
+    assert len(layer_corruption_levels) == number_of_layers - 1;
+    assert (layer_corruption_level >= 0 for layer_corruption_level in layer_corruption_levels)
+    assert (layer_corruption_level <= 1 for layer_corruption_level in layer_corruption_levels)
+    self.layer_corruption_levels = layer_corruption_levels;
+
+    pretrained_model_file = arguments.pretrained_model_file;
+    pretrained_model = None;
+    if pretrained_model_file != None:
+        assert os.path.exists(pretrained_model_file)
+        pretrained_model = cPickle.load(open(pretrained_model_file, 'rb'));
+    '''
+
+    return arguments
 
 def train_fdn():
     """
@@ -186,10 +193,10 @@ def train_fdn():
     This is demonstrated on MNIST.
     """
 
-    arguments, additionals = compile_model_parser().parse_known_args();
+    arguments, additionals = construct_fdn_parser().parse_known_args();
     #arguments, additionals = model_parser.parse_known_args()
 
-    settings = FDNConfiguration(arguments);
+    settings = validate_fdn_arguments(arguments);
 
     input_directory = settings.input_directory
     output_directory = settings.output_directory

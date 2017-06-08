@@ -1,30 +1,21 @@
-import argparse
-
+import cPickle
+import logging
+import numpy
 import os
 import sys
-import shutil
-import re
-
-import cPickle
-
 import timeit
-import datetime
-
-import logging
-
-import numpy
 
 from .. import networks
 from .. import nonlinearities, objectives
-from .base import Configuration, load_data, load_data_to_train_validate
+from .base import load_data, load_data_to_train_validate
 
 __all__ = [
     "train_cnn",
 ]
 
-def compile_model_parser():
-    from .base import compile_generic_parser
-    model_parser = compile_generic_parser();
+def construct_cnn_parser():
+    from .base import construct_generic_parser
+    model_parser = construct_generic_parser();
 
     model_parser.description = "convolutional neural network argument";
 
@@ -36,9 +27,9 @@ def compile_model_parser():
 
     # model argument set 2
     model_parser.add_argument("--dense_dimensions", dest="dense_dimensions", action='store', default=None,
-                      help="dimension of different layer [None], example, '100,500,10' represents 3 layers contains 100, 500, and 10 neurons respectively");
+                              help="dimension of different layer [None], example, '100,500,10' represents 3 layers contains 100, 500, and 10 neurons respectively");
     model_parser.add_argument("--dense_nonlinearities", dest="dense_nonlinearities", action='store', default=None,
-                      help="activation functions of different layer [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively");
+                              help="activation functions of different layer [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively");
 
     # model argument set 3
     model_parser.add_argument("--layer_activation_parameters", dest="layer_activation_parameters", action='store', default="1.0",
@@ -80,16 +71,18 @@ def compile_model_parser():
     model_parser.add_argument("--validation_interval", dest="validation_interval", type=int, action='store', default=1000,
                               help="validation interval in number of mini-batches [1000]");
 
+    '''
     model_parser.add_argument("--pretrained_model_file", dest="pretrained_model_file",
                               help="pretrained model file [None]");
-
     model_parser.add_argument("--dae_regularizer_lambdas", dest="dae_regularizer_lambdas", nargs="+", type=float, action='store', default=0,
                               help="dae regularization lambda [0]")
     model_parser.add_argument("--layer_corruption_levels", dest="layer_corruption_levels", nargs="+", type=float, action='store', default=0,
                               help="layer corruption level for pre-training [0], either one number of a list of numbers, example, '0.2' represents 0.2 corruption level for all denoising auto encoders, or '0.2,0.5' represents 0.2 corruption level for first denoising auto encoder layer and 0.5 for second one respectively");
+    '''
 
     return model_parser
 
+'''
 class CNNConfiguration(Configuration):
     def __init__(self, arguments):
         super(CNNConfiguration, self).__init__(arguments);
@@ -167,7 +160,6 @@ class CNNConfiguration(Configuration):
         #
         #
 
-        '''
         convolution_filter_size_tokens = convolution_filter_sizes.split(",")
         if len(convolution_filter_size_tokens) == 1:
             convolution_filter_sizes = [tuple(int(x) for x in convolution_filter_size_tokens.split("*")) for layer_index in xrange(number_of_convolution_layers)]
@@ -175,7 +167,6 @@ class CNNConfiguration(Configuration):
             convolution_filter_sizes = [tuple(int(x) for x in convolution_filter_sizes_token.split("*")) for
                                         convolution_filter_sizes_token in convolution_filter_size_tokens]
         assert len(convolution_filter_sizes) == number_of_convolution_layers;
-        '''
 
         # model argument set 4
         convolution_filter_sizes = arguments.convolution_filter_sizes;
@@ -220,30 +211,6 @@ class CNNConfiguration(Configuration):
         #
         #
 
-        '''
-        L1_regularizer_lambdas = arguments.L1_regularizer_lambdas
-        if isinstance(L1_regularizer_lambdas, int):
-            L1_regularizer_lambdas = [L1_regularizer_lambdas] * number_of_layers
-        assert len(L1_regularizer_lambdas) == number_of_layers
-        assert (L1_regularizer_lambda >= 0 for L1_regularizer_lambda in L1_regularizer_lambdas)
-        self.L1_regularizer_lambdas = L1_regularizer_lambdas;
-
-        L2_regularizer_lambdas = arguments.L2_regularizer_lambdas
-        if isinstance(L2_regularizer_lambdas, int):
-            L2_regularizer_lambdas = [L2_regularizer_lambdas] * number_of_layers
-        assert len(L2_regularizer_lambdas) == number_of_layers;
-        assert (L2_regularizer_lambda >= 0 for L2_regularizer_lambda in L2_regularizer_lambdas)
-        self.L2_regularizer_lambdas = L2_regularizer_lambdas;
-
-        #assert arguments.max_norm_regularizer_lambdas >= 0;
-        max_norm_regularizer_lambdas = arguments.max_norm_regularizer_lambdas;
-        if isinstance(max_norm_regularizer_lambdas, int):
-            max_norm_regularizer_lambdas = [max_norm_regularizer_lambdas] * number_of_layers
-        assert len(max_norm_regularizer_lambdas) == number_of_layers;
-        assert (max_norm_regularizer_lambda >= 0 for max_norm_regularizer_lambda in max_norm_regularizer_lambdas)
-        self.max_norm_regularizer_lambdas = max_norm_regularizer_lambdas;
-        '''
-
         # model argument set
         assert (arguments.validation_interval > 0);
         self.validation_interval = arguments.validation_interval;
@@ -268,6 +235,190 @@ class CNNConfiguration(Configuration):
         if pretrained_model_file != None:
             assert os.path.exists(pretrained_model_file)
             pretrained_model = cPickle.load(open(pretrained_model_file, 'rb'));
+'''
+
+def validate_cnn_arguments(arguments):
+    from .base import validate_generic_arguments
+    arguments = validate_generic_arguments(arguments);
+
+    # model argument set 1
+    assert arguments.convolution_filters != None
+    convolution_filters = arguments.convolution_filters.split(",")
+    arguments.convolution_filters = [int(convolution_filter) for convolution_filter in convolution_filters]
+
+    assert arguments.convolution_nonlinearities != None
+    convolution_nonlinearities = arguments.convolution_nonlinearities.split(",")
+    arguments.convolution_nonlinearities = [getattr(nonlinearities, layer_nonlinearity) for layer_nonlinearity in convolution_nonlinearities]
+
+    assert len(convolution_nonlinearities) == len(convolution_filters)
+    number_of_convolution_layers = len(arguments.convolution_filters);
+
+    # model argument set 2
+    assert arguments.dense_dimensions != None
+    dense_dimensions = arguments.dense_dimensions.split(",")
+    arguments.dense_dimensions = [int(dimensionality) for dimensionality in dense_dimensions]
+
+    assert arguments.dense_nonlinearities != None
+    dense_nonlinearities = arguments.dense_nonlinearities.split(",")
+    arguments.dense_nonlinearities = [getattr(nonlinearities, layer_nonlinearity) for layer_nonlinearity in dense_nonlinearities]
+
+    assert len(dense_dimensions) == len(dense_nonlinearities)
+    number_of_dense_layers = len(arguments.dense_dimensions);
+
+    number_of_layers = number_of_convolution_layers + number_of_dense_layers;
+
+    # model argument set 3
+    layer_activation_styles = arguments.layer_activation_styles;
+    layer_activation_style_tokens = layer_activation_styles.split(",")
+    if len(layer_activation_style_tokens) == 1:
+        layer_activation_styles = [layer_activation_styles for layer_index in xrange(number_of_layers)]
+    elif len(layer_activation_style_tokens) == number_of_layers:
+        layer_activation_styles = layer_activation_style_tokens
+        # [float(layer_activation_parameter) for layer_activation_parameter in layer_activation_parameter_tokens]
+    assert len(layer_activation_styles) == number_of_layers;
+    assert (layer_activation_style in set(
+        ["bernoulli", "beta_bernoulli", "reciprocal_beta_bernoulli", "reverse_reciprocal_beta_bernoulli",
+         "mixed_beta_bernoulli"]) for layer_activation_style in layer_activation_styles)
+    arguments.layer_activation_styles = layer_activation_styles;
+
+    layer_activation_parameters = arguments.layer_activation_parameters;
+    layer_activation_parameter_tokens = layer_activation_parameters.split(",")
+    if len(layer_activation_parameter_tokens) == 1:
+        layer_activation_parameters = [layer_activation_parameters for layer_index in xrange(number_of_layers)]
+    elif len(layer_activation_parameter_tokens) == number_of_layers:
+        layer_activation_parameters = layer_activation_parameter_tokens
+    assert len(layer_activation_parameters) == number_of_layers;
+
+    for layer_index in xrange(number_of_layers):
+        if layer_activation_styles[layer_index] == "bernoulli":
+            layer_activation_parameters[layer_index] = float(layer_activation_parameters[layer_index])
+            assert layer_activation_parameters[layer_index] <= 1;
+            assert layer_activation_parameters[layer_index] > 0;
+        elif layer_activation_styles[layer_index] == "beta_bernoulli" or layer_activation_styles[
+            layer_index] == "reciprocal_beta_bernoulli" or layer_activation_styles[
+            layer_index] == "reverse_reciprocal_beta_bernoulli" or layer_activation_styles[
+            layer_index] == "mixed_beta_bernoulli":
+            layer_activation_parameter_tokens = layer_activation_parameters[layer_index].split("+");
+            assert len(layer_activation_parameter_tokens) == 2;
+            layer_activation_parameters[layer_index] = (
+            float(layer_activation_parameter_tokens[0]), float(layer_activation_parameter_tokens[1]))
+            assert layer_activation_parameters[layer_index][0] > 0;
+            assert layer_activation_parameters[layer_index][1] > 0;
+            if layer_activation_styles[layer_index] == "mixed_beta_bernoulli":
+                assert layer_activation_parameters[layer_index][0] < 1;
+    arguments.layer_activation_parameters = layer_activation_parameters;
+
+    #
+    #
+    #
+    #
+    #
+
+    '''
+    convolution_filter_size_tokens = convolution_filter_sizes.split(",")
+    if len(convolution_filter_size_tokens) == 1:
+        convolution_filter_sizes = [tuple(int(x) for x in convolution_filter_size_tokens.split("*")) for layer_index in xrange(number_of_convolution_layers)]
+    elif len(layer_activation_parameter_tokens) == number_of_convolution_layers:
+        convolution_filter_sizes = [tuple(int(x) for x in convolution_filter_sizes_token.split("*")) for
+                                    convolution_filter_sizes_token in convolution_filter_size_tokens]
+    assert len(convolution_filter_sizes) == number_of_convolution_layers;
+    '''
+
+    # model argument set 4
+    convolution_filter_sizes = arguments.convolution_filter_sizes;
+    convolution_filter_sizes = [tuple(int(x) for x in token.split("*")) for token in convolution_filter_sizes.split(",")];
+    if len(convolution_filter_sizes)==1:
+        convolution_filter_sizes *= number_of_convolution_layers;
+    assert len(convolution_filter_sizes) == number_of_convolution_layers;
+    arguments.convolution_filter_sizes = convolution_filter_sizes
+
+    convolution_strides = arguments.convolution_strides
+    convolution_strides = [tuple(int(x) for x in token.split("*")) for token in convolution_strides.split(",")];
+    if len(convolution_strides)==1:
+        convolution_strides *= number_of_convolution_layers;
+    assert len(convolution_strides)==number_of_convolution_layers;
+    arguments.convolution_strides = convolution_strides
+
+    convolution_pads = arguments.convolution_pads
+    convolution_pads = [int(x) for x in convolution_pads.split(",")];
+    if len(convolution_pads) == 1:
+        convolution_pads *= number_of_convolution_layers;
+    assert len(convolution_pads) == number_of_convolution_layers;
+    arguments.convolution_pads = convolution_pads
+
+    # model argument set 5
+    pooling_sizes = arguments.pooling_sizes;
+    pooling_sizes = [tuple(int(x) for x in token.split("*")) for token in pooling_sizes.split(",")];
+    if len(pooling_sizes) == 1:
+        pooling_sizes *= number_of_convolution_layers;
+    assert len(pooling_sizes) == number_of_convolution_layers;
+    arguments.pooling_sizes=pooling_sizes
+
+    pooling_strides = arguments.pooling_strides;
+    pooling_strides = [tuple(int(x) for x in token.split("*")) for token in pooling_strides.split(",")];
+    if len(pooling_strides) == 1:
+        pooling_strides *= number_of_convolution_layers;
+    assert len(pooling_strides) == number_of_convolution_layers;
+    arguments.pooling_strides = pooling_strides;
+
+    #
+    #
+    #
+    #
+    #
+
+    '''
+    L1_regularizer_lambdas = arguments.L1_regularizer_lambdas
+    if isinstance(L1_regularizer_lambdas, int):
+        L1_regularizer_lambdas = [L1_regularizer_lambdas] * number_of_layers
+    assert len(L1_regularizer_lambdas) == number_of_layers
+    assert (L1_regularizer_lambda >= 0 for L1_regularizer_lambda in L1_regularizer_lambdas)
+    self.L1_regularizer_lambdas = L1_regularizer_lambdas;
+
+    L2_regularizer_lambdas = arguments.L2_regularizer_lambdas
+    if isinstance(L2_regularizer_lambdas, int):
+        L2_regularizer_lambdas = [L2_regularizer_lambdas] * number_of_layers
+    assert len(L2_regularizer_lambdas) == number_of_layers;
+    assert (L2_regularizer_lambda >= 0 for L2_regularizer_lambda in L2_regularizer_lambdas)
+    self.L2_regularizer_lambdas = L2_regularizer_lambdas;
+
+    #assert arguments.max_norm_regularizer_lambdas >= 0;
+    max_norm_regularizer_lambdas = arguments.max_norm_regularizer_lambdas;
+    if isinstance(max_norm_regularizer_lambdas, int):
+        max_norm_regularizer_lambdas = [max_norm_regularizer_lambdas] * number_of_layers
+    assert len(max_norm_regularizer_lambdas) == number_of_layers;
+    assert (max_norm_regularizer_lambda >= 0 for max_norm_regularizer_lambda in max_norm_regularizer_lambdas)
+    self.max_norm_regularizer_lambdas = max_norm_regularizer_lambdas;
+    '''
+
+    # model argument set
+    assert (arguments.validation_interval > 0);
+    arguments.validation_interval = arguments.validation_interval;
+
+    '''
+    dae_regularizer_lambdas = arguments.dae_regularizer_lambdas
+    if isinstance(dae_regularizer_lambdas, int):
+        dae_regularizer_lambdas = [dae_regularizer_lambdas] * (number_of_layers - 1)
+    assert len(dae_regularizer_lambdas) == number_of_layers - 1;
+    assert (dae_regularizer_lambda >= 0 for dae_regularizer_lambda in dae_regularizer_lambdas)
+    arguments.dae_regularizer_lambdas = dae_regularizer_lambdas;
+
+    layer_corruption_levels = arguments.layer_corruption_levels;
+    if isinstance(layer_corruption_levels, int):
+        layer_corruption_levels = [layer_corruption_levels] * (number_of_layers - 1)
+    assert len(layer_corruption_levels) == number_of_layers - 1;
+    assert (layer_corruption_level >= 0 for layer_corruption_level in layer_corruption_levels)
+    assert (layer_corruption_level <= 1 for layer_corruption_level in layer_corruption_levels)
+    arguments.layer_corruption_levels = layer_corruption_levels;
+
+    pretrained_model_file = arguments.pretrained_model_file;
+    pretrained_model = None;
+    if pretrained_model_file != None:
+        assert os.path.exists(pretrained_model_file)
+        pretrained_model = cPickle.load(open(pretrained_model_file, 'rb'));
+    '''
+
+    return arguments
 
 def train_cnn():
     """
@@ -275,10 +426,8 @@ def train_cnn():
     This is demonstrated on MNIST.
     """
 
-    model_parser = compile_model_parser();
-    arguments, additionals = model_parser.parse_known_args()
-
-    settings = CNNConfiguration(arguments);
+    arguments, additionals = construct_cnn_parser().parse_known_args()
+    settings = validate_cnn_arguments(arguments);
 
     input_directory = settings.input_directory
     output_directory = settings.output_directory
@@ -343,9 +492,8 @@ def train_cnn():
         layer_activation_parameters=settings.layer_activation_parameters,
         layer_activation_styles=settings.layer_activation_styles,
 
-        objective_functions=objectives.categorical_crossentropy,
-
-        update_function=settings.update_function,
+        objective_functions=settings.objective,
+        update_function=settings.update,
 
         learning_rate = settings.learning_rate,
         learning_rate_decay_style=settings.learning_rate_decay_style,
@@ -419,138 +567,3 @@ input_shape = list(data_x.shape[1:]);
 
 if __name__ == '__main__':
     train_cnn()
-
-    '''
-    # model argument set 1
-    assert arguments.layer_dimensions != None
-    arguments.layer_dimensions = [int(dimensionality) for dimensionality in arguments.layer_dimensions.split(",")]
-    number_of_layers = len(arguments.layer_dimensions);
-
-    assert arguments.layer_nonlinearities != None
-    layer_nonlinearities = arguments.layer_nonlinearities.split(",")
-    layer_nonlinearities = [getattr(nonlinearities, layer_nonlinearity) for layer_nonlinearity in layer_nonlinearities]
-    assert len(layer_nonlinearities) == number_of_layers;
-
-    # model argument set 2
-    layer_activation_styles = arguments.layer_activation_styles;
-    layer_activation_style_tokens = layer_activation_styles.split(",")
-    if len(layer_activation_style_tokens) == 1:
-        layer_activation_styles = [layer_activation_styles for layer_index in xrange(number_of_layers)]
-    elif len(layer_activation_style_tokens) == number_of_layers:
-        layer_activation_styles = layer_activation_style_tokens
-        # [float(layer_activation_parameter) for layer_activation_parameter in layer_activation_parameter_tokens]
-    assert len(layer_activation_styles) == number_of_layers;
-    assert (layer_activation_style in set(["bernoulli", "beta_bernoulli", "reciprocal_beta_bernoulli", "reverse_reciprocal_beta_bernoulli", "mixed_beta_bernoulli"]) for layer_activation_style in layer_activation_styles)
-
-    layer_activation_parameters = arguments.layer_activation_parameters;
-    layer_activation_parameter_tokens = layer_activation_parameters.split(",")
-    if len(layer_activation_parameter_tokens) == 1:
-        layer_activation_parameters = [layer_activation_parameters for layer_index in xrange(number_of_layers)]
-    elif len(layer_activation_parameter_tokens) == number_of_layers:
-        layer_activation_parameters = layer_activation_parameter_tokens
-    assert len(layer_activation_parameters) == number_of_layers;
-
-    for layer_index in xrange(number_of_layers):
-        if layer_activation_styles[layer_index] == "bernoulli":
-            layer_activation_parameters[layer_index] = float(layer_activation_parameters[layer_index])
-            assert layer_activation_parameters[layer_index] <= 1;
-            assert layer_activation_parameters[layer_index] > 0;
-        elif layer_activation_styles[layer_index] == "beta_bernoulli" or layer_activation_styles[layer_index] == "reciprocal_beta_bernoulli" or layer_activation_styles[layer_index] == "reverse_reciprocal_beta_bernoulli" or layer_activation_styles[layer_index] == "mixed_beta_bernoulli":
-            layer_activation_parameter_tokens = layer_activation_parameters[layer_index].split("+");
-            assert len(layer_activation_parameter_tokens)==2;
-            layer_activation_parameters[layer_index] = (float(layer_activation_parameter_tokens[0]), float(layer_activation_parameter_tokens[1]))
-            assert layer_activation_parameters[layer_index][0] > 0;
-            assert layer_activation_parameters[layer_index][1] > 0;
-            if layer_activation_styles[layer_index] == "mixed_beta_bernoulli":
-                assert layer_activation_parameters[layer_index][0] < 1;
-
-    # model argument set 3
-    L1_regularizer_lambdas = arguments.L1_regularizer_lambdas
-    if isinstance(L1_regularizer_lambdas, int):
-        L1_regularizer_lambdas = [L1_regularizer_lambdas] * number_of_layers
-    assert len(L1_regularizer_lambdas) == number_of_layers
-    assert (L1_regularizer_lambda >= 0 for L1_regularizer_lambda in L1_regularizer_lambdas)
-
-    L2_regularizer_lambdas = arguments.L2_regularizer_lambdas
-    if isinstance(L2_regularizer_lambdas, int):
-        L2_regularizer_lambdas = [L2_regularizer_lambdas] * number_of_layers
-    assert len(L2_regularizer_lambdas) == number_of_layers;
-    assert (L2_regularizer_lambda >= 0 for L2_regularizer_lambda in L2_regularizer_lambdas)
-
-    assert arguments.max_norm_regularizer_lambdas >= 0;
-    max_norm_regularizer_lambdas = arguments.max_norm_regularizer_lambdas;
-    if isinstance(max_norm_regularizer_lambdas, int):
-        max_norm_regularizer_lambdas = [max_norm_regularizer_lambdas] * number_of_layers
-    assert len(max_norm_regularizer_lambdas) == number_of_layers;
-    assert (max_norm_regularizer_lambda >= 0 for max_norm_regularizer_lambda in max_norm_regularizer_lambdas)
-
-    # model argument set
-    assert (arguments.validation_interval > 0);
-    validation_interval = arguments.validation_interval;
-
-    pretrained_model_file = arguments.pretrained_model_file;
-    pretrained_model = None;
-    if pretrained_model_file != None:
-        assert os.path.exists(pretrained_model_file)
-        pretrained_model = cPickle.load(open(pretrained_model_file, 'rb'));
-
-    dae_regularizer_lambdas = arguments.dae_regularizer_lambdas
-    if isinstance(dae_regularizer_lambdas, int):
-        dae_regularizer_lambdas = [dae_regularizer_lambdas] *(number_of_layers - 1)
-    assert len(dae_regularizer_lambdas) == number_of_layers - 1;
-    assert (dae_regularizer_lambda >= 0 for dae_regularizer_lambda in dae_regularizer_lambdas)
-
-    layer_corruption_levels = arguments.layer_corruption_levels;
-    if isinstance(layer_corruption_levels, int):
-        layer_corruption_levels = [layer_corruption_levels] *(number_of_layers - 1)
-    assert len(layer_corruption_levels) == number_of_layers - 1;
-    assert (layer_corruption_level >= 0 for layer_corruption_level in layer_corruption_levels)
-    assert (layer_corruption_level <= 1 for layer_corruption_level in layer_corruption_levels)
-
-    #
-    #
-    #
-    #
-    #
-
-    # generic argument set 4
-    assert arguments.learning_rate > 0;
-    initial_learning_rate = arguments.learning_rate;
-    assert arguments.learning_rate_decay_style == None or arguments.learning_rate_decay_style in ["inverse_t", "exponential"];
-    learning_rate_decay_style = arguments.learning_rate_decay_style;
-    assert arguments.learning_rate_decay_parameter >= 0;
-    learning_rate_decay_parameter = arguments.learning_rate_decay_parameter;
-
-    # generic argument set 3
-    assert (arguments.minibatch_size > 0);
-    minibatch_size = arguments.minibatch_size;
-    assert (arguments.number_of_epochs > 0);
-    number_of_epochs = arguments.number_of_epochs;
-    snapshot_interval = arguments.snapshot_interval;
-    # assert(options.snapshot_interval > 0);
-
-    # generic argument set 2
-    objective_function = arguments.objective_function;
-    objective_function = getattr(objectives, objective_function)
-    update_function = arguments.update_function;
-    update_function = getattr(updates, update_function)
-
-    # generic argument set 1
-    input_directory = arguments.input_directory;
-    assert os.path.exists(input_directory)
-
-    assert (arguments.output_directory != None);
-    output_directory = arguments.output_directory;
-
-    # adjusting output directory
-    now = datetime.datetime.now();
-    suffix = now.strftime("%y%m%d-%H%M%S") + "";
-    suffix += "-%s" % ("mlp");
-
-    output_directory = os.path.join(output_directory, suffix);
-    assert not os.path.exists(output_directory)
-    os.mkdir(os.path.abspath(output_directory));
-    arguments.output_directory = output_directory;
-
-    number_of_training_data = arguments.number_of_training_data;
-    '''

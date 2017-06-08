@@ -1,30 +1,21 @@
-import argparse
-
+import cPickle
+import logging
+import numpy
 import os
 import sys
-import shutil
-import re
-
-import cPickle
-
 import timeit
-import datetime
-
-import logging
-
-import numpy
 
 from .. import networks
 from .. import nonlinearities, objectives, updates, utils
-from .base import Configuration, load_data, load_data_to_train_validate
+from .base import load_data, load_data_to_train_validate
 
 __all__ = [
     "train_snn",
 ]
 
-def compile_model_parser():
-    from .base import compile_generic_parser
-    model_parser = compile_generic_parser();
+def construct_snn_parser():
+    from .base import construct_generic_parser
+    model_parser = construct_generic_parser();
 
     # model argument set 1
     model_parser.add_argument("--layer_dimensions", dest="layer_dimensions", action='store', default=None,
@@ -66,6 +57,7 @@ def compile_model_parser():
 
     return model_parser;
 
+'''
 class SNNConfiguration(Configuration):
     def __init__(self, arguments):
         super(SNNConfiguration, self).__init__(arguments);
@@ -83,31 +75,6 @@ class SNNConfiguration(Configuration):
 
         assert 0 < arguments.input_activation_rate <= 1
         self.input_activation_rate = arguments.input_activation_rate
-
-        '''
-        # model argument set 3
-        L1_regularizer_lambdas = arguments.L1_regularizer_lambdas
-        if isinstance(L1_regularizer_lambdas, int):
-            L1_regularizer_lambdas = [L1_regularizer_lambdas] * number_of_layers
-        assert len(L1_regularizer_lambdas) == number_of_layers
-        assert (L1_regularizer_lambda >= 0 for L1_regularizer_lambda in L1_regularizer_lambdas)
-        self.L1_regularizer_lambdas = L1_regularizer_lambdas;
-
-        L2_regularizer_lambdas = arguments.L2_regularizer_lambdas
-        if isinstance(L2_regularizer_lambdas, int):
-            L2_regularizer_lambdas = [L2_regularizer_lambdas] * number_of_layers
-        assert len(L2_regularizer_lambdas) == number_of_layers;
-        assert (L2_regularizer_lambda >= 0 for L2_regularizer_lambda in L2_regularizer_lambdas)
-        self.L2_regularizer_lambdas = L2_regularizer_lambdas;
-
-        #assert arguments.max_norm_regularizer_lambdas >= 0;
-        max_norm_regularizer_lambdas = arguments.max_norm_regularizer_lambdas;
-        if isinstance(max_norm_regularizer_lambdas, int):
-            max_norm_regularizer_lambdas = [max_norm_regularizer_lambdas] * number_of_layers
-        assert len(max_norm_regularizer_lambdas) == number_of_layers;
-        assert (max_norm_regularizer_lambda >= 0 for max_norm_regularizer_lambda in max_norm_regularizer_lambdas)
-        self.max_norm_regularizer_lambdas = max_norm_regularizer_lambdas;
-        '''
 
         # model argument set
         assert (arguments.validation_interval > 0);
@@ -133,6 +100,55 @@ class SNNConfiguration(Configuration):
         if pretrained_model_file != None:
             assert os.path.exists(pretrained_model_file)
             pretrained_model = cPickle.load(open(pretrained_model_file, 'rb'));
+'''
+
+def validate_snn_arguments(arguments):
+    from .base import validate_generic_arguments
+    arguments = validate_generic_arguments(arguments);
+
+    # model argument set 1
+    assert arguments.layer_dimensions != None
+    arguments.layer_dimensions = [int(dimensionality) for dimensionality in arguments.layer_dimensions.split(",")]
+    number_of_layers = len(arguments.layer_dimensions);
+
+    assert arguments.layer_nonlinearities != None
+    layer_nonlinearities = arguments.layer_nonlinearities.split(",")
+    layer_nonlinearities = [getattr(nonlinearities, layer_nonlinearity) for layer_nonlinearity in
+                            layer_nonlinearities]
+    assert len(layer_nonlinearities) == number_of_layers;
+    arguments.layer_nonlinearities = layer_nonlinearities;
+
+    assert 0 < arguments.input_activation_rate <= 1
+    arguments.input_activation_rate = arguments.input_activation_rate
+
+    # model argument set
+    assert (arguments.validation_interval > 0);
+    arguments.validation_interval = arguments.validation_interval;
+
+    '''
+    dae_regularizer_lambdas = arguments.dae_regularizer_lambdas
+    if isinstance(dae_regularizer_lambdas, int):
+        dae_regularizer_lambdas = [dae_regularizer_lambdas] * (number_of_layers - 1)
+    assert len(dae_regularizer_lambdas) == number_of_layers - 1;
+    assert (dae_regularizer_lambda >= 0 for dae_regularizer_lambda in dae_regularizer_lambdas)
+    arguments.dae_regularizer_lambdas = dae_regularizer_lambdas;
+
+    layer_corruption_levels = arguments.layer_corruption_levels;
+    if isinstance(layer_corruption_levels, int):
+        layer_corruption_levels = [layer_corruption_levels] * (number_of_layers - 1)
+    assert len(layer_corruption_levels) == number_of_layers - 1;
+    assert (layer_corruption_level >= 0 for layer_corruption_level in layer_corruption_levels)
+    assert (layer_corruption_level <= 1 for layer_corruption_level in layer_corruption_levels)
+    arguments.layer_corruption_levels = layer_corruption_levels;
+
+    pretrained_model_file = arguments.pretrained_model_file;
+    pretrained_model = None;
+    if pretrained_model_file != None:
+        assert os.path.exists(pretrained_model_file)
+        pretrained_model = cPickle.load(open(pretrained_model_file, 'rb'));
+    '''
+
+    return arguments
 
 def train_snn():
     """
@@ -140,10 +156,10 @@ def train_snn():
     This is demonstrated on MNIST.
     """
 
-    arguments, additionals = compile_model_parser().parse_known_args();
+    arguments, additionals = construct_snn_parser().parse_known_args();
     #arguments, additionals = model_parser.parse_known_args()
 
-    settings = SNNConfiguration(arguments);
+    settings = validate_snn_arguments(arguments);
 
     input_directory = settings.input_directory
     output_directory = settings.output_directory

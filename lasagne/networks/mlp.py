@@ -1,16 +1,18 @@
 import logging
 import numpy
+import os
 import theano
 import theano.tensor
 import timeit
 
-from .base import DiscriminativeNetwork
+from .base import DiscriminativeNetwork, decay_learning_rate
 from .. import layers
 from ..layers import noise
 from .. import init, nonlinearities, objectives, updates, regularization
 
 __all__ = [
     "MultiLayerPerceptron",
+    "DynamicMultiLayerPerceptron",
 ]
 
 class MultiLayerPerceptron(DiscriminativeNetwork):
@@ -89,62 +91,242 @@ class MultiLayerPerceptron(DiscriminativeNetwork):
 
         self.build_functions();
 
-    #
-    #
-    #
-    #
-    #
+class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
+    def __init__(self,
+                 incoming,
 
-    '''
+                 layer_dimensions,
+                 layer_nonlinearities,
+
+                 layer_activation_parameters=None,
+                 layer_activation_styles=None,
+
+                 objective_functions=objectives.categorical_crossentropy,
+                 update_function=updates.nesterov_momentum,
+
+                 learning_rate=1e-3,
+                 learning_rate_decay_style=None,
+                 learning_rate_decay_parameter=0,
+                 dropout_rate_update_interval=-1,
+
+                 validation_interval=-1,
+                 ):
+        super(DynamicMultiLayerPerceptron, self).__init__(incoming,
+                                                          objective_functions,
+                                                          update_function,
+                                                          learning_rate,
+                                                          learning_rate_decay_style,
+                                                          learning_rate_decay_parameter,
+                                                          validation_interval,
+                                                          );
+
+        self._dropout_rate_update_interval = dropout_rate_update_interval;
+
+        # x = theano.tensor.matrix('x')  # the data is presented as rasterized images
+        self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+
+        # self._input_layer = layers.InputLayer(shape=input_shape);
+        # self._input_variable = self._input_layer.input_var;
+
+        assert len(layer_dimensions) == len(layer_nonlinearities)
+        assert len(layer_dimensions) == len(layer_activation_parameters)
+        assert len(layer_dimensions) == len(layer_activation_styles)
+
+        '''
+        pretrained_network_layers = None;
+        if pretrained_model != None:
+            pretrained_network_layers = lasagne.layers.get_all_layers(pretrained_model._neural_network);
+        '''
+
+        # neural_network = input_network;
+        neural_network = self._input_layer;
+        for layer_index in xrange(len(layer_dimensions)):
+            previous_layer_dimension = layers.get_output_shape(neural_network)[1:];
+            '''
+            activation_probability = noise.sample_activation_probability(previous_layer_dimension,
+                                                                         layer_activation_styles[layer_index],
+                                                                         layer_activation_parameters[layer_index]);
+            '''
+
+            neural_network = noise.TrainableDropoutLayer(neural_network,
+                                                         activation_probability=init.Constant(layer_activation_parameters[layer_index]));
+
+            layer_dimension = layer_dimensions[layer_index]
+            layer_nonlinearity = layer_nonlinearities[layer_index];
+
+            neural_network = layers.DenseLayer(neural_network, layer_dimension, W=init.GlorotUniform(
+                gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
+
+            '''
+            if pretrained_network_layers == None or len(pretrained_network_layers) <= layer_index:
+                _neural_network = lasagne.layers.DenseLayer(_neural_network, layer_dimension, nonlinearity=layer_nonlinearity)
+            else:
+                pretrained_layer = pretrained_network_layers[layer_index];
+                assert isinstance(pretrained_layer, lasagne.layers.DenseLayer)
+                assert pretrained_layer.nonlinearity == layer_nonlinearity, (pretrained_layer.nonlinearity, layer_nonlinearity)
+                assert pretrained_layer.num_units == layer_dimension
+
+                _neural_network = lasagne.layers.DenseLayer(_neural_network,
+                                                    layer_dimension,
+                                                    W=pretrained_layer.W,
+                                                    b=pretrained_layer.b,
+                                                    nonlinearity=layer_nonlinearity)
+            '''
+
+        self._neural_network = neural_network;
+
+        self.build_functions();
+
     def build_functions(self):
         # Create a train_loss expression for training, i.e., a scalar objective we want to minimize (for our multi-class problem, it is the cross-entropy train_loss):
         train_loss = self.get_loss(self._output_variable);
-        train_accuracy = self.get_objective(self._output_variable, objective_function="categorical_accuracy");
-        #train_prediction = self.get_output(**kwargs)
-        #train_accuracy = theano.tensor.mean(theano.tensor.eq(theano.tensor.argmax(train_prediction, axis=1), self._output_variable), dtype=theano.config.floatX)
+        train_accuracy = self.get_objectives(self._output_variable, objective_functions="categorical_accuracy");
+        # train_prediction = self.get_output(**kwargs)
+        # train_accuracy = theano.tensor.mean(theano.tensor.eq(theano.tensor.argmax(train_prediction, axis=1), self._output_variable), dtype=theano.config.floatX)
 
         # Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
-        all_params = self.get_network_params(trainable=True)
-        all_params_updates = self._update_function(train_loss, all_params, self._learning_rate_variable)
+        trainable_params = self.get_network_params(trainable=True, trainableDropout=False)
+        trainable_params_updates = self._update_function(train_loss, trainable_params, self._learning_rate_variable, momentum=0.95)
 
         # Compile a function performing a training step on a mini-batch (by giving the updates dictionary) and returning the corresponding training train_loss:
         self._train_function = theano.function(
             inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
             outputs=[train_loss, train_accuracy],
-            updates=all_params_updates
+            updates=trainable_params_updates
         )
 
         # Create a train_loss expression for validation/testing. The crucial difference here is that we do a deterministic forward pass through the networks, disabling dropout layers.
         test_loss = self.get_loss(self._output_variable, deterministic=True);
-        test_accuracy = self.get_objective(self._output_variable, objective_function="categorical_accuracy", deterministic=True);
+        test_accuracy = self.get_objectives(self._output_variable, objective_functions="categorical_accuracy",
+                                            deterministic=True);
         # As a bonus, also create an expression for the classification accuracy:
-        #test_prediction = self.get_output(deterministic=True)
-        #test_accuracy = theano.tensor.mean(theano.tensor.eq(theano.tensor.argmax(test_prediction, axis=1), self._output_variable), dtype=theano.config.floatX)
+        # test_prediction = self.get_output(deterministic=True)
+        # test_accuracy = theano.tensor.mean(theano.tensor.eq(theano.tensor.argmax(test_prediction, axis=1), self._output_variable), dtype=theano.config.floatX)
 
         # Compile a second function computing the validation train_loss and accuracy:
         self._test_function = theano.function(
             inputs=[self._input_variable, self._output_variable],
             outputs=[test_loss, test_accuracy],
         )
-    '''
 
-    '''
-    def get_objective_to_minimize(self, label, **kwargs):
-        output = self.get_output(**kwargs);
+        # Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
+        trainable_dropout_params = self.get_network_params(trainable=True, trainableDropout=True)
+        trainable_dropout_params_updates = self._update_function(test_loss, trainable_dropout_params,
+                                                                 self._learning_rate_variable, momentum=0.95)
 
-        if "objective_to_minimize" in kwargs:
-            objective_to_minimize = getattr(objectives, kwargs["objective_to_minimize"]);
-            minimization_objective = theano.tensor.mean(objective_to_minimize(output, label), dtype=theano.config.floatX);
-        else:
-            minimization_objective = theano.tensor.mean(self._objective_to_minimize(output, label), dtype=theano.config.floatX)
+        # Compile a second function computing the validation train_loss and accuracy:
+        self._train_dropout_function = theano.function(
+            inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
+            outputs=[test_loss, test_accuracy],
+            updates=trainable_dropout_params_updates
+        )
 
-        minimization_objective += self.L1_regularizer()
-        minimization_objective += self.L2_regularizer();
+        '''
+        debug_loss = self.debug_loss(self._output_variable, deterministic=True);
+        self._debug_function = theano.function(
+            inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
+            outputs=[debug_loss],
+            on_unused_input='ignore'
+        )
+        '''
 
-        minimization_objective += self.dae_regularizer();
+    def train(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None, output_directory=None):
+        # In each epoch_index, we do a full pass over the training data:
+        epoch_running_time = 0;
 
-        return minimization_objective
-    '''
+        train_dataset_x, train_dataset_y = train_dataset
+
+        number_of_data = train_dataset_x.shape[0];
+        data_indices = numpy.random.permutation(number_of_data);
+        minibatch_start_index = 0;
+
+        total_train_loss = 0;
+        total_train_accuracy = 0;
+        while minibatch_start_index < number_of_data:
+            # automatically handles the left-over data
+            minibatch_indices = data_indices[minibatch_start_index:minibatch_start_index + minibatch_size];
+            minibatch_start_index += minibatch_size;
+
+            minibatch_x = train_dataset_x[minibatch_indices, :]
+            minibatch_y = train_dataset_y[minibatch_indices]
+
+            learning_rate = decay_learning_rate(self.minibatch_index, self.learning_rate,
+                                                self.learning_rate_decay_style, self.learning_rate_decay_parameter);
+
+            minibatch_running_time = timeit.default_timer();
+            train_function_outputs = self._train_function(minibatch_x, minibatch_y, learning_rate)
+            minibatch_average_train_loss = train_function_outputs[0];
+            minibatch_average_train_accuracy = train_function_outputs[1];
+            minibatch_running_time = timeit.default_timer() - minibatch_running_time;
+            epoch_running_time += minibatch_running_time
+
+            #print self._debug_function(minibatch_x, minibatch_y, learning_rate);
+
+            current_minibatch_size = len(data_indices[minibatch_start_index:minibatch_start_index + minibatch_size])
+            total_train_loss += minibatch_average_train_loss * current_minibatch_size;
+            total_train_accuracy += minibatch_average_train_accuracy * current_minibatch_size;
+
+            # average_train_accuracy = total_train_accuracy / number_of_data;
+            # average_train_loss = total_train_loss / number_of_data;
+            # logging.debug('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+            # self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
+
+            if self._dropout_rate_update_interval > 0 and self.minibatch_index % self._dropout_rate_update_interval == 0:
+                minibatch_running_time = timeit.default_timer();
+                train_dropout_function_outputs = self._train_dropout_function(minibatch_x, minibatch_y, learning_rate)
+                #minibatch_average_train_dropout_loss = train_dropout_function_outputs[0];
+                #minibatch_average_train_dropout_accuracy = train_dropout_function_outputs[1];
+                minibatch_running_time = timeit.default_timer() - minibatch_running_time;
+                epoch_running_time += minibatch_running_time
+
+                #test_function_output = self._test_function(minibatch_x, minibatch_y)
+                #print test_function_output, train_dropout_function_outputs
+
+            # And a full pass over the validation data:
+            if validate_dataset != None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
+                average_train_accuracy = total_train_accuracy / number_of_data;
+                average_train_loss = total_train_loss / number_of_data;
+                logging.info('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+                    self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
+
+                output_file = None;
+                if output_directory != None:
+                    output_file = os.path.join(output_directory, 'model.pkl')
+                self.validate(validate_dataset, test_dataset, output_file);
+
+            self.minibatch_index += 1;
+
+        if validate_dataset != None:
+            output_file = None;
+            if output_directory != None:
+                output_file = os.path.join(output_directory, 'model.pkl')
+            self.validate(validate_dataset, test_dataset, output_file);
+        elif test_dataset != None:
+            # if output_directory != None:
+            # output_file = os.path.join(output_directory, 'model-%d.pkl' % self.epoch_index)
+            # cPickle.dump(self, open(output_file, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
+            self.test(test_dataset);
+
+        average_train_accuracy = total_train_accuracy / number_of_data;
+        average_train_loss = total_train_loss / number_of_data;
+        logging.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+            self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss,
+            average_train_accuracy * 100))
+        print 'train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+            self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss,
+            average_train_accuracy * 100)
+
+        self.epoch_index += 1;
+
+        '''
+        if self._dropout_rate_update_interval>0:
+            for network_layer in self.get_network_layers():
+                if not isinstance(network_layer, noise.TrainableDropoutLayer):
+                    continue;
+                print network_layer.activation_probability.eval();
+        '''
+
+        return epoch_running_time;
 
     #
     #
@@ -298,7 +480,27 @@ def main():
     input_shape.insert(0, None)
     input_shape = tuple(input_shape)
 
+    '''
     network=MultiLayerPerceptron(
+        incoming = input_shape,
+
+        layer_dimensions = [32, 64, 10],
+        layer_nonlinearities = [nonlinearities.rectify, nonlinearities.rectify, nonlinearities.softmax],
+
+        layer_activation_parameters = [0.8, 0.5, 0.5],
+        layer_activation_styles = ["bernoulli", "bernoulli", "bernoulli"],
+
+        objective_functions = objectives.categorical_crossentropy,
+        update_function = updates.nesterov_momentum,
+
+        learning_rate = 0.001,
+        learning_rate_decay_style = None,
+        learning_rate_decay_parameter = 0,
+        validation_interval = 1000,
+    )
+    '''
+
+    network=DynamicMultiLayerPerceptron(
         incoming=input_shape,
 
         layer_dimensions=[32, 64, 10],
@@ -313,6 +515,7 @@ def main():
         learning_rate=0.001,
         learning_rate_decay_style=None,
         learning_rate_decay_parameter=0,
+        dropout_rate_update_interval=10,
         validation_interval=1000,
     )
 
