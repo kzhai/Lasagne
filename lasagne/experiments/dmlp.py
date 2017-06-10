@@ -144,6 +144,9 @@ def train_dmlp():
             cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
         dropout_layer_index = 0;
+        retain_rate_file = os.path.join(output_directory,
+                                        "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
+        numpy.save(retain_rate_file, layer_retain_probability);
         for network_layer in network.get_network_layers():
             if not isinstance(network_layer, layers.TrainableDropoutLayer):
                 continue;
@@ -156,9 +159,9 @@ def train_dmlp():
                 numpy.min(layer_retain_probability),
                 numpy.max(layer_retain_probability)));
 
-            retain_rate_file = os.path.join(output_directory, "epoch.%d.layer.%d.npy" % (network.epoch_index, dropout_layer_index))
-            numpy.save(retain_rate_file, layer_retain_probability);
             dropout_layer_index += 1;
+            retain_rate_file = os.path.join(output_directory, "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
+            numpy.save(retain_rate_file, layer_retain_probability);
 
         print "PROGRESS: %f%%" % (100. * epoch_index / settings.number_of_epochs);
 
