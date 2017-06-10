@@ -136,6 +136,25 @@ def train_dmlp():
     start_train = timeit.default_timer()
     # Finally, launch the training loop.
     # We iterate over epochs:
+
+    dropout_layer_index = 0;
+    for network_layer in network.get_network_layers():
+        if not isinstance(network_layer, layers.TrainableDropoutLayer):
+            continue;
+
+        layer_retain_probability = network_layer.activation_probability.eval();
+        logging.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
+            network.epoch_index,
+            layer_retain_probability.shape,
+            numpy.mean(layer_retain_probability),
+            numpy.min(layer_retain_probability),
+            numpy.max(layer_retain_probability)));
+
+        retain_rate_file = os.path.join(output_directory,
+                                        "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
+        numpy.save(retain_rate_file, layer_retain_probability);
+        dropout_layer_index += 1;
+
     for epoch_index in range(settings.number_of_epochs):
         network.train(train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory);
 
@@ -144,9 +163,6 @@ def train_dmlp():
             cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
         dropout_layer_index = 0;
-        retain_rate_file = os.path.join(output_directory,
-                                        "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
-        numpy.save(retain_rate_file, layer_retain_probability);
         for network_layer in network.get_network_layers():
             if not isinstance(network_layer, layers.TrainableDropoutLayer):
                 continue;
@@ -159,9 +175,9 @@ def train_dmlp():
                 numpy.min(layer_retain_probability),
                 numpy.max(layer_retain_probability)));
 
-            dropout_layer_index += 1;
             retain_rate_file = os.path.join(output_directory, "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
             numpy.save(retain_rate_file, layer_retain_probability);
+            dropout_layer_index += 1;
 
         print "PROGRESS: %f%%" % (100. * epoch_index / settings.number_of_epochs);
 
