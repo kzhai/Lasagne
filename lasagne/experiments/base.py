@@ -30,7 +30,7 @@ def construct_generic_parser():
     # generic_parser.add_argument("--logging_file", dest="logging_file", action='store', default=None,
     # help="logging file [None]");
     generic_parser.add_argument("--validation_data", dest="validation_data", type=int, action='store', default=0,
-                                help="validation data [-1 - load validate.(feature|label).npy for validation], 0 - no validation data used");
+                                help="validation data [0 - no validation data used], -1 - load validate.(feature|label).npy for validation]");
 
     # generic argument set 2
     generic_parser.add_argument("--objective", dest="objective", action='store',
