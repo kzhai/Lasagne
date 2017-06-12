@@ -137,23 +137,8 @@ def train_dmlp():
     # Finally, launch the training loop.
     # We iterate over epochs:
 
-    dropout_layer_index = 0;
-    for network_layer in network.get_network_layers():
-        if not isinstance(network_layer, layers.TrainableDropoutLayer):
-            continue;
-
-        layer_retain_probability = network_layer.activation_probability.eval();
-        logging.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
-            network.epoch_index,
-            layer_retain_probability.shape,
-            numpy.mean(layer_retain_probability),
-            numpy.min(layer_retain_probability),
-            numpy.max(layer_retain_probability)));
-
-        retain_rate_file = os.path.join(output_directory,
-                                        "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
-        numpy.save(retain_rate_file, layer_retain_probability);
-        dropout_layer_index += 1;
+    if settings.debug:
+        snapshot_retain_rates(network, output_directory)
 
     for epoch_index in range(settings.number_of_epochs):
         network.train(train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory);
@@ -162,24 +147,10 @@ def train_dmlp():
             model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
             cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
-        dropout_layer_index = 0;
-        for network_layer in network.get_network_layers():
-            if not isinstance(network_layer, layers.TrainableDropoutLayer):
-                continue;
-
-            layer_retain_probability = network_layer.activation_probability.eval();
-            logging.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
-                network.epoch_index,
-                layer_retain_probability.shape,
-                numpy.mean(layer_retain_probability),
-                numpy.min(layer_retain_probability),
-                numpy.max(layer_retain_probability)));
-
-            retain_rate_file = os.path.join(output_directory, "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
-            numpy.save(retain_rate_file, layer_retain_probability);
-            dropout_layer_index += 1;
-
         print "PROGRESS: %f%%" % (100. * epoch_index / settings.number_of_epochs);
+
+        if settings.debug:
+            snapshot_retain_rates(network, output_directory);
 
     model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
     cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
@@ -206,6 +177,25 @@ def train_dmlp():
     logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
         network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index));
     print >> sys.stderr, ('The code for file %s ran for %.2fm' % (os.path.split(__file__)[1], (end_train - start_train) / 60.))
+
+def snapshot_retain_rates(network, output_directory):
+    dropout_layer_index = 0;
+    for network_layer in network.get_network_layers():
+        if not isinstance(network_layer, layers.TrainableDropoutLayer):
+            continue;
+
+        layer_retain_probability = network_layer.activation_probability.eval();
+        logging.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
+            network.epoch_index,
+            layer_retain_probability.shape,
+            numpy.mean(layer_retain_probability),
+            numpy.min(layer_retain_probability),
+            numpy.max(layer_retain_probability)));
+
+        retain_rate_file = os.path.join(output_directory,
+                                        "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
+        numpy.save(retain_rate_file, layer_retain_probability);
+        dropout_layer_index += 1;
 
 def resume_dmlp():
     pass
