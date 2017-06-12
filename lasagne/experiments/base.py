@@ -63,6 +63,8 @@ def construct_generic_parser():
                                 action='store', default=0,
                                 help="learning rate decay [0 - no learning rate decay], example, half life iterations for inverse_t or exponential decay")
 
+    generic_parser.add_argument('--debug', dest="debug", action='store_true', default=False, help="debug mode [False]")
+
     return generic_parser
 
 '''
