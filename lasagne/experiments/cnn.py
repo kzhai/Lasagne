@@ -507,6 +507,8 @@ def train_cnn():
         pooling_sizes=settings.pooling_sizes,
         pooling_strides=settings.pooling_strides
     )
+    network.set_regularizers(settings.regularizer);
+
     #network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
     #network.set_L2_regularizer_lambda(settings.L2_regularizer_lambdas)
 

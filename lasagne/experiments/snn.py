@@ -219,8 +219,8 @@ def train_snn():
         input_activation_rate=settings.input_activation_rate,
         # pretrained_model=None,
 
-        objective_functions=settings.objective_function,
-        update_function=settings.update_function,
+        objective_functions=settings.objective,
+        update_function=settings.update,
 
         learning_rate = settings.learning_rate,
         learning_rate_decay_style=settings.learning_rate_decay_style,
@@ -228,7 +228,7 @@ def train_snn():
         validation_interval=settings.validation_interval,
     )
 
-    network.set_regularizers(settings.regularizer_functions);
+    network.set_regularizers(settings.regularizer);
     #network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
     #network.set_L2_regularizer_lambda(settings.L2_regularizer_lambdas)
 

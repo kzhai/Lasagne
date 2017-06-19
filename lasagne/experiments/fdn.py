@@ -258,8 +258,8 @@ def train_fdn():
         layer_activation_parameters=settings.layer_activation_parameters,
         #layer_activation_styles=settings.layer_activation_styles,
 
-        objective_functions=settings.objective_function,
-        update_function=settings.update_function,
+        objective_functions=settings.objective,
+        update_function=settings.update,
         # pretrained_model=pretrained_model
 
         learning_rate = settings.learning_rate,
@@ -268,7 +268,7 @@ def train_fdn():
         validation_interval=settings.validation_interval,
     )
 
-    network.set_regularizers(settings.regularizer_functions);
+    network.set_regularizers(settings.regularizer);
     #network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
     #network.set_L2_regularizer_lambda(settings.L2_regularizer_lambdas)
 
