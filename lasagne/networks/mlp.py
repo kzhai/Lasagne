@@ -107,7 +107,9 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
                  learning_rate=1e-3,
                  learning_rate_decay_style=None,
                  learning_rate_decay_parameter=0,
+
                  dropout_rate_update_interval=-1,
+                 update_hidden_layer_dropout_only=False,
 
                  validation_interval=-1,
                  ):
@@ -147,8 +149,12 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
                                                                          layer_activation_parameters[layer_index]);
             activation_probability = activation_probability.astype(theano.config.floatX);
 
-            #neural_network = noise.TrainableDropoutLayer(neural_network, activation_probability=init.Constant(layer_activation_parameters[layer_index]));
-            neural_network = noise.TrainableDropoutLayer(neural_network, activation_probability=activation_probability);
+            if update_hidden_layer_dropout_only and layer_index==0:
+                neural_network = noise.LinearDropoutLayer(neural_network,
+                                                          activation_probability=activation_probability);
+            else:
+                #neural_network = noise.TrainableDropoutLayer(neural_network, activation_probability=init.Constant(layer_activation_parameters[layer_index]));
+                neural_network = noise.TrainableDropoutLayer(neural_network, activation_probability=activation_probability);
 
             layer_dimension = layer_dimensions[layer_index]
             layer_nonlinearity = layer_nonlinearities[layer_index];

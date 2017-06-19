@@ -20,6 +20,8 @@ def construct_dmlp_parser():
     # model argument set
     model_parser.add_argument("--dropout_rate_update_interval", dest="dropout_rate_update_interval", type=int, action='store', default=0,
                               help="dropout rate update interval [0=no update]");
+    model_parser.add_argument('--update_hidden_layer_dropout_only', dest="update_hidden_layer_dropout_only", action='store_true', default=False,
+                              help="update hidden layer dropout only [False]")
 
     return model_parser;
 
@@ -110,6 +112,7 @@ def train_dmlp():
         learning_rate_decay_style=settings.learning_rate_decay_style,
         learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
         dropout_rate_update_interval=settings.dropout_rate_update_interval,
+        update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
 
         validation_interval=settings.validation_interval,
     )

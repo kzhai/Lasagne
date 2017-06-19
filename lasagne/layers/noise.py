@@ -266,7 +266,9 @@ def validate_activation_probability(activation_probability):
 
 def sample_activation_probability(input_dimensions, activation_style, activation_parameter):
     activation_probability = None;
-    if activation_style == "bernoulli":
+    if activation_style == "uniform":
+        activation_probability = numpy.random.random(size=input_dimensions);
+    elif activation_style == "bernoulli":
         activation_probability = numpy.zeros(input_dimensions) + activation_parameter;
     elif activation_style == "beta_bernoulli":
         shape_alpha, shape_beta = activation_parameter;
