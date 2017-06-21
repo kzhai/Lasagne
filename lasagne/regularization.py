@@ -210,7 +210,7 @@ def regularize_network_params(layer, penalty,
 #
 
 import numpy
-from .layers import get_output, DenseLayer, LinearDropoutLayer
+from .layers import get_output, DenseLayer, LinearDropoutLayer, AdaptiveDropoutLayer
 
 def regularize_layer_weighted(layers, penalty, tags={'regularizable': True}, **kwargs):
     """
@@ -258,48 +258,6 @@ def rademacher(network, **kwargs):
                 d1, d2 = layer.W.eval().shape
                 rademacher_regularization *= linf(layer.W) / numpy.sqrt(numpy.log(d2)) * sum(retain_probability) / d1;
     return rademacher_regularization
-
-def priorKL(alpha):
-    """
-    Has the same interface as L2 regularisation in lasagne.
-    Input:
-        * output_layer - final layer in your network, used to pull the
-        weights out of every other layer
-    Output:
-        * Theano expression for the KL divergence on the priors:
-        - D_{KL}( q_{\phi}(w) || p(w) )
-    """
-    # I hope all these decimal places are important
-    c1 = 1.161451241083230
-    c2 = -1.502041176441722
-    c3 = 0.586299206427007
-
-    # will get taken apart again in the autodiff
-    return T.sum(0.5 * T.sum(T.log(alpha)) + c1 * T.sum(alpha) + c2 * T.sum(T.pow(alpha, 2)) + c3 * T.sum(T.pow(alpha, 3)))
-    #return numpy.sum(0.5 * numpy.sum(numpy.log(alpha)) + c1 * numpy.sum(alpha) + c2 * numpy.sum(numpy.power(alpha, 2)) + c3 * numpy.sum(numpy.power(alpha, 3)))
-
-def sparsityKL(layer_or_layers):
-    """
-    Based on the paper "Variational Dropout Sparsifies Deep Neural Networks" by
-    Dmitry Molchanov, Arsenii Ashukha and Dmitry Vetrov, https://arxiv.org/abs/1701.05369.
-    Modification so that we don't need to constrain alpha to be below 1. Then,
-    the network is free to drop units that are not useful.
-    Input:
-        * output_layer - final layer in a Lasagne network, so we can pull  the
-        alpha values out of all the layers
-    """
-    # gather up all the alphas
-    params = get_all_params(layer_or_layers)
-    alphas = [p for p in params if p.name == "variational.dropout.alpha"]
-
-    return sum(
-        [0.64 * T.nnet.sigmoid(1.5 * (1.3 * T.log(alpha))) - 0.5 * T.log(1 + T.pow(alpha, -1)) for alpha in alphas])
-
-'''
-def mclog_likelihood(N=None,
-                     base_likelihood=lasagne.objectives.categorical_crossentropy):
-    return lambda predictions, targets: N * base_likelihood(predictions, targets)
-'''
 
 def l1_norm(layer, tags={'regularizable': True}, **kwargs):
     """Computes the L1 norm of a tensor

@@ -184,7 +184,7 @@ def train_dmlp():
 def snapshot_retain_rates(network, output_directory):
     dropout_layer_index = 0;
     for network_layer in network.get_network_layers():
-        if not isinstance(network_layer, layers.TrainableDropoutLayer):
+        if not isinstance(network_layer, layers.AdaptiveDropoutLayer):
             continue;
 
         layer_retain_probability = network_layer.activation_probability.eval();

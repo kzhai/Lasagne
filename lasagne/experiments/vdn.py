@@ -24,14 +24,15 @@ def construct_vdn_parser():
                               help="activation functions of different layer [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively");
 
     # model argument set 2
-    model_parser.add_argument("--variational_dropout_style", dest="variational_dropout_style", action='store', default=None,
-                              help="variational dropout style [None], example, 'TypeA' or 'TypeB'");
     model_parser.add_argument("--layer_activation_parameters", dest="layer_activation_parameters", action='store', default="1.0",
                               help="dropout probability of different layer [1], either one number of a list of numbers, example, '0.2' represents 0.2 dropout rate for all input+hidden layers, or '0.2,0.5' represents 0.2 dropout rate for input layer and 0.5 dropout rate for first hidden layer respectively");
-    model_parser.add_argument("--adaptive_styles", dest="adaptive_styles", action='store', default=None,
-                              help="adaptive styles [None], either one string of a list of string, example, 'layerwise', 'elementwise' and 'weightwise' (only apply to VariationalDropoutTypeB layers");
+
+    model_parser.add_argument("--variational_dropout_style", dest="variational_dropout_style", action='store', default=None,
+                              help="variational dropout style [None], example, 'TypeA' or 'TypeB'");
+    model_parser.add_argument("--adaptive_styles", dest="adaptive_styles", action='store', default="layerwise",
+                              help="adaptive styles [layerwise], either one string of a list of string, example, 'layerwise', 'elementwise' and 'weightwise' (only apply to VariationalDropoutTypeB layers");
     model_parser.add_argument("--variational_dropout_regularizer_lambdas", dest="variational_dropout_regularizer_lambdas", action='store', default="0.1",
-                              help="variational dropout regularizer lambdas [1], either one number of a list of numbers");
+                              help="variational dropout regularizer lambdas [0.1], either one number of a list of numbers");
     #model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store', default="bernoulli",
                               #help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively");
 

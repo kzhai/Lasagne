@@ -21,7 +21,7 @@ class VariationalDropoutTypeANetwork(DiscriminativeNetwork):
                  layer_nonlinearities,
 
                  layer_activation_parameters=None,
-                 adaptive_styles = None,
+                 adaptive_styles = "layerwise",
                  variational_dropout_regularizer_lambdas=None,
 
                  objective_functions=objectives.categorical_crossentropy,
@@ -51,7 +51,7 @@ class VariationalDropoutTypeANetwork(DiscriminativeNetwork):
         assert len(layer_dimensions) == len(layer_activation_parameters)
         assert len(layer_dimensions) == len(variational_dropout_regularizer_lambdas)
         assert len(layer_dimensions) == len(adaptive_styles)
-        assert (adaptive_style==None or adaptive_style in set(["layerwise", "elementwise"]) for adaptive_style in adaptive_styles)
+        assert (adaptive_style in set(["layerwise", "elementwise"]) for adaptive_style in adaptive_styles)
 
         '''
         pretrained_network_layers = None;
@@ -104,11 +104,39 @@ class VariationalDropoutTypeANetwork(DiscriminativeNetwork):
     def get_loss(self, label, **kwargs):
         loss = super(VariationalDropoutTypeANetwork, self).get_loss(label, **kwargs);
 
+        '''
         loss += regularization.regularize_layer_params_weighted(self.layers_coeff, regularization.priorKL,
-                                                                tags={"regularizable": False,
-                                                                      "adaptable": True});
+                                                                tags={"trainable":False,
+                                                                      "regularizable": False,
+                                                                      "adaptable": True}, **kwargs);
+        '''
+
+        loss += self.get_prior_KL();
 
         return loss;
+
+    def get_prior_KL(self):
+        return objectives.priorKL(self._neural_network)/self._output_variable.shape[0];
+
+    def build_functions(self):
+        super(VariationalDropoutTypeANetwork, self).build_functions();
+
+        self._debug_function = theano.function(
+            inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
+            outputs=[super(VariationalDropoutTypeANetwork, self).get_loss(self._output_variable), self.get_prior_KL(), objectives.priorKL(self._neural_network)],
+            on_unused_input='ignore'
+        )
+
+    def train_minibatch(self, minibatch_x, minibatch_y, learning_rate):
+        minibatch_running_time = timeit.default_timer();
+        train_function_outputs = self._train_function(minibatch_x, minibatch_y, learning_rate)
+        minibatch_average_train_loss = train_function_outputs[0];
+        minibatch_average_train_accuracy = train_function_outputs[1];
+        minibatch_running_time = timeit.default_timer() - minibatch_running_time;
+
+        #print self._debug_function(minibatch_x, minibatch_y, learning_rate);
+
+        return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
 
     '''
     def __set_regularizer_functions(self, regularizer_functions=None):
@@ -141,7 +169,7 @@ class VariationalDropoutTypeBNetwork(DiscriminativeNetwork):
                  layer_nonlinearities,
 
                  layer_activation_parameters=None,
-                 adaptive_styles = None,
+                 adaptive_styles = "layerwise",
                  variational_dropout_regularizer_lambdas=None,
 
                  objective_functions=objectives.categorical_crossentropy,
@@ -171,7 +199,7 @@ class VariationalDropoutTypeBNetwork(DiscriminativeNetwork):
         assert len(layer_dimensions) == len(layer_activation_parameters)
         assert len(layer_dimensions) == len(variational_dropout_regularizer_lambdas)
         assert len(layer_dimensions) == len(adaptive_styles)
-        assert (adaptive_style==None or adaptive_style in set(["layerwise", "elementwise", "weightwise"]) for adaptive_style in adaptive_styles)
+        assert (adaptive_style in set(["layerwise", "elementwise", "weightwise"]) for adaptive_style in adaptive_styles)
 
         '''
         pretrained_network_layers = None;
@@ -206,12 +234,43 @@ class VariationalDropoutTypeBNetwork(DiscriminativeNetwork):
         self.build_functions();
 
     def get_loss(self, label, **kwargs):
-        loss = super(VariationalDropoutTypeANetwork, self).get_loss(label, **kwargs);
+        loss = super(VariationalDropoutTypeBNetwork, self).get_loss(label, **kwargs);
 
+        '''
         loss += regularization.regularize_layer_params_weighted(self.layers_coeff, regularization.priorKL,
-                                                                tags={"regularizable": False,
+                                                                tags={"trainable":False,
+                                                                      "regularizable": False,
                                                                       "adaptable": True}, **kwargs);
+        '''
+
+        loss += self.get_prior_KL();
+
         return loss;
+
+    def get_prior_KL(self):
+        return objectives.priorKL(self._neural_network)/self._output_variable.shape[0];
+
+    def build_functions(self):
+        super(VariationalDropoutTypeBNetwork, self).build_functions();
+
+        self._debug_function = theano.function(
+            inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
+            outputs=[super(VariationalDropoutTypeBNetwork, self).get_loss(self._output_variable), self.get_prior_KL(),
+                     objectives.priorKL(self._neural_network)],
+            on_unused_input='ignore'
+        )
+
+    def train_minibatch(self, minibatch_x, minibatch_y, learning_rate):
+        minibatch_running_time = timeit.default_timer();
+        train_function_outputs = self._train_function(minibatch_x, minibatch_y, learning_rate)
+        minibatch_average_train_loss = train_function_outputs[0];
+        minibatch_average_train_accuracy = train_function_outputs[1];
+        minibatch_running_time = timeit.default_timer() - minibatch_running_time;
+
+        #print self._debug_function(minibatch_x, minibatch_y, learning_rate);
+
+        return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
+
 
 def print_output_dimension(checkpoint_text, neural_network, batch_size):
     reference_to_input_layers = [input_layer for input_layer in layers.get_all_layers(neural_network) if

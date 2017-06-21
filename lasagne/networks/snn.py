@@ -68,7 +68,7 @@ class StandoutNeuralNetworkTypeA(DiscriminativeNetwork):
                                             nonlinearity=layer_nonlinearity)
 
             if layer_index < len(layer_dimensions) - 1:
-                dropout_layer = layers.AdaptiveDropoutLayer(neural_network, layer_dimension)
+                dropout_layer = layers.StandoutLayer(neural_network, layer_dimension)
                 neural_network = layers.ElemwiseMergeLayer([dense_layer, dropout_layer], theano.tensor.mul);
             else:
                 neural_network = dense_layer;
@@ -269,7 +269,7 @@ class StandoutNeuralNetworkTypeB(DiscriminativeNetwork):
                                             nonlinearity=layer_nonlinearity)
 
             if layer_index < len(layer_dimensions) - 1:
-                dropout_layer = layers.AdaptiveDropoutLayer(neural_network, layer_dimension, W=dense_layer.W, b=dense_layer.b);
+                dropout_layer = layers.StandoutLayer(neural_network, layer_dimension, W=dense_layer.W, b=dense_layer.b);
                 neural_network = layers.ElemwiseMergeLayer([dense_layer, dropout_layer], theano.tensor.mul);
             else:
                 neural_network = dense_layer;

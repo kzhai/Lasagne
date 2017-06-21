@@ -403,14 +403,14 @@ class DiscriminativeNetwork(Network):
         # train_accuracy = theano.tensor.mean(theano.tensor.eq(theano.tensor.argmax(train_prediction, axis=1), self._output_variable), dtype=theano.config.floatX)
 
         # Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
-        all_params = self.get_network_params(trainable=True)
-        all_params_updates = self._update_function(train_loss, all_params, self._learning_rate_variable, momentum=0.95)
+        trainable_params = self.get_network_params(trainable=True)
+        trainable_params_updates = self._update_function(train_loss, trainable_params, self._learning_rate_variable, momentum=0.95)
 
         # Compile a function performing a training step on a mini-batch (by giving the updates dictionary) and returning the corresponding training train_loss:
         self._train_function = theano.function(
             inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
             outputs=[train_loss, train_accuracy],
-            updates=all_params_updates
+            updates=trainable_params_updates
         )
 
         # Create a train_loss expression for validation/testing. The crucial difference here is that we do a deterministic forward pass through the networks, disabling dropout layers.
@@ -435,8 +435,6 @@ class DiscriminativeNetwork(Network):
             on_unused_input='ignore'
         )
         '''
-
-        #print "regularizer functions:", self._regularizer_functions
 
     '''
     def test(self, test_dataset):
@@ -530,6 +528,9 @@ class DiscriminativeNetwork(Network):
             learning_rate = decay_learning_rate(self.minibatch_index, self.learning_rate,
                                                 self.learning_rate_decay_style, self.learning_rate_decay_parameter);
 
+            minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy = self.train_minibatch(minibatch_x, minibatch_y, learning_rate);
+
+            '''
             minibatch_running_time = timeit.default_timer();
             #print self._debug_function(minibatch_x, minibatch_y, learning_rate);
 
@@ -537,6 +538,8 @@ class DiscriminativeNetwork(Network):
             minibatch_average_train_loss = train_function_outputs[0];
             minibatch_average_train_accuracy = train_function_outputs[1];
             minibatch_running_time = timeit.default_timer() - minibatch_running_time;
+            '''
+
             epoch_running_time += minibatch_running_time
 
             current_minibatch_size = len(data_indices[minibatch_start_index:minibatch_start_index + minibatch_size])
@@ -585,6 +588,17 @@ class DiscriminativeNetwork(Network):
         self.epoch_index += 1;
 
         return epoch_running_time;
+
+    def train_minibatch(self, minibatch_x, minibatch_y, learning_rate):
+        minibatch_running_time = timeit.default_timer();
+        train_function_outputs = self._train_function(minibatch_x, minibatch_y, learning_rate)
+        minibatch_average_train_loss = train_function_outputs[0];
+        minibatch_average_train_accuracy = train_function_outputs[1];
+        minibatch_running_time = timeit.default_timer() - minibatch_running_time;
+
+        #print self._debug_function(minibatch_x, minibatch_y, learning_rate);
+
+        return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
 
 #
 #
