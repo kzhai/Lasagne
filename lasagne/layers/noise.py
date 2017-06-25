@@ -19,11 +19,8 @@ __all__ = [
     #
     #
     #
-    #"validate_activation_probability",
     "sample_activation_probability",
-    "GenericDropoutLayer",
-    "StandoutLayer",
-    "AdaptiveDropoutLayer",
+    #
     "LinearDropoutLayer",
     "GaussianDropoutLayer",
     "FastDropoutLayer",
@@ -31,9 +28,11 @@ __all__ = [
     "VariationalDropoutTypeALayer",
     "VariationalDropoutTypeBLayer",
     #
+    "StandoutLayer",
+    "AdaptiveDropoutLayer",
     #
+    #"GenericDropoutLayer",
     #"BetaBernoulliDropoutLayer",
-    #"check_p_backup",
 ]
 
 
@@ -781,7 +780,7 @@ class AdaptiveDropoutLayer(Layer):
 
     def get_output_for(self, input, deterministic=False, **kwargs):
         if deterministic:
-            return input * self.activation_probability;
+            return T.mul(input, self.activation_probability);
         else:
             retain_prob = self.activation_probability.eval();
             retain_prob = numpy.clip(retain_prob, 0, 1);
@@ -823,8 +822,10 @@ class StandoutLayer(Layer):
         self.alpha = alpha
         self.beta = beta
 
-        self.W = self.add_param(W, (num_inputs, num_units), name="W", adaptable=True)
-        self.b = self.add_param(b, (num_units,), name="b", regularizable=False, adaptable=True);
+        self.W = self.add_param(W, (num_inputs, num_units), name="W",
+                                trainable=False, regularizable=True)
+        self.b = self.add_param(b, (num_units,), name="b",
+                                trainable=False, regularizable=False);
         # self.W = self.add_param(W, (num_inputs, num_units), name="W")
         # self.b = self.add_param(b, (num_units,), name="b", regularizable=False);
 
@@ -855,47 +856,6 @@ class StandoutLayer(Layer):
             activation_flag = activation_flag / activation_probability;
 
         return activation_flag;
-
-    '''
-    def get_output_for(self, input, deterministic=False, **kwargs):
-        """
-        Parameters
-        ----------
-        input : tensor
-            output from the previous layer
-        deterministic : bool
-            If true dropout and scaling is disabled, see notes
-        """
-        if deterministic:
-            return input
-
-        activation_probability = self.get_output_for(input, **kwargs);
-        if numpy.all(activation_probability == 1):
-            return input
-        else:
-            retain_prob = activation_probability
-            if self.rescale:
-                input /= retain_prob
-
-            # use nonsymbolic shape for dropout mask if possible
-            input_shape = self.input_shape
-            if any(s is None for s in input_shape):
-                input_shape = input.shape
-
-            return input * get_filter(input_shape, retain_prob, rng=RandomStreams())
-
-    def get_activation_probability(self, input, **kwargs):
-        """
-        Parameters
-        ----------
-        input : tensor
-            output from the previous layer
-        """
-        activation_probability = T.dot(input, self.W)
-        if self.b is not None:
-            activation_probability = activation_probability + self.b.dimshuffle('x', 0)
-        return activation_probability
-    '''
 
 #
 #

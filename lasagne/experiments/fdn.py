@@ -29,16 +29,6 @@ def construct_fdn_parser():
     #model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store', default="bernoulli",
                               #help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively");
 
-    '''
-    # model argument set 3
-    model_parser.add_argument("--L1_regularizer_lambdas", dest="L1_regularizer_lambdas", nargs="+", type=float, action='store', default=0,
-                              help="L1 regularization lambda [0]")
-    model_parser.add_argument("--L2_regularizer_lambdas", dest="L2_regularizer_lambdas", nargs="+", type=float, action='store', default=0,
-                              help="L2 regularization lambda [0]")
-    model_parser.add_argument("--max_norm_regularizer_lambdas", dest="max_norm_regularizer_lambdas", nargs="+", type=float, action='store', default=0,
-                              help="max norm regularizer [0 - no max norm regularization, normally set to a value between 3 and 4]")
-    '''
-
     # model argument set
     model_parser.add_argument("--validation_interval", dest="validation_interval", type=int, action='store', default=1000,
                               help="validation interval in number of mini-batches [1000]");
@@ -52,59 +42,6 @@ def construct_fdn_parser():
                               help="layer corruption level for pre-training [0], either one number of a list of numbers, example, '0.2' represents 0.2 corruption level for all denoising auto encoders, or '0.2,0.5' represents 0.2 corruption level for first denoising auto encoder layer and 0.5 for second one respectively");
 
     return model_parser;
-
-'''
-class FDNConfiguration(Configuration):
-    def __init__(self, arguments):
-        super(FDNConfiguration, self).__init__(arguments);
-
-        # model argument set 1
-        assert arguments.layer_dimensions != None
-        self.layer_dimensions = [int(dimensionality) for dimensionality in arguments.layer_dimensions.split(",")]
-        number_of_layers = len(self.layer_dimensions);
-
-        assert arguments.layer_nonlinearities != None
-        layer_nonlinearities = arguments.layer_nonlinearities.split(",")
-        layer_nonlinearities = [getattr(nonlinearities, layer_nonlinearity) for layer_nonlinearity in layer_nonlinearities]
-        assert len(layer_nonlinearities) == number_of_layers;
-        self.layer_nonlinearities = layer_nonlinearities;
-
-        # model argument set 2
-        layer_activation_parameters = arguments.layer_activation_parameters;
-        layer_activation_parameter_tokens = layer_activation_parameters.split(",")
-        if len(layer_activation_parameter_tokens) == 1:
-            layer_activation_parameters = [layer_activation_parameters for layer_index in xrange(number_of_layers)]
-        elif len(layer_activation_parameter_tokens) == number_of_layers:
-            layer_activation_parameters = layer_activation_parameter_tokens
-        assert len(layer_activation_parameters) == number_of_layers;
-        layer_activation_parameters = [float(layer_activation_parameter_tokens) for layer_activation_parameter_tokens in layer_activation_parameters]
-        self.layer_activation_parameters = layer_activation_parameters;
-
-        # model argument set
-        assert (arguments.validation_interval > 0);
-        self.validation_interval = arguments.validation_interval;
-
-        dae_regularizer_lambdas = arguments.dae_regularizer_lambdas
-        if isinstance(dae_regularizer_lambdas, int):
-            dae_regularizer_lambdas = [dae_regularizer_lambdas] * (number_of_layers - 1)
-        assert len(dae_regularizer_lambdas) == number_of_layers - 1;
-        assert (dae_regularizer_lambda >= 0 for dae_regularizer_lambda in dae_regularizer_lambdas)
-        self.dae_regularizer_lambdas = dae_regularizer_lambdas;
-
-        layer_corruption_levels = arguments.layer_corruption_levels;
-        if isinstance(layer_corruption_levels, int):
-            layer_corruption_levels = [layer_corruption_levels] * (number_of_layers - 1)
-        assert len(layer_corruption_levels) == number_of_layers - 1;
-        assert (layer_corruption_level >= 0 for layer_corruption_level in layer_corruption_levels)
-        assert (layer_corruption_level <= 1 for layer_corruption_level in layer_corruption_levels)
-        self.layer_corruption_levels = layer_corruption_levels;
-
-        pretrained_model_file = arguments.pretrained_model_file;
-        pretrained_model = None;
-        if pretrained_model_file != None:
-            assert os.path.exists(pretrained_model_file)
-            pretrained_model = cPickle.load(open(pretrained_model_file, 'rb'));
-'''
 
 def validate_fdn_arguments(arguments):
     from .base import validate_generic_arguments;
@@ -133,31 +70,6 @@ def validate_fdn_arguments(arguments):
     layer_activation_parameters = [float(layer_activation_parameter_tokens) for layer_activation_parameter_tokens in
                                    layer_activation_parameters]
     arguments.layer_activation_parameters = layer_activation_parameters;
-
-    '''
-    # model argument set 3
-    L1_regularizer_lambdas = arguments.L1_regularizer_lambdas
-    if isinstance(L1_regularizer_lambdas, int):
-        L1_regularizer_lambdas = [L1_regularizer_lambdas] * number_of_layers
-    assert len(L1_regularizer_lambdas) == number_of_layers
-    assert (L1_regularizer_lambda >= 0 for L1_regularizer_lambda in L1_regularizer_lambdas)
-    self.L1_regularizer_lambdas = L1_regularizer_lambdas;
-
-    L2_regularizer_lambdas = arguments.L2_regularizer_lambdas
-    if isinstance(L2_regularizer_lambdas, int):
-        L2_regularizer_lambdas = [L2_regularizer_lambdas] * number_of_layers
-    assert len(L2_regularizer_lambdas) == number_of_layers;
-    assert (L2_regularizer_lambda >= 0 for L2_regularizer_lambda in L2_regularizer_lambdas)
-    self.L2_regularizer_lambdas = L2_regularizer_lambdas;
-
-    #assert arguments.max_norm_regularizer_lambdas >= 0;
-    max_norm_regularizer_lambdas = arguments.max_norm_regularizer_lambdas;
-    if isinstance(max_norm_regularizer_lambdas, int):
-        max_norm_regularizer_lambdas = [max_norm_regularizer_lambdas] * number_of_layers
-    assert len(max_norm_regularizer_lambdas) == number_of_layers;
-    assert (max_norm_regularizer_lambda >= 0 for max_norm_regularizer_lambda in max_norm_regularizer_lambdas)
-    self.max_norm_regularizer_lambdas = max_norm_regularizer_lambdas;
-    '''
 
     # model argument set
     assert (arguments.validation_interval > 0);
@@ -276,17 +188,6 @@ def train_fdn():
     # START MODEL TRAINING #
     ########################
 
-    '''
-    all_data = train_set_x;
-    if validate_dataset!=None:
-        validate_set_x, validate_set_y = validate_dataset;
-        all_data = numpy.vstack((all_data, validate_set_x));
-    if test_dataset!=None:
-        test_set_x, test_set_y = test_dataset;
-        all_data = numpy.vstack((all_data, test_set_x));
-    network.pretrain_with_dae(all_data, number_of_epochs=1, minibatch_size=100)
-    '''
-
     start_train = timeit.default_timer()
     # Finally, launch the training loop.
     # We iterate over epochs:
@@ -303,22 +204,6 @@ def train_fdn():
     cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
     end_train = timeit.default_timer()
-
-    '''
-    now = datetime.datetime.now();
-    snapshot_index = now.strftime("%y%m%d-%H%M%S");
-    snapshot_directory = os.path.join(output_directory, snapshot_index);
-    assert not os.path.exists(snapshot_directory);
-    os.mkdir(snapshot_directory);
-
-    shutil.copy(os.path.join(output_directory, 'model.pkl'), os.path.join(snapshot_directory, 'model.pkl'));
-    snapshot_pattern = re.compile(r'^model\-\d+.pkl$');
-    for file_name in os.listdir(output_directory):
-        if not re.match(snapshot_pattern, file_name):
-            continue;
-        shutil.move(os.path.join(output_directory, file_name), os.path.join(snapshot_directory, file_name));
-    shutil.move(os.path.join(output_directory, 'settings.pkl'), os.path.join(snapshot_directory, 'settings.pkl'));
-    '''
 
     print "Optimization complete..."
     logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (

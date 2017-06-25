@@ -125,17 +125,6 @@ def train_dmlp():
     # START MODEL TRAINING #
     ########################
 
-    '''
-    all_data = train_set_x;
-    if validate_dataset!=None:
-        validate_set_x, validate_set_y = validate_dataset;
-        all_data = numpy.vstack((all_data, validate_set_x));
-    if test_dataset!=None:
-        test_set_x, test_set_y = test_dataset;
-        all_data = numpy.vstack((all_data, test_set_x));
-    network.pretrain_with_dae(all_data, number_of_epochs=1, minibatch_size=100)
-    '''
-
     start_train = timeit.default_timer()
     # Finally, launch the training loop.
     # We iterate over epochs:
@@ -159,22 +148,6 @@ def train_dmlp():
     cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
     end_train = timeit.default_timer()
-
-    '''
-    now = datetime.datetime.now();
-    snapshot_index = now.strftime("%y%m%d-%H%M%S");
-    snapshot_directory = os.path.join(output_directory, snapshot_index);
-    assert not os.path.exists(snapshot_directory);
-    os.mkdir(snapshot_directory);
-
-    shutil.copy(os.path.join(output_directory, 'model.pkl'), os.path.join(snapshot_directory, 'model.pkl'));
-    snapshot_pattern = re.compile(r'^model\-\d+.pkl$');
-    for file_name in os.listdir(output_directory):
-        if not re.match(snapshot_pattern, file_name):
-            continue;
-        shutil.move(os.path.join(output_directory, file_name), os.path.join(snapshot_directory, file_name));
-    shutil.move(os.path.join(output_directory, 'settings.pkl'), os.path.join(snapshot_directory, 'settings.pkl'));
-    '''
 
     print "Optimization complete..."
     logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (

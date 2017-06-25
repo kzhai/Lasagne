@@ -36,16 +36,6 @@ def construct_vdn_parser():
     #model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store', default="bernoulli",
                               #help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively");
 
-    '''
-    # model argument set 3
-    model_parser.add_argument("--L1_regularizer_lambdas", dest="L1_regularizer_lambdas", nargs="+", type=float, action='store', default=0,
-                              help="L1 regularization lambda [0]")
-    model_parser.add_argument("--L2_regularizer_lambdas", dest="L2_regularizer_lambdas", nargs="+", type=float, action='store', default=0,
-                              help="L2 regularization lambda [0]")
-    model_parser.add_argument("--max_norm_regularizer_lambdas", dest="max_norm_regularizer_lambdas", nargs="+", type=float, action='store', default=0,
-                              help="max norm regularizer [0 - no max norm regularization, normally set to a value between 3 and 4]")
-    '''
-
     # model argument set
     model_parser.add_argument("--validation_interval", dest="validation_interval", type=int, action='store', default=1000,
                               help="validation interval in number of mini-batches [1000]");
@@ -59,89 +49,6 @@ def construct_vdn_parser():
                               help="layer corruption level for pre-training [0], either one number of a list of numbers, example, '0.2' represents 0.2 corruption level for all denoising auto encoders, or '0.2,0.5' represents 0.2 corruption level for first denoising auto encoder layer and 0.5 for second one respectively");
 
     return model_parser;
-
-'''
-class VDNConfiguration(Configuration):
-    def __init__(self, arguments):
-        super(VDNConfiguration, self).__init__(arguments);
-
-        # model argument set 1
-        assert arguments.layer_dimensions != None
-        self.layer_dimensions = [int(dimensionality) for dimensionality in arguments.layer_dimensions.split(",")]
-        number_of_layers = len(self.layer_dimensions);
-
-        assert arguments.layer_nonlinearities != None
-        layer_nonlinearities = arguments.layer_nonlinearities.split(",")
-        layer_nonlinearities = [getattr(nonlinearities, layer_nonlinearity) for layer_nonlinearity in layer_nonlinearities]
-        assert len(layer_nonlinearities) == number_of_layers;
-        self.layer_nonlinearities = layer_nonlinearities;
-
-        # model argument set 2
-        assert arguments.variational_dropout_style != None
-        self.variational_dropout_style = arguments.variational_dropout_style;
-        assert self.variational_dropout_style in set(["TypeA", "TypeB"])
-
-        layer_activation_parameters = arguments.layer_activation_parameters;
-        layer_activation_parameter_tokens = layer_activation_parameters.split(",")
-        if len(layer_activation_parameter_tokens) == 1:
-            layer_activation_parameters = [layer_activation_parameters for layer_index in xrange(number_of_layers)]
-        elif len(layer_activation_parameter_tokens) == number_of_layers:
-            layer_activation_parameters = layer_activation_parameter_tokens
-        assert len(layer_activation_parameters) == number_of_layers;
-        layer_activation_parameters = [float(layer_activation_parameter_tokens) for layer_activation_parameter_tokens in
-                                       layer_activation_parameters]
-        self.layer_activation_parameters = layer_activation_parameters;
-
-        adaptive_styles = arguments.adaptive_styles;
-        adaptive_styles_tokens = adaptive_styles.split(",")
-        if len(adaptive_styles_tokens) == 1:
-            adaptive_styles = [adaptive_styles for layer_index in xrange(number_of_layers)]
-        elif len(adaptive_styles_tokens) == number_of_layers:
-            adaptive_styles = adaptive_styles_tokens
-        assert len(adaptive_styles) == number_of_layers;
-        self.adaptive_styles = adaptive_styles;
-        if self.variational_dropout_style=="TypeB":
-            assert (adaptive_style==None or adaptive_style in set(["layerwise", "elementwise", "weightwise"]) for adaptive_style in self.adaptive_styles)
-        elif self.variational_dropout_style == "TypeA":
-            assert (adaptive_style == None or adaptive_style in set(["layerwise", "elementwise"]) for adaptive_style in self.adaptive_styles)
-
-        variational_dropout_regularizer_lambdas = arguments.variational_dropout_regularizer_lambdas;
-        variational_dropout_regularizer_lambdas_tokens = variational_dropout_regularizer_lambdas.split(",")
-        if len(variational_dropout_regularizer_lambdas_tokens) == 1:
-            variational_dropout_regularizer_lambdas = [variational_dropout_regularizer_lambdas for layer_index in xrange(number_of_layers)]
-        elif len(variational_dropout_regularizer_lambdas_tokens) == number_of_layers:
-            variational_dropout_regularizer_lambdas = variational_dropout_regularizer_lambdas_tokens
-        assert len(variational_dropout_regularizer_lambdas) == number_of_layers;
-        variational_dropout_regularizer_lambdas = [float(variational_dropout_regularizer_lambdas_tokens) for variational_dropout_regularizer_lambdas_tokens in
-                                                   variational_dropout_regularizer_lambdas]
-        self.variational_dropout_regularizer_lambdas = variational_dropout_regularizer_lambdas;
-
-        # model argument set
-        assert (arguments.validation_interval > 0);
-        self.validation_interval = arguments.validation_interval;
-
-        dae_regularizer_lambdas = arguments.dae_regularizer_lambdas
-        if isinstance(dae_regularizer_lambdas, int):
-            dae_regularizer_lambdas = [dae_regularizer_lambdas] * (number_of_layers - 1)
-        assert len(dae_regularizer_lambdas) == number_of_layers - 1;
-        assert (dae_regularizer_lambda >= 0 for dae_regularizer_lambda in dae_regularizer_lambdas)
-        self.dae_regularizer_lambdas = dae_regularizer_lambdas;
-
-        layer_corruption_levels = arguments.layer_corruption_levels;
-        if isinstance(layer_corruption_levels, int):
-            layer_corruption_levels = [layer_corruption_levels] * (number_of_layers - 1)
-        assert len(layer_corruption_levels) == number_of_layers - 1;
-        assert (layer_corruption_level >= 0 for layer_corruption_level in layer_corruption_levels)
-        assert (layer_corruption_level <= 1 for layer_corruption_level in layer_corruption_levels)
-        self.layer_corruption_levels = layer_corruption_levels;
-
-        pretrained_model_file = arguments.pretrained_model_file;
-        pretrained_model = None;
-        if pretrained_model_file != None:
-            assert os.path.exists(pretrained_model_file)
-            pretrained_model = cPickle.load(open(pretrained_model_file, 'rb'));
-'''
-
 
 def validate_vdn_arguments(arguments):
     from .base import validate_generic_arguments

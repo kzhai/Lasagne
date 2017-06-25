@@ -44,68 +44,6 @@ def construct_mlp_parser():
 
     return model_parser;
 
-'''
-class MLPConfiguration(Configuration):
-    def __init__(self, arguments):
-        super(MLPConfiguration, self).__init__(arguments);
-
-        # model argument set 1
-        assert arguments.layer_dimensions != None
-        self.layer_dimensions = [int(dimensionality) for dimensionality in arguments.layer_dimensions.split(",")]
-        number_of_layers = len(self.layer_dimensions);
-
-        assert arguments.layer_nonlinearities != None
-        layer_nonlinearities = arguments.layer_nonlinearities.split(",")
-        layer_nonlinearities = [getattr(nonlinearities, layer_nonlinearity) for layer_nonlinearity in layer_nonlinearities]
-        assert len(layer_nonlinearities) == number_of_layers;
-        self.layer_nonlinearities = layer_nonlinearities;
-
-        # model argument set 2
-        layer_activation_styles = arguments.layer_activation_styles;
-        layer_activation_style_tokens = layer_activation_styles.split(",")
-        if len(layer_activation_style_tokens) == 1:
-            layer_activation_styles = [layer_activation_styles for layer_index in xrange(number_of_layers)]
-        elif len(layer_activation_style_tokens) == number_of_layers:
-            layer_activation_styles = layer_activation_style_tokens
-            # [float(layer_activation_parameter) for layer_activation_parameter in layer_activation_parameter_tokens]
-        assert len(layer_activation_styles) == number_of_layers;
-        assert (layer_activation_style in set(
-            ["bernoulli", "beta_bernoulli", "reciprocal_beta_bernoulli", "reverse_reciprocal_beta_bernoulli",
-             "mixed_beta_bernoulli"]) for layer_activation_style in layer_activation_styles)
-        self.layer_activation_styles = layer_activation_styles;
-
-        layer_activation_parameters = arguments.layer_activation_parameters;
-        layer_activation_parameter_tokens = layer_activation_parameters.split(",")
-        if len(layer_activation_parameter_tokens) == 1:
-            layer_activation_parameters = [layer_activation_parameters for layer_index in xrange(number_of_layers)]
-        elif len(layer_activation_parameter_tokens) == number_of_layers:
-            layer_activation_parameters = layer_activation_parameter_tokens
-        assert len(layer_activation_parameters) == number_of_layers;
-
-        for layer_index in xrange(number_of_layers):
-            if layer_activation_styles[layer_index] == "bernoulli":
-                layer_activation_parameters[layer_index] = float(layer_activation_parameters[layer_index])
-                assert layer_activation_parameters[layer_index] <= 1;
-                assert layer_activation_parameters[layer_index] > 0;
-            elif layer_activation_styles[layer_index] == "beta_bernoulli" or layer_activation_styles[
-                layer_index] == "reciprocal_beta_bernoulli" or layer_activation_styles[
-                layer_index] == "reverse_reciprocal_beta_bernoulli" or layer_activation_styles[
-                layer_index] == "mixed_beta_bernoulli":
-                layer_activation_parameter_tokens = layer_activation_parameters[layer_index].split("+");
-                assert len(layer_activation_parameter_tokens) == 2;
-                layer_activation_parameters[layer_index] = (
-                float(layer_activation_parameter_tokens[0]), float(layer_activation_parameter_tokens[1]))
-                assert layer_activation_parameters[layer_index][0] > 0;
-                assert layer_activation_parameters[layer_index][1] > 0;
-                if layer_activation_styles[layer_index] == "mixed_beta_bernoulli":
-                    assert layer_activation_parameters[layer_index][0] < 1;
-        self.layer_activation_parameters = layer_activation_parameters;
-
-        # model argument set
-        assert (arguments.validation_interval > 0);
-        self.validation_interval = arguments.validation_interval;
-'''
-
 def validate_mlp_arguments(arguments):
     from .base import validate_generic_arguments
     arguments = validate_generic_arguments(arguments);
@@ -278,17 +216,6 @@ def train_mlp():
     # START MODEL TRAINING #
     ########################
 
-    '''
-    all_data = train_set_x;
-    if validate_dataset!=None:
-        validate_set_x, validate_set_y = validate_dataset;
-        all_data = numpy.vstack((all_data, validate_set_x));
-    if test_dataset!=None:
-        test_set_x, test_set_y = test_dataset;
-        all_data = numpy.vstack((all_data, test_set_x));
-    network.pretrain_with_dae(all_data, number_of_epochs=1, minibatch_size=100)
-    '''
-
     start_train = timeit.default_timer()
     # Finally, launch the training loop.
     # We iterate over epochs:
@@ -305,22 +232,6 @@ def train_mlp():
     cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
     end_train = timeit.default_timer()
-
-    '''
-    now = datetime.datetime.now();
-    snapshot_index = now.strftime("%y%m%d-%H%M%S");
-    snapshot_directory = os.path.join(output_directory, snapshot_index);
-    assert not os.path.exists(snapshot_directory);
-    os.mkdir(snapshot_directory);
-
-    shutil.copy(os.path.join(output_directory, 'model.pkl'), os.path.join(snapshot_directory, 'model.pkl'));
-    snapshot_pattern = re.compile(r'^model\-\d+.pkl$');
-    for file_name in os.listdir(output_directory):
-        if not re.match(snapshot_pattern, file_name):
-            continue;
-        shutil.move(os.path.join(output_directory, file_name), os.path.join(snapshot_directory, file_name));
-    shutil.move(os.path.join(output_directory, 'settings.pkl'), os.path.join(snapshot_directory, 'settings.pkl'));
-    '''
 
     print "Optimization complete..."
     logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (

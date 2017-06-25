@@ -181,6 +181,52 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
 
         self.build_functions();
 
+    def debug_loss(self, label, **kwargs):
+        import theano.tensor as T
+        from ..layers import DenseLayer, LinearDropoutLayer, AdaptiveDropoutLayer
+        loss = self.get_objectives(label, **kwargs) + self.get_regularizers();
+
+        #
+        #
+        #
+        #
+        #
+
+        output = [];
+        output.append(self.get_objectives(label, **kwargs))
+        output.append(self.get_objectives(label, **kwargs) + self.get_regularizers())
+
+        '''
+        n, d = self._input_variable.shape;
+        dummy, k = self.get_output_shape();
+        output.append(k * T.sqrt(1. / n));
+        output.append(T.max(T.sum(self._input_variable ** 2, axis=1)));
+        first_hidden_layer = True;
+        for layer in self.get_network_layers():
+            if first_hidden_layer:
+                if isinstance(layer, DenseLayer):
+                    # compute B_0
+                    output.append(T.max(T.sum(layer.W ** 2, axis=0)));
+                    first_hidden_layer = False;
+                elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+                    pass
+                    # retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+                    # rademacher_regularization *= T.sum(retain_probability**2)
+            else:
+                if isinstance(layer, DenseLayer):
+                    # compute B_l * p_l, with a layer-wise scale constant
+                    d1, d2 = layer.W.shape
+                    output.append(T.max(T.sum(layer.W ** 2, axis=0)) / T.sqrt(d1 * T.log(d2)))
+                elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+                    retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+                    output.append(T.sum(retain_probability ** 2));
+
+        output.append(numpy.prod(output[2:]))
+        output.append(output[1] - output[0])
+        '''
+
+        return output
+
     def build_functions(self):
         super(DynamicMultiLayerPerceptron, self).build_functions();
 
@@ -201,14 +247,12 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
             updates=adaptable_params_updates
         )
 
-        '''
-        debug_loss = self.debug_loss(self._output_variable, deterministic=True);
         self._debug_function = theano.function(
             inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
-            outputs=[debug_loss],
+            outputs = self.debug_loss(self._output_variable, deterministic=True),
+            #outputs=[self.get_objectives(self._output_variable, determininistic=True), self.get_loss(self._output_variable, deterministic=True)],
             on_unused_input='ignore'
         )
-        '''
 
     def train_minibatch(self, minibatch_x, minibatch_y, learning_rate):
         minibatch_running_time = timeit.default_timer();

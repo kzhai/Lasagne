@@ -159,7 +159,9 @@ class Network(object):
         regularizer = 0;
         for regularizer_function, lambdas in self._regularizer_functions.iteritems():
             assert type(regularizer_function) is types.FunctionType;
-            if regularizer_function==regularization.rademacher:
+            if regularizer_function==regularization.rademacher \
+                    or regularizer_function==regularization.rademacher_p_1_q_inf \
+                    or regularizer_function == regularization.rademacher_p_inf_q_1:
                 assert type(lambdas) is float;
                 regularizer += lambdas * regularization.rademacher(self, **kwargs);
             elif regularizer_function in set([regularization.l1, regularization.l2, regularization.linf]):

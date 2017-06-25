@@ -210,54 +210,7 @@ def regularize_network_params(layer, penalty,
 #
 
 import numpy
-from .layers import get_output, DenseLayer, LinearDropoutLayer, AdaptiveDropoutLayer
-
-def regularize_layer_weighted(layers, penalty, tags={'regularizable': True}, **kwargs):
-    """
-    Computes a regularization cost by applying a penalty to a group of layers, weighted by a coefficient for each layer.
-
-    Parameters
-    ----------
-    layers : dict
-        A mapping from : tuple of class:`Layer` instances to coefficients.
-    penalty : callable
-    tags: dict
-        Tag specifications which filter the parameters of the layer or layers.
-        By default, only parameters with the `regularizable` tag are included.
-        Should be defined inside the penalty function
-    **kwargs
-        keyword arguments passed to penalty.
-
-    Returns
-    -------
-    Theano scalar
-        a scalar expression for the cost
-    """
-    return sum(coeff * sum(penalty(layer_tuple, tags, **kwargs)) for layer_tuple, coeff in layers.items());
-
-def rademacher(network, **kwargs):
-    rademacher_regularization = linf(network._input_variable);
-    #print network._input_layer;
-    #print network._input_variable;
-
-    first_hidden_layer = True;
-    #dense_layers = [];
-    for layer in network.get_network_layers():
-        if first_hidden_layer:
-            if isinstance(layer, DenseLayer):
-                #print layer.W.eval().shape
-                #print T.sum(abs(layer.W), axis=0).eval().shape
-                #print "layer parameter:", T.sum(abs(layer.W), axis=0)
-                rademacher_regularization *= T.max(T.sum(abs(layer.W), axis=0))
-                first_hidden_layer = False;
-        else:
-            if isinstance(layer, LinearDropoutLayer):
-                retain_probability = layer.activation_probability;
-            elif isinstance(layer, DenseLayer):
-                #print "retain probability shape:", retain_probability.shape
-                d1, d2 = layer.W.eval().shape
-                rademacher_regularization *= linf(layer.W) / numpy.sqrt(numpy.log(d2)) * sum(retain_probability) / d1;
-    return rademacher_regularization
+from .layers import get_output_shape, DenseLayer, LinearDropoutLayer, AdaptiveDropoutLayer
 
 def l1_norm(layer, tags={'regularizable': True}, **kwargs):
     """Computes the L1 norm of a tensor
@@ -300,3 +253,159 @@ def linf_norm(layer, tags={'regularizable': True}, **kwargs):
         l1 norm (sum of absolute values of elements)
     """
     return T.max(abs(layer.get_params(**tags)))
+
+def regularize_layer_weighted(layers, penalty, tags={'regularizable': True}, **kwargs):
+    """
+    Computes a regularization cost by applying a penalty to a group of layers, weighted by a coefficient for each layer.
+
+    Parameters
+    ----------
+    layers : dict
+        A mapping from : tuple of class:`Layer` instances to coefficients.
+    penalty : callable
+    tags: dict
+        Tag specifications which filter the parameters of the layer or layers.
+        By default, only parameters with the `regularizable` tag are included.
+        Should be defined inside the penalty function
+    **kwargs
+        keyword arguments passed to penalty.
+
+    Returns
+    -------
+    Theano scalar
+        a scalar expression for the cost
+    """
+    return sum(coeff * sum(penalty(layer_tuple, tags, **kwargs)) for layer_tuple, coeff in layers.items());
+
+def rademacher_p_inf_q_1(network, **kwargs):
+    n, d = network._input_variable.shape;
+    dummy, k = network.get_output_shape();
+    rademacher_regularization = k / n;
+    rademacher_regularization *= T.max(T.sum(network._input_variable ** 2, axis=0));
+    first_hidden_layer = True;
+    for layer in network.get_network_layers():
+        if first_hidden_layer:
+            if isinstance(layer, DenseLayer):
+                # compute B_0
+                rademacher_regularization *= T.max(abs(layer.W));
+                first_hidden_layer = False;
+            elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+                pass
+                #retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+                #rademacher_regularization *= T.sum(abs(retain_probability))
+        else:
+            if isinstance(layer, DenseLayer):
+                # compute B_l * p_l, with a layer-wise scale constant
+                d1, d2 = layer.W.shape
+                rademacher_regularization *= T.max(abs(layer.W));
+            elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+                retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+                rademacher_regularization *= T.sum(abs(retain_probability));
+
+    return rademacher_regularization
+
+def rademacher_p_1_q_inf(network, **kwargs):
+    n, d = network._input_variable.shape;
+    dummy, k = network.get_output_shape();
+    rademacher_regularization = k * T.log(d) / T.sqrt(n);
+    rademacher_regularization *= T.max(T.abs(network._input_variable));
+    first_hidden_layer = True;
+    for layer in network.get_network_layers():
+        if first_hidden_layer:
+            if isinstance(layer, DenseLayer):
+                # compute B_0
+                rademacher_regularization *= T.sum(abs(layer.W));
+                first_hidden_layer = False;
+            elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+                pass
+                #retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+                #rademacher_regularization *= T.sum(abs(retain_probability))
+        else:
+            if isinstance(layer, DenseLayer):
+                # compute B_l * p_l, with a layer-wise scale constant
+                d1, d2 = layer.W.shape
+                rademacher_regularization *= T.sum(abs(layer.W)) / d1 / T.sqrt(T.log(d2));
+            elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+                retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+                rademacher_regularization *= T.max(abs(retain_probability));
+
+    return rademacher_regularization
+
+def rademacher(network, **kwargs):
+    n, d = network._input_variable.shape;
+    dummy, k = network.get_output_shape();
+    rademacher_regularization = k * T.sqrt(1. / n);
+    #print rademacher_regularization.eval()
+    rademacher_regularization *= T.max(T.sum(network._input_variable**2, axis=1));
+    #print rademacher_regularization.eval()
+    #print T.max(T.sum(network._input_variable**2, axis=1)).eval()
+    # print "layer parameter:", T.sum(abs(layer.W), axis=0)
+
+    first_hidden_layer = True;
+    for layer in network.get_network_layers():
+        if first_hidden_layer:
+            if isinstance(layer, DenseLayer):
+                # compute B_0
+                rademacher_regularization *= T.max(T.sum(layer.W**2, axis=0))
+                first_hidden_layer = False;
+            elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+                pass
+                #retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+                #rademacher_regularization *= T.sum(retain_probability**2)
+        else:
+            if isinstance(layer, DenseLayer):
+                # compute B_l * p_l, with a layer-wise scale constant
+                d1, d2 = layer.W.shape
+                rademacher_regularization *= T.max(T.sum(layer.W**2, axis=0)) / T.sqrt(d1 * T.log(d2))
+            elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+                retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+                rademacher_regularization *= T.sum(retain_probability**2)
+
+    return rademacher_regularization
+
+def rademacher_all(network, **kwargs):
+    #n, d = network._input_variable.shape;
+    n, k = network._output_variable.shape;
+    rademacher_regularization = k * T.sqrt(1. / n);
+    rademacher_regularization *= T.max(T.sum(network._input_variable**2, axis=1));
+    for layer in network.get_network_layers():
+        if isinstance(layer, DenseLayer):
+            # compute B_l * p_l, with a layer-wise scale constant
+            d1, d2 = layer.W.shape
+            rademacher_regularization *= T.max(T.sum(layer.W**2, axis=0)) / T.sqrt(d1 * T.log(d2));
+        elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+            retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+            rademacher_regularization *= T.sum(retain_probability**2);
+
+    return rademacher_regularization
+
+'''
+def rademacher_l2_no_input_dropout(network, **kwargs):
+    n, d = network._input_variable.shape;
+    rademacher_regularization = T.sqrt(1. / n);
+    rademacher_regularization *= T.max(T.sum(T.pow(network._input_variable, 2), axis=1));
+    first_hidden_layer = True;
+    #dense_layers = [];
+    for layer in network.get_network_layers():
+        if first_hidden_layer:
+            if isinstance(layer, DenseLayer):
+                # compute B_0
+                rademacher_regularization *= T.max(T.sum(abs(layer.W), axis=0))
+                first_hidden_layer = False;
+
+                # print layer.W.eval().shape
+                # print T.sum(abs(layer.W), axis=0).eval().shape
+                # print "layer parameter:", T.sum(abs(layer.W), axis=0)
+        else:
+            if isinstance(layer, DenseLayer):
+                # compute B_l * p_l, with a layer-wise scale constant
+                d1, d2 = layer.W.shape
+                rademacher_regularization *= linf(layer.W) / T.sqrt(T.log(d2)) * T.sqrt(T.sum(retain_probability)) / d1;
+
+                # print "retain probability shape:", retain_probability.shape
+            elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+                retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+
+    return rademacher_regularization
+'''
+
