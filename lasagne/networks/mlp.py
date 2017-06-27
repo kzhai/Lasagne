@@ -196,34 +196,25 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
         output.append(self.get_objectives(label, **kwargs))
         output.append(self.get_objectives(label, **kwargs) + self.get_regularizers())
 
-        '''
         n, d = self._input_variable.shape;
         dummy, k = self.get_output_shape();
-        output.append(k * T.sqrt(1. / n));
-        output.append(T.max(T.sqrt(T.sum(self._input_variable ** 2, axis=1))));
-        first_hidden_layer = True;
-        for layer in self.get_network_layers():
-            if first_hidden_layer:
-                if isinstance(layer, DenseLayer):
-                    # compute B_0
-                    output.append(T.max(T.sqrt(T.sum(layer.W ** 2, axis=0))));
-                    first_hidden_layer = False;
-                elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
-                    pass
-                    # retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
-                    # rademacher_regularization *= T.sum(retain_probability**2)
-            else:
-                if isinstance(layer, DenseLayer):
-                    # compute B_l * p_l, with a layer-wise scale constant
-                    d1, d2 = layer.W.shape
-                    output.append(T.max(T.sqrt(T.sum(layer.W ** 2, axis=0))) / T.sqrt(d1 * T.log(d2)))
-                elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
-                    retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
-                    output.append(T.sqrt(T.sum(retain_probability ** 2)));
+        output.append(k * T.sqrt(T.log(d) / n));
+        output.append(T.max(abs(self._input_variable)));
 
-        output.append(numpy.prod(output[2:]))
-        output.append(output[1] - output[0])
-        '''
+        for layer in self.get_network_layers():
+            if isinstance(layer, DenseLayer):
+                # compute B_l * p_l, with a layer-wise scale constant
+                d1, d2 = layer.W.shape
+                output.append(33623 * k / T.sqrt(n))
+                output.append(T.max(T.sqrt(T.sum(layer.W ** 2, axis=0))))
+                output.append(1/T.sqrt(d1 * T.log(d2)))
+                # this is to offset glorot initialization
+                output.append(T.sqrt((d1 + d2)/6))
+            elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+                retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+                output.append(3490 * k / T.sqrt(n))
+                output.append(T.sqrt(T.mean(retain_probability**2)));
+
         return output
 
     def build_functions(self):
@@ -265,7 +256,7 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
             # minibatch_average_train_dropout_accuracy = train_dropout_function_outputs[1];
         minibatch_running_time = timeit.default_timer() - minibatch_running_time;
 
-        print self._debug_function(minibatch_x, minibatch_y, learning_rate);
+        #print self._debug_function(minibatch_x, minibatch_y, learning_rate);
 
         return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
 

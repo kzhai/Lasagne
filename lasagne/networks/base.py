@@ -160,6 +160,7 @@ class Network(object):
         for regularizer_function, lambdas in self._regularizer_functions.iteritems():
             assert type(regularizer_function) is types.FunctionType;
             if regularizer_function==regularization.rademacher \
+                    or regularizer_function == regularization.rademacher_p_2_q_2 \
                     or regularizer_function==regularization.rademacher_p_1_q_inf \
                     or regularizer_function == regularization.rademacher_p_inf_q_1:
                 assert type(lambdas) is float;
