@@ -396,10 +396,13 @@ class LinearDropoutLayer(Layer):
         self._srng = RandomStreams(get_rng().randint(1, 2147462579))
         #self.activation_probability = activation_probability
 
+        '''
         num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
-        if isinstance(activation_probability, numpy.ndarray):
+        if isinstance(activation_probability, numpy.floatX):
             assert activation_probability.shape == (num_inputs,);
-        self.activation_probability = self.add_param(activation_probability, (num_inputs,), name="p",
+        '''
+
+        self.activation_probability = self.add_param(activation_probability, self.input_shape[num_leading_axes:], name="p",
                                                      trainable=False, regularizable=False);
         #self.activation_probability = activation_probability
 
@@ -765,8 +768,8 @@ class AdaptiveDropoutLayer(Layer):
         # super(TrainableDropoutLayer, self).__init__(incoming, activation_probability, **kwargs)
         super(AdaptiveDropoutLayer, self).__init__(incoming, **kwargs)
         self._srng = RandomStreams(get_rng().randint(1, 2147462579))
-        num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
-        self.activation_probability = self.add_param(activation_probability, (num_inputs,), name="r",
+        #num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
+        self.activation_probability = self.add_param(activation_probability, self.input_shape[num_leading_axes:], name="r",
                                                      trainable=False, regularizable=False, adaptable=True);
         # self.activation_probability = theano.shared(value=activation_probability, );
         self.shared_axes = tuple(shared_axes)

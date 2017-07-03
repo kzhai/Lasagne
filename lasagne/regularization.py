@@ -209,8 +209,7 @@ def regularize_network_params(layer, penalty,
 #
 #
 
-import numpy
-from .layers import get_output_shape, DenseLayer, LinearDropoutLayer, AdaptiveDropoutLayer
+from .layers import get_output, get_output_shape, DenseLayer, LinearDropoutLayer, AdaptiveDropoutLayer
 
 def regularize_layer_weighted(layers, penalty, tags={'regularizable': True}, **kwargs):
     """
@@ -244,63 +243,83 @@ def l2_norm(X, axis=None):
 def linf_norm(X, axis=None):
     return T.max(abs(X), axis=axis);
 
+def __find_layer_before_dropout(network, axis=None):
+    for layer_1, layer_2 in zip(network.get_network_layers()[1:], network.get_network_layers()[:-1]):
+        if isinstance(layer_2, LinearDropoutLayer) or isinstance(layer_2, AdaptiveDropoutLayer):
+            return layer_1
+
 def rademacher_p_2_q_2(network, **kwargs):
-    n, d = network._input_variable.shape;
+    #input_shape = get_output_shape(network._input_layer);
+    #input_value = get_output(network._input_layer);
+    #n = input_shape[0];
+    #d = T.prod(input_shape[1:]);
+    pseudo_input_layer = __find_layer_before_dropout(network);
+
+    n = network._input_variable.shape[0];
+    #d = T.prod(network._input_variable.shape[1:]);
+    d = T.prod(get_output_shape(pseudo_input_layer)[1:]);
     dummy, k = network.get_output_shape();
     rademacher_regularization = k * T.sqrt(T.log(d) / n);
-    rademacher_regularization *= T.max(abs(network._input_variable));
+    #rademacher_regularization *= T.max(abs(network._input_variable));
+    rademacher_regularization *= T.max(abs(get_output(pseudo_input_layer)));
 
     for layer in network.get_network_layers():
-        if isinstance(layer, DenseLayer):
+        if isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+            retain_probability = T.clip(layer.activation_probability, 0, 1);
+            rademacher_regularization *= T.sqrt(T.mean(retain_probability**2))
+        elif isinstance(layer, DenseLayer):
             # compute B_l * p_l, with a layer-wise scale constant
             d1, d2 = layer.W.shape
-            rademacher_regularization *= T.max(T.sqrt(T.sum(layer.W**2, axis=0)))
+            rademacher_regularization *= T.max(T.sqrt(T.sum(layer.W ** 2, axis=0)))
             rademacher_regularization /= T.sqrt(d1 * T.log(d2))
             # this is to offset glorot initialization
             rademacher_regularization *= T.sqrt((d1 + d2))
-        elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
-            retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
-            rademacher_regularization *= T.sqrt(T.mean(retain_probability**2))
 
     return rademacher_regularization
 
 rademacher = rademacher_p_2_q_2  # shortcut
 
 def rademacher_p_inf_q_1(network, **kwargs):
+    n = network._input_variable.shape[0];
+
     n, d = network._input_variable.shape;
     dummy, k = network.get_output_shape();
     rademacher_regularization = k * T.sqrt(T.log(2 * d) / n);
     rademacher_regularization *= T.max(abs(network._input_variable));
 
     for layer in network.get_network_layers():
-        if isinstance(layer, DenseLayer):
+        if isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+            #retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+            retain_probability = T.clip(layer.activation_probability, 0, 1);
+            rademacher_regularization *= T.mean(abs(retain_probability))
+        elif isinstance(layer, DenseLayer):
             # compute B_l * p_l, with a layer-wise scale constant
             d1, d2 = layer.W.shape
             rademacher_regularization *= T.max(abs(layer.W));
             # this is to offset glorot initialization
             rademacher_regularization *= T.sqrt((d1 + d2))
-        elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
-            retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
-            rademacher_regularization *= T.mean(abs(retain_probability))
 
     return rademacher_regularization
 
 def rademacher_p_1_q_inf(network, **kwargs):
+    n = network._input_variable.shape[0];
+
     n, d = network._input_variable.shape;
     dummy, k = network.get_output_shape();
     rademacher_regularization = k * T.sqrt(T.log(2 * d) / n);
     rademacher_regularization *= T.max(abs(network._input_variable));
 
     for layer in network.get_network_layers():
-        if isinstance(layer, DenseLayer):
+        if isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+            #retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
+            retain_probability = T.clip(layer.activation_probability, 0, 1);
+            rademacher_regularization *= T.max(abs(retain_probability));
+        elif isinstance(layer, DenseLayer):
             # compute B_l * p_l, with a layer-wise scale constant
             d1, d2 = layer.W.shape
             rademacher_regularization *= T.max(T.sum(abs(layer.W), axis=0))
             rademacher_regularization /= d1 * T.sqrt(T.log(d2));
             # this is to offset glorot initialization
             rademacher_regularization *= T.sqrt((d1 + d2))
-        elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
-            retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
-            rademacher_regularization *= T.max(abs(retain_probability));
 
     return rademacher_regularization

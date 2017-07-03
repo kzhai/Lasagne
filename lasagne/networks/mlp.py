@@ -181,42 +181,6 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
 
         self.build_functions();
 
-    def debug_loss(self, label, **kwargs):
-        import theano.tensor as T
-        from ..layers import DenseLayer, LinearDropoutLayer, AdaptiveDropoutLayer
-        loss = self.get_objectives(label, **kwargs) + self.get_regularizers();
-
-        #
-        #
-        #
-        #
-        #
-
-        output = [];
-        output.append(self.get_objectives(label, **kwargs))
-        output.append(self.get_objectives(label, **kwargs) + self.get_regularizers())
-
-        n, d = self._input_variable.shape;
-        dummy, k = self.get_output_shape();
-        output.append(k * T.sqrt(T.log(d) / n));
-        output.append(T.max(abs(self._input_variable)));
-
-        for layer in self.get_network_layers():
-            if isinstance(layer, DenseLayer):
-                # compute B_l * p_l, with a layer-wise scale constant
-                d1, d2 = layer.W.shape
-                output.append(33623 * k / T.sqrt(n))
-                output.append(T.max(T.sqrt(T.sum(layer.W ** 2, axis=0))))
-                output.append(1/T.sqrt(d1 * T.log(d2)))
-                # this is to offset glorot initialization
-                output.append(T.sqrt((d1 + d2)/6))
-            elif isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
-                retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1);
-                output.append(3490 * k / T.sqrt(n))
-                output.append(T.sqrt(T.mean(retain_probability**2)));
-
-        return output
-
     def build_functions(self):
         super(DynamicMultiLayerPerceptron, self).build_functions();
 
@@ -237,9 +201,10 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
             updates=adaptable_params_updates
         )
 
+        from debugger import debug_rademacher
         self._debug_function = theano.function(
             inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
-            outputs = self.debug_loss(self._output_variable, deterministic=True),
+            outputs = debug_rademacher(self, self._output_variable, deterministic=True),
             #outputs=[self.get_objectives(self._output_variable, determininistic=True), self.get_loss(self._output_variable, deterministic=True)],
             on_unused_input='ignore'
         )
@@ -256,7 +221,7 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
             # minibatch_average_train_dropout_accuracy = train_dropout_function_outputs[1];
         minibatch_running_time = timeit.default_timer() - minibatch_running_time;
 
-        #print self._debug_function(minibatch_x, minibatch_y, learning_rate);
+        print self._debug_function(minibatch_x, minibatch_y, learning_rate);
 
         return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
 

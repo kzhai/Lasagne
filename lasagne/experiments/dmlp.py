@@ -111,6 +111,7 @@ def train_dmlp():
         learning_rate = settings.learning_rate,
         learning_rate_decay_style=settings.learning_rate_decay_style,
         learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
+
         dropout_rate_update_interval=settings.dropout_rate_update_interval,
         update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
 

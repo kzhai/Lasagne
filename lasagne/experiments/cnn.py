@@ -25,6 +25,9 @@ def construct_cnn_parser():
     model_parser.add_argument("--convolution_nonlinearities", dest="convolution_nonlinearities", action='store', default=None,
                               help="activation functions of convolution layers [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively");
 
+    model_parser.add_argument("--local_convolution_filters", dest="local_convolution_filters", action='store', default=None,
+                              help="number of locally connected convolution filters [None], example, '32,16' represents 32 and 16 filters for locally connected convolution layers respectively");
+
     # model argument set 2
     model_parser.add_argument("--dense_dimensions", dest="dense_dimensions", action='store', default=None,
                               help="dimension of different layer [None], example, '100,500,10' represents 3 layers contains 100, 500, and 10 neurons respectively");
@@ -37,6 +40,7 @@ def construct_cnn_parser():
     model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store', default="bernoulli",
                               help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively");
 
+    '''
     # model argument set 4
     model_parser.add_argument("--convolution_filter_sizes", dest="convolution_filter_sizes", action='store', default="5*5",
                               help="convolution filter sizes [5*5], example, '5*5,6*6' represents 5*5 and 6*6 filter size for convolution layers respectively");
@@ -46,10 +50,19 @@ def construct_cnn_parser():
                               help="convolution pads [2], example, '2,3' represents 2 and 3 pads for convolution layers respectively");
 
     # model argument set 5
+    model_parser.add_argument("--locally_convolution_filter_sizes", dest="locally_convolution_filter_sizes", action='store', default="3*3",
+                              help="locally convolution filter sizes [3*3], example, '5*5,6*6' represents 5*5 and 6*6 filter size for locally connected convolution layers respectively");
+    model_parser.add_argument("--locally_convolution_strides", dest="locally_convolution_strides", action='store', default="1*1",
+                              help="locally convolution strides [1*1], example, '1*1,2*2' represents 1*1 and 2*2 stride size for locally connected convolution layers respectively");
+    model_parser.add_argument("--locally_convolution_pads", dest="locally_convolution_pads", action='store', default="1",
+                              help="locally convolution pads [1], example, '2,3' represents 2 and 3 pads for locally connected convolution layers respectively");
+
+    # model argument set 6
     model_parser.add_argument("--pooling_sizes", dest="pooling_sizes", action='store', default="3*3",
                               help="pooling sizes [3*3], example, '2*2,3*3' represents 2*2 and 3*3 pooling size respectively");
     model_parser.add_argument("--pooling_strides", dest="pooling_strides", action='store', default="2*2",
                               help="pooling strides [2*2], example, '2*2,3*3' represents 2*2 and 3*3 pooling stride respectively");
+    '''
 
     #
     #
@@ -88,6 +101,11 @@ def validate_cnn_arguments(arguments):
     assert len(convolution_nonlinearities) == len(convolution_filters)
     number_of_convolution_layers = len(arguments.convolution_filters);
 
+    assert arguments.local_convolution_filters != None
+    local_convolution_filters = arguments.local_convolution_filters.split(",")
+    arguments.local_convolution_filters = [int(local_convolution_filter) for local_convolution_filter in local_convolution_filters]
+    number_of_local_convolution_layers = len(arguments.local_convolution_filters);
+
     # model argument set 2
     assert arguments.dense_dimensions != None
     dense_dimensions = arguments.dense_dimensions.split(",")
@@ -100,7 +118,8 @@ def validate_cnn_arguments(arguments):
     assert len(dense_dimensions) == len(dense_nonlinearities)
     number_of_dense_layers = len(arguments.dense_dimensions);
 
-    number_of_layers = number_of_convolution_layers + number_of_dense_layers;
+    #number_of_layers = number_of_convolution_layers + number_of_dense_layers;
+    number_of_layers = number_of_dense_layers;
 
     # model argument set 3
     layer_activation_styles = arguments.layer_activation_styles;
@@ -143,6 +162,7 @@ def validate_cnn_arguments(arguments):
                 assert layer_activation_parameters[layer_index][0] < 1;
     arguments.layer_activation_parameters = layer_activation_parameters;
 
+    '''
     # model argument set 4
     convolution_filter_sizes = arguments.convolution_filter_sizes;
     convolution_filter_sizes = [tuple(int(x) for x in token.split("*")) for token in convolution_filter_sizes.split(",")];
@@ -166,6 +186,29 @@ def validate_cnn_arguments(arguments):
     arguments.convolution_pads = convolution_pads
 
     # model argument set 5
+    local_convolution_filter_sizes = arguments.local_convolution_filter_sizes;
+    local_convolution_filter_sizes = [tuple(int(x) for x in token.split("*")) for token in
+                                      local_convolution_filter_sizes.split(",")];
+    if len(local_convolution_filter_sizes) == 1:
+        local_convolution_filter_sizes *= number_of_local_convolution_layers;
+    assert len(convolution_filter_sizes) == number_of_local_convolution_layers;
+    arguments.local_convolution_filter_sizes = local_convolution_filter_sizes
+
+    local_convolution_strides = arguments.local_convolution_strides
+    local_convolution_strides = [tuple(int(x) for x in token.split("*")) for token in local_convolution_strides.split(",")];
+    if len(local_convolution_strides) == 1:
+        local_convolution_strides *= number_of_local_convolution_layers;
+    assert len(local_convolution_strides) == number_of_local_convolution_layers;
+    arguments.local_convolution_strides = local_convolution_strides
+
+    local_convolution_pads = arguments.local_convolution_pads
+    local_convolution_pads = [int(x) for x in local_convolution_pads.split(",")];
+    if len(local_convolution_pads) == 1:
+        local_convolution_pads *= number_of_local_convolution_layers;
+    assert len(local_convolution_pads) == number_of_local_convolution_layers;
+    arguments.local_convolution_pads = local_convolution_pads
+
+    # model argument set 6
     pooling_sizes = arguments.pooling_sizes;
     pooling_sizes = [tuple(int(x) for x in token.split("*")) for token in pooling_sizes.split(",")];
     if len(pooling_sizes) == 1:
@@ -179,6 +222,7 @@ def validate_cnn_arguments(arguments):
         pooling_strides *= number_of_convolution_layers;
     assert len(pooling_strides) == number_of_convolution_layers;
     arguments.pooling_strides = pooling_strides;
+    '''
 
     # model argument set
     assert (arguments.validation_interval > 0);
@@ -275,6 +319,8 @@ def train_cnn():
         # convolution_filter_sizes=None,
         # maxpooling_sizes=None,
 
+        local_convolution_filters=settings.local_convolution_filters,
+
         dense_dimensions=settings.dense_dimensions,
         dense_nonlinearities=settings.dense_nonlinearities,
 
@@ -288,14 +334,21 @@ def train_cnn():
         learning_rate_decay_style=settings.learning_rate_decay_style,
         learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
         validation_interval=settings.validation_interval,
-
-        convolution_filter_sizes=settings.convolution_filter_sizes,
-        convolution_strides=settings.convolution_strides,
-        convolution_pads=settings.convolution_pads,
-
-        pooling_sizes=settings.pooling_sizes,
-        pooling_strides=settings.pooling_strides
     )
+
+    '''
+    convolution_filter_sizes = settings.convolution_filter_sizes,
+    convolution_strides = settings.convolution_strides,
+    convolution_pads = settings.convolution_pads,
+
+    local_convolution_filter_sizes = settings.local_convolution_filter_sizes,
+    local_convolution_strides = settings.local_convolution_strides,
+    local_convolution_pads = settings.local_convolution_pads,
+
+    pooling_sizes = settings.pooling_sizes,
+    pooling_strides = settings.pooling_strides,
+    '''
+
     network.set_regularizers(settings.regularizer);
 
     #network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
@@ -313,12 +366,12 @@ def train_cnn():
 
         if settings.snapshot_interval>0 and network.epoch_index % settings.snapshot_interval == 0:
             model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-            cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
+            #cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
         print "PROGRESS: %f%%" % (100. * epoch_index / settings.number_of_epochs);
 
     model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-    cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
+    #cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
     end_train = timeit.default_timer()
 
