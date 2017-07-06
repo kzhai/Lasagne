@@ -26,9 +26,11 @@ class VariationalDropoutTypeANetwork(DiscriminativeNetwork):
 
                  objective_functions=objectives.categorical_crossentropy,
                  update_function=updates.nesterov_momentum,
+
                  learning_rate=1e-3,
-                 learning_rate_decay_style=None,
-                 learning_rate_decay_parameter=0,
+                 learning_rate_decay=None,
+                 #learning_rate_decay_style=None,
+                 #learning_rate_decay_parameter=0,
 
                  validation_interval=-1,
                  ):
@@ -36,8 +38,9 @@ class VariationalDropoutTypeANetwork(DiscriminativeNetwork):
                                                              objective_functions,
                                                              update_function,
                                                              learning_rate,
-                                                             learning_rate_decay_style,
-                                                             learning_rate_decay_parameter,
+                                                             learning_rate_decay,
+                                                             #learning_rate_decay_style,
+                                                             #learning_rate_decay_parameter,
                                                              validation_interval,
                                                              );
 
@@ -174,9 +177,11 @@ class VariationalDropoutTypeBNetwork(DiscriminativeNetwork):
 
                  objective_functions=objectives.categorical_crossentropy,
                  update_function=updates.nesterov_momentum,
+
                  learning_rate=1e-3,
-                 learning_rate_decay_style=None,
-                 learning_rate_decay_parameter=0,
+                 learning_rate_decay=None,
+                 #learning_rate_decay_style=None,
+                 #learning_rate_decay_parameter=0,
 
                  validation_interval=-1,
                  ):
@@ -184,8 +189,9 @@ class VariationalDropoutTypeBNetwork(DiscriminativeNetwork):
                                                              objective_functions,
                                                              update_function,
                                                              learning_rate,
-                                                             learning_rate_decay_style,
-                                                             learning_rate_decay_parameter,
+                                                             learning_rate_decay,
+                                                             #learning_rate_decay_style,
+                                                             #learning_rate_decay_parameter,
                                                              validation_interval,
                                                              );
 
@@ -311,11 +317,6 @@ def main():
 
         objective_functions=objectives.categorical_crossentropy,
         update_function=updates.nesterov_momentum,
-
-        learning_rate = 0.001,
-        learning_rate_decay_style=None,
-        learning_rate_decay_parameter=0,
-        validation_interval=1000,
     )
 
     regularizer_functions = {};
@@ -338,11 +339,6 @@ def main():
 
         objective_functions=objectives.categorical_crossentropy,
         update_function=updates.nesterov_momentum,
-
-        learning_rate=0.001,
-        learning_rate_decay_style=None,
-        learning_rate_decay_parameter=0,
-        validation_interval=1000,
     )
     '''
     print network.get_network_params(regularizable=False,adaptable=True);

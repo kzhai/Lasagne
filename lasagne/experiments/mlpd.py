@@ -7,15 +7,17 @@ import timeit
 
 from .. import networks
 from .. import layers
-from .base import load_data, load_data_to_train_validate
+from .base import load_data, load_and_split_data
 
 __all__ = [
-    "train_dcnn",
+    "train_dmlp",
 ]
 
-def construct_dcnn_parser():
-    from .cnn import construct_cnn_parser
-    model_parser = construct_cnn_parser();
+def construct_dmlp_parser():
+    from .mlp import construct_mlp_parser
+    model_parser = construct_mlp_parser();
+
+    model_parser.description = "dynamic multi-layer perceptron argument";
 
     # model argument set
     model_parser.add_argument("--dropout_rate_update_interval", dest="dropout_rate_update_interval", type=int, action='store', default=0,
@@ -25,23 +27,25 @@ def construct_dcnn_parser():
 
     return model_parser;
 
-def validate_dcnn_arguments(arguments):
-    from .cnn import validate_cnn_arguments;
-    arguments = validate_cnn_arguments(arguments);
+def validate_dmlp_arguments(arguments):
+    from .mlp import validate_mlp_arguments;
+    arguments = validate_mlp_arguments(arguments);
 
     # model argument set
     assert (arguments.dropout_rate_update_interval >= 0);
 
     return arguments
 
-def train_dcnn():
+def train_dmlp():
     """
     Demonstrate stochastic gradient descent optimization for a multilayer perceptron
     This is demonstrated on MNIST.
     """
 
-    arguments, additionals = construct_dcnn_parser().parse_known_args()
-    settings = validate_dcnn_arguments(arguments);
+    arguments, additionals = construct_dmlp_parser().parse_known_args();
+    #arguments, additionals = model_parser.parse_known_args()
+
+    settings = validate_dmlp_arguments(arguments);
 
     input_directory = settings.input_directory
     output_directory = settings.output_directory
@@ -52,15 +56,17 @@ def train_dcnn():
     validation_data = settings.validation_data
     minibatch_size = settings.minibatch_size
 
-    print "========== ========== ========== ========== =========="
+    print "========== ==========", "parameters", "========== =========="
     for key, value in vars(settings).iteritems():
         print "%s=%s" % (key, value);
-    print "========== ========== ========== ========== =========="
+    print "========== ==========", "additional", "========== =========="
+    for addition in additionals:
+        print "%s" % (addition);
 
-    logging.info("========== ========== ========== ========== ==========")
+    logging.info("========== ==========" + "parameters" + "========== ==========")
     for key, value in vars(settings).iteritems():
         logging.info("%s=%s" % (key, value));
-    logging.info("========== ========== ========== ========== ==========")
+    logging.info("========== ==========" + "parameters" + "========== ==========")
 
     cPickle.dump(settings, open(os.path.join(output_directory, "settings.pkl"), 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
@@ -70,10 +76,9 @@ def train_dcnn():
     #
     #
 
-    test_dataset = load_data(input_directory, dataset="test")
-
+    test_dataset = load_data(input_directory, dataset="test");
     if validation_data>=0:
-        train_dataset_info, validate_dataset_info = load_data_to_train_validate(input_directory, validation_data);
+        train_dataset_info, validate_dataset_info = load_and_split_data(input_directory, validation_data);
         train_dataset, train_indices = train_dataset_info;
         validate_dataset, validate_indices =validate_dataset_info;
         numpy.save(os.path.join(output_directory, "train.index.npy"), train_indices);
@@ -92,28 +97,23 @@ def train_dcnn():
     #
     #
 
-    network = networks.DynamicConvolutionalNeuralNetwork(
+    network = networks.DynamicMultiLayerPerceptron(
         incoming=input_shape,
 
-        convolution_filters=settings.convolution_filters,
-        convolution_nonlinearities=settings.convolution_nonlinearities,
-        # convolution_filter_sizes=None,
-        # maxpooling_sizes=None,
-
-        local_convolution_filters=settings.local_convolution_filters,
-
-        dense_dimensions=settings.dense_dimensions,
-        dense_nonlinearities=settings.dense_nonlinearities,
+        layer_dimensions=settings.dense_dimensions,
+        layer_nonlinearities=settings.dense_nonlinearities,
 
         layer_activation_parameters=settings.layer_activation_parameters,
         layer_activation_styles=settings.layer_activation_styles,
 
         objective_functions=settings.objective,
         update_function=settings.update,
+        # pretrained_model=pretrained_model
 
         learning_rate = settings.learning_rate,
-        learning_rate_decay_style=settings.learning_rate_decay_style,
-        learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
+        learning_rate_decay = settings.learning_rate_decay,
+        #learning_rate_decay_style=settings.learning_rate_decay_style,
+        #learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
 
         dropout_rate_update_interval=settings.dropout_rate_update_interval,
         update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
@@ -121,20 +121,9 @@ def train_dcnn():
         validation_interval=settings.validation_interval,
     )
 
-    '''
-    convolution_filter_sizes = settings.convolution_filter_sizes,
-    convolution_strides = settings.convolution_strides,
-    convolution_pads = settings.convolution_pads,
-
-    local_convolution_filter_sizes = settings.local_convolution_filter_sizes,
-    local_convolution_strides = settings.local_convolution_strides,
-    local_convolution_pads = settings.local_convolution_pads,
-
-    pooling_sizes = settings.pooling_sizes,
-    pooling_strides = settings.pooling_strides,
-    '''
-
     network.set_regularizers(settings.regularizer);
+    #network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
+    #network.set_L2_regularizer_lambda(settings.L2_regularizer_lambdas)
 
     ########################
     # START MODEL TRAINING #
@@ -152,7 +141,7 @@ def train_dcnn():
 
         if settings.snapshot_interval>0 and network.epoch_index % settings.snapshot_interval == 0:
             model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-            #cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
+            cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
         print "PROGRESS: %f%%" % (100. * epoch_index / settings.number_of_epochs);
 
@@ -160,7 +149,7 @@ def train_dcnn():
             snapshot_retain_rates(network, output_directory);
 
     model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-    #cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
+    cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
     end_train = timeit.default_timer()
 
@@ -188,11 +177,11 @@ def snapshot_retain_rates(network, output_directory):
         numpy.save(retain_rate_file, layer_retain_probability);
         dropout_layer_index += 1;
 
-def resume_dcnn():
+def resume_dmlp():
     pass
 
-def test_dcnn():
+def test_dmlp():
     pass
 
 if __name__ == '__main__':
-    train_dcnn()
+    train_dmlp()

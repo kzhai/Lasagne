@@ -21,13 +21,20 @@ __all__ = [
     "Network",
 ]
 
-def decay_learning_rate(minibatch_index, learning_rate=1e-3, learning_rate_decay_style=None, learning_rate_decay_parameter=0):
+def decay_learning_rate(learning_rate, epoch_or_iteration_index, learning_rate_decay=None):
+    #learning_rate = 1e-3, learning_rate_decay_style = None, learning_rate_decay_parameter = 0
     #learning_rate, learning_rate_decay_style, learning_rate_decay_parameter = learning_rate_configuration;
-    current_learning_rate = learning_rate;
-    if learning_rate_decay_style == "inverse_t" and learning_rate_decay_parameter>0:
-        current_learning_rate = learning_rate / (1. + float(minibatch_index) / learning_rate_decay_parameter)
-    elif learning_rate_decay_style == "exponential" and learning_rate_decay_parameter>0:
-        current_learning_rate = learning_rate * numpy.power(2, -float(minibatch_index) / learning_rate_decay_parameter);
+    if learning_rate_decay == None:
+        return learning_rate
+
+    if learning_rate_decay[1] == "inverse_t":
+        current_learning_rate = learning_rate * learning_rate_decay[2] / (1. + learning_rate_decay[3] * epoch_or_iteration_index)
+    elif learning_rate_decay[1] == "exponential":
+        current_learning_rate = learning_rate * learning_rate_decay[2] * numpy.exp(- learning_rate_decay[3] * epoch_or_iteration_index);
+    elif learning_rate_decay[1] == "step":
+        current_learning_rate = learning_rate * numpy.power(learning_rate_decay[2], epoch_or_iteration_index // learning_rate_decay[3]);
+    else:
+        current_learning_rate = learning_rate;
 
     return current_learning_rate
 
@@ -37,8 +44,9 @@ class Network(object):
                  objective_functions,
                  update_function,
                  learning_rate=1e-3,
-                 learning_rate_decay_style=None,
-                 learning_rate_decay_parameter=0,
+                 learning_rate_decay=None,
+                 #learning_rate_decay_style=None,
+                 #learning_rate_decay_parameter=0,
                  ):
         if isinstance(incoming, tuple):
             self._input_shape = incoming
@@ -70,15 +78,17 @@ class Network(object):
         self.regularizer_functions_change_stack = [];
         self.update_function_change_stack = [];
         self.learning_rate_change_stack = [];
-        self.learning_rate_decay_style_change_stack = []
-        self.learning_rate_decay_parameter_change_stack = []
+        self.learning_rate_decay_change_stack = [];
+        #self.learning_rate_decay_style_change_stack = []
+        #self.learning_rate_decay_parameter_change_stack = []
 
         self.__set_objective_functions(objective_functions)
         self.__set_regularizer_functions();
         self.__set_update_function(update_function);
         self.set_learning_rate(learning_rate);
-        self.set_learning_rate_decay_style(learning_rate_decay_style);
-        self.set_learning_rate_decay_parameter(learning_rate_decay_parameter);
+        self.set_learning_rate_decay(learning_rate_decay);
+        #self.set_learning_rate_decay_style(learning_rate_decay_style);
+        #self.set_learning_rate_decay_parameter(learning_rate_decay_parameter);
 
         # self.learning_change_stack = [];
         # (epoch_index, minibatch_index, learning_rate, learning_rate_decay_style, learning_rate_decay_parameter)
@@ -293,6 +303,10 @@ class Network(object):
         self.learning_rate = learning_rate;
         self.learning_rate_change_stack.append((self.epoch_index, self.learning_rate));
 
+    def set_learning_rate_decay(self, learning_rate_decay):
+        self.learning_rate_decay = learning_rate_decay;
+        self.learning_rate_decay_change_stack.append((self.epoch_index, self.learning_rate_decay));
+
     def set_learning_rate_decay_style(self, learning_rate_decay_style):
         self.learning_rate_decay_style = learning_rate_decay_style;
         self.learning_rate_decay_style_change_stack.append((self.epoch_index, self.learning_rate_decay_style));
@@ -356,8 +370,9 @@ class DiscriminativeNetwork(Network):
                  objective_functions,
                  update_function,
                  learning_rate=1e-3,
-                 learning_rate_decay_style=None,
-                 learning_rate_decay_parameter=0,
+                 learning_rate_decay=None,
+                 #learning_rate_decay_style=None,
+                 #learning_rate_decay_parameter=0,
                  validation_interval=-1,
                  ):
 
@@ -365,8 +380,9 @@ class DiscriminativeNetwork(Network):
                                                     objective_functions,
                                                     update_function,
                                                     learning_rate,
-                                                    learning_rate_decay_style,
-                                                    learning_rate_decay_parameter
+                                                    learning_rate_decay,
+                                                    #learning_rate_decay_style,
+                                                    #learning_rate_decay_parameter
                                                     );
 
         self.validation_interval = validation_interval;
@@ -517,6 +533,8 @@ class DiscriminativeNetwork(Network):
         number_of_data = train_dataset_x.shape[0];
         data_indices = numpy.random.permutation(number_of_data);
         minibatch_start_index = 0;
+        if self.learning_rate_decay[0]=="epoch":
+            learning_rate = decay_learning_rate(self.learning_rate, self.epoch_index, self.learning_rate_decay);
 
         total_train_loss = 0;
         total_train_accuracy = 0;
@@ -528,8 +546,8 @@ class DiscriminativeNetwork(Network):
             minibatch_x = train_dataset_x[minibatch_indices, :]
             minibatch_y = train_dataset_y[minibatch_indices]
 
-            learning_rate = decay_learning_rate(self.minibatch_index, self.learning_rate,
-                                                self.learning_rate_decay_style, self.learning_rate_decay_parameter);
+            if self.learning_rate_decay[0] == "iteration":
+                learning_rate = decay_learning_rate(self.learning_rate, self.minibatch_index, self.learning_rate_decay);
 
             minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy = self.train_minibatch(minibatch_x, minibatch_y, learning_rate);
 
@@ -587,6 +605,8 @@ class DiscriminativeNetwork(Network):
         print 'train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
             self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss,
             average_train_accuracy * 100)
+
+        #print 'train: epoch %i, minibatch %i, learning-rate %g' % (self.epoch_index, self.minibatch_index, learning_rate)
 
         self.epoch_index += 1;
 

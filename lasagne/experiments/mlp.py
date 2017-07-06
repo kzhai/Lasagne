@@ -7,31 +7,17 @@ import timeit
 
 from .. import networks
 from .. import nonlinearities
-from .base import load_data, load_data_to_train_validate
+from .base import load_data, load_and_split_data
 
 __all__ = [
     "train_mlp",
 ]
 
 def construct_mlp_parser():
-    from .base import construct_generic_parser
-    model_parser = construct_generic_parser();
-
-    # model argument set 1
-    model_parser.add_argument("--layer_dimensions", dest="layer_dimensions", action='store', default=None,
-                              help="dimension of different layer [None], example, '100,500,10' represents 3 layers contains 100, 500, and 10 neurons respectively");
-    model_parser.add_argument("--layer_nonlinearities", dest="layer_nonlinearities", action='store', default=None,
-                              help="activation functions of different layer [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively");
-
-    # model argument set 2
-    model_parser.add_argument("--layer_activation_parameters", dest="layer_activation_parameters", action='store', default="1.0",
-                              help="dropout probability of different layer [1], either one number of a list of numbers, example, '0.2' represents 0.2 dropout rate for all input+hidden layers, or '0.2,0.5' represents 0.2 dropout rate for input layer and 0.5 dropout rate for first hidden layer respectively");
-    model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store', default="bernoulli",
-                              help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively");
-
-    # model argument set
-    model_parser.add_argument("--validation_interval", dest="validation_interval", type=int, action='store', default=1000,
-                              help="validation interval in number of mini-batches [1000]");
+    from .base import construct_discriminative_parser, add_dense_options, add_dropout_options
+    model_parser = construct_discriminative_parser();
+    model_parser = add_dense_options(model_parser);
+    model_parser = add_dropout_options(model_parser);
 
     '''
     model_parser.add_argument("--pretrained_model_file", dest="pretrained_model_file",
@@ -45,63 +31,12 @@ def construct_mlp_parser():
     return model_parser;
 
 def validate_mlp_arguments(arguments):
-    from .base import validate_generic_arguments
-    arguments = validate_generic_arguments(arguments);
+    from .base import validate_discriminative_arguments, validate_dense_arguments, validate_dropout_arguments
+    arguments = validate_discriminative_arguments(arguments);
 
-    # model argument set 1
-    assert arguments.layer_dimensions != None
-    arguments.layer_dimensions = [int(dimensionality) for dimensionality in arguments.layer_dimensions.split(",")]
-    number_of_layers = len(arguments.layer_dimensions);
-
-    assert arguments.layer_nonlinearities != None
-    layer_nonlinearities = arguments.layer_nonlinearities.split(",")
-    layer_nonlinearities = [getattr(nonlinearities, layer_nonlinearity) for layer_nonlinearity in layer_nonlinearities]
-    assert len(layer_nonlinearities) == number_of_layers;
-    arguments.layer_nonlinearities = layer_nonlinearities;
-
-    # model argument set 2
-    layer_activation_styles = arguments.layer_activation_styles;
-    layer_activation_style_tokens = layer_activation_styles.split(",")
-    if len(layer_activation_style_tokens) == 1:
-        layer_activation_styles = [layer_activation_styles for layer_index in xrange(number_of_layers)]
-    elif len(layer_activation_style_tokens) == number_of_layers:
-        layer_activation_styles = layer_activation_style_tokens
-        # [float(layer_activation_parameter) for layer_activation_parameter in layer_activation_parameter_tokens]
-    assert len(layer_activation_styles) == number_of_layers;
-    assert (layer_activation_style in set(
-        ["bernoulli", "beta_bernoulli", "reciprocal_beta_bernoulli", "reverse_reciprocal_beta_bernoulli",
-         "mixed_beta_bernoulli"]) for layer_activation_style in layer_activation_styles)
-    arguments.layer_activation_styles = layer_activation_styles;
-
-    layer_activation_parameters = arguments.layer_activation_parameters;
-    layer_activation_parameter_tokens = layer_activation_parameters.split(",")
-    if len(layer_activation_parameter_tokens) == 1:
-        layer_activation_parameters = [layer_activation_parameters for layer_index in xrange(number_of_layers)]
-    elif len(layer_activation_parameter_tokens) == number_of_layers:
-        layer_activation_parameters = layer_activation_parameter_tokens
-    assert len(layer_activation_parameters) == number_of_layers;
-
-    for layer_index in xrange(number_of_layers):
-        if layer_activation_styles[layer_index] == "bernoulli":
-            layer_activation_parameters[layer_index] = float(layer_activation_parameters[layer_index])
-            assert layer_activation_parameters[layer_index] <= 1;
-            assert layer_activation_parameters[layer_index] > 0;
-        elif layer_activation_styles[layer_index] == "beta_bernoulli" or layer_activation_styles[
-            layer_index] == "reciprocal_beta_bernoulli" or layer_activation_styles[
-            layer_index] == "reverse_reciprocal_beta_bernoulli" or layer_activation_styles[
-            layer_index] == "mixed_beta_bernoulli":
-            layer_activation_parameter_tokens = layer_activation_parameters[layer_index].split("+");
-            assert len(layer_activation_parameter_tokens) == 2;
-            layer_activation_parameters[layer_index] = (
-            float(layer_activation_parameter_tokens[0]), float(layer_activation_parameter_tokens[1]))
-            assert layer_activation_parameters[layer_index][0] > 0;
-            assert layer_activation_parameters[layer_index][1] > 0;
-            if layer_activation_styles[layer_index] == "mixed_beta_bernoulli":
-                assert layer_activation_parameters[layer_index][0] < 1;
-    arguments.layer_activation_parameters = layer_activation_parameters;
-
-    # model argument set
-    assert (arguments.validation_interval > 0);
+    arguments = validate_dense_arguments(arguments);
+    number_of_layers = len(arguments.dense_dimensions);
+    arguments = validate_dropout_arguments(arguments, number_of_layers);
 
     '''
     dae_regularizer_lambdas = arguments.dae_regularizer_lambdas
@@ -170,7 +105,7 @@ def train_mlp():
 
     test_dataset = load_data(input_directory, dataset="test");
     if validation_data>=0:
-        train_dataset_info, validate_dataset_info = load_data_to_train_validate(input_directory, validation_data);
+        train_dataset_info, validate_dataset_info = load_and_split_data(input_directory, validation_data);
         train_dataset, train_indices = train_dataset_info;
         validate_dataset, validate_indices =validate_dataset_info;
         numpy.save(os.path.join(output_directory, "train.index.npy"), train_indices);
@@ -192,8 +127,8 @@ def train_mlp():
     network = networks.MultiLayerPerceptron(
         incoming=input_shape,
 
-        layer_dimensions=settings.layer_dimensions,
-        layer_nonlinearities=settings.layer_nonlinearities,
+        layer_dimensions=settings.dense_dimensions,
+        layer_nonlinearities=settings.dense_nonlinearities,
 
         layer_activation_parameters=settings.layer_activation_parameters,
         layer_activation_styles=settings.layer_activation_styles,
@@ -203,8 +138,9 @@ def train_mlp():
         # pretrained_model=pretrained_model
 
         learning_rate = settings.learning_rate,
-        learning_rate_decay_style=settings.learning_rate_decay_style,
-        learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
+        learning_rate_decay=settings.learning_rate_decay,
+        #learning_rate_decay_style=settings.learning_rate_decay_style,
+        #learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
         validation_interval=settings.validation_interval,
     )
 

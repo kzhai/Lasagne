@@ -27,17 +27,21 @@ class StandoutNeuralNetworkTypeA(DiscriminativeNetwork):
 
                  objective_functions=objectives.categorical_crossentropy,
                  update_function=updates.nesterov_momentum,
+
                  learning_rate=1e-3,
-                 learning_rate_decay_style=None,
-                 learning_rate_decay_parameter=0,
+                 learning_rate_decay=None,
+                 #learning_rate_decay_style=None,
+                 #learning_rate_decay_parameter=0,
+
                  validation_interval=-1,
                  ):
         super(StandoutNeuralNetworkTypeA, self).__init__(incoming,
                                                          objective_functions,
                                                          update_function,
                                                          learning_rate,
-                                                         learning_rate_decay_style,
-                                                         learning_rate_decay_parameter,
+                                                         learning_rate_decay,
+                                                         #learning_rate_decay_style,
+                                                         #learning_rate_decay_parameter,
                                                          validation_interval)
 
         self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
@@ -229,17 +233,21 @@ class StandoutNeuralNetworkTypeB(DiscriminativeNetwork):
 
                  objective_functions=objectives.categorical_crossentropy,
                  update_function=updates.nesterov_momentum,
+
                  learning_rate=1e-3,
-                 learning_rate_decay_style=None,
-                 learning_rate_decay_parameter=0,
+                 learning_rate_decay=None,
+                 #learning_rate_decay_style=None,
+                 #learning_rate_decay_parameter=0,
+
                  validation_interval=-1,
                  ):
         super(StandoutNeuralNetworkTypeB, self).__init__(incoming,
                                                          objective_functions,
                                                          update_function,
                                                          learning_rate,
-                                                         learning_rate_decay_style,
-                                                         learning_rate_decay_parameter,
+                                                         learning_rate_decay,
+                                                         #learning_rate_decay_style,
+                                                         #learning_rate_decay_parameter,
                                                          validation_interval)
 
         self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
@@ -250,16 +258,11 @@ class StandoutNeuralNetworkTypeB(DiscriminativeNetwork):
 
         neural_network = self._input_layer;
 
+        previous_layer_dimension = layers.get_output_shape(neural_network)[1:];
+        activation_probability = numpy.zeros(previous_layer_dimension) + input_activation_rate;
+        neural_network = layers.LinearDropoutLayer(neural_network, activation_probability=activation_probability);
+
         for layer_index in xrange(len(layer_dimensions)):
-            previous_layer_dimension = layers.get_output_shape(neural_network)[1:];
-            # activation_probability = noise.sample_activation_probability(previous_layer_dimension, layer_activation_styles[layer_index], layer_activation_parameters[layer_index]);
-            # activation_probability = sample_activation_probability(previous_layer_dimension, layer_activation_styles[layer_index], layer_activation_parameters[layer_index]);
-
-            if layer_index == 0:
-                # activation_probability = sample_activation_probability(previous_layer_dimension, layer_activation_styles[0], layer_activation_parameters[0]);
-                # neural_network = GeneralizedDropoutLayer(neural_network, activation_probability=activation_probability);
-                neural_network = layers.LinearDropoutLayer(neural_network, activation_probability=input_activation_rate);
-
             layer_dimension = layer_dimensions[layer_index]
             layer_nonlinearity = layer_nonlinearities[layer_index];
 
@@ -303,11 +306,6 @@ def main():
 
         objective_functions=objectives.categorical_crossentropy,
         update_function=updates.nesterov_momentum,
-
-        learning_rate = 0.001,
-        learning_rate_decay_style=None,
-        learning_rate_decay_parameter=0,
-        validation_interval=1000,
     )
 
     #print layers.get_all_params(network)

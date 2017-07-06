@@ -11,11 +11,15 @@ from .. import networks
 from .. import nonlinearities, objectives, updates, utils, regularization
 
 __all__ = [
-    "construct_generic_parser",
-    "validate_generic_arguments",
-    "load_data_to_train_validate",
+    "construct_discriminative_parser",
+    "validate_discriminative_arguments",
+    "add_dense_options",
+    "validate_dense_arguments",
+    "add_dropout_options",
+    "validate_dropout_arguments",
+    #
+    "load_and_split_data",
     "load_data",
-    "Configuration",
     "load_mnist",
 ]
 
@@ -29,8 +33,6 @@ def construct_generic_parser():
                                 help="output directory [None]");
     # generic_parser.add_argument("--logging_file", dest="logging_file", action='store', default=None,
     # help="logging file [None]");
-    generic_parser.add_argument("--validation_data", dest="validation_data", type=int, action='store', default=0,
-                                help="validation data [0 - no validation data used], -1 - load validate.(feature|label).npy for validation]");
 
     # generic argument set 2
     generic_parser.add_argument("--objective", dest="objective", action='store',
@@ -39,8 +41,7 @@ def construct_generic_parser():
     generic_parser.add_argument("--update", dest="update", action='store',
                                 default="nesterov_momentum",
                                 help="update function to minimize [nesterov_momentum], example, 'sgd' represents the stochastic gradient descent");
-    generic_parser.add_argument("--regularizer", dest='regularizer', action='append',
-                                default=[],
+    generic_parser.add_argument("--regularizer", dest='regularizer', action='append', default=[],
                                 help="regularizer function [None], example, " +
                                      "'l2:0.1'=l2-regularizer with lambda 0.1 applied over all layers, " +
                                      "'l1:0.1,0.2,0.3'=l1-regularizer with lambda 0.1, 0.2, 0.3 applied over three layers")
@@ -56,122 +57,31 @@ def construct_generic_parser():
     # generic argument set 4
     generic_parser.add_argument("--learning_rate", dest="learning_rate", type=float, action='store', default=1e-2,
                                 help="learning rate [1e-2]")
+    generic_parser.add_argument("--learning_rate_decay", dest="learning_rate_decay", action='store', default=None,
+                                help="learning rate decay [None], example, 'iteration,inverse_t,0.2,0.1', 'epoch,exponential,1.7,0.1', 'epoch,step,0.2,100'");
+    '''
     generic_parser.add_argument("--learning_rate_decay_style", dest="learning_rate_decay_style", action='store',
                                 default=None,
                                 help="learning rate decay style [None], example, 'inverse_t', 'exponential'");
-    generic_parser.add_argument("--learning_rate_decay_parameter", dest="learning_rate_decay_parameter", type=float,
-                                action='store', default=0,
+    generic_parser.add_argument("--learning_rate_decay_parameter", dest="learning_rate_decay_parameter", #type=float,
+                                action='store', default=None,
                                 help="learning rate decay [0 - no learning rate decay], example, half life iterations for inverse_t or exponential decay")
-
+    '''
     generic_parser.add_argument('--debug', dest="debug", action='store_true', default=False, help="debug mode [False]")
 
     return generic_parser
 
-'''
-def load_data_to_test(input_directory):
-    test_set_x = numpy.load(os.path.join(input_directory, "test.feature.npy"))
-    test_set_y = numpy.load(os.path.join(input_directory, "test.label.npy"))
-    assert test_set_x.shape[0] == len(test_set_y);
-    test_dataset = (test_set_x, test_set_y);
-    logging.info("successfully load data %s with %d to test..." % (input_directory, test_set_x.shape[0]))
-    return test_dataset
-
-def load_data_to_train_validate(input_directory, number_of_training_data=-1):
-    data_x = numpy.load(os.path.join(input_directory, "train.feature.npy"))
-    data_y = numpy.load(os.path.join(input_directory, "train.label.npy"))
-    assert data_x.shape[0] == len(data_y);
-
-    if number_of_training_data <= 0 or number_of_training_data >= len(data_y):
-        number_of_training_data = len(data_y);
-    indices = numpy.random.permutation(len(data_y));
-    train_indices = indices[:number_of_training_data]
-    validate_indices = indices[number_of_training_data:]
-
-    train_set_x = data_x[train_indices, :]
-    train_set_y = data_y[train_indices]
-    train_dataset = (train_set_x, train_set_y)
-    #numpy.save(os.path.join(output_directory, "train.index.npy"), train_indices);
-    logging.info("successfully load data %s with %d to train..." % (input_directory, train_set_x.shape[0]))
-
-    if len(validate_indices) > 0:
-        validate_set_x = data_x[validate_indices, :]
-        validate_set_y = data_y[validate_indices]
-        validate_dataset = (validate_set_x, validate_set_y)
-        #numpy.save(os.path.join(output_directory, "validate.index.npy"), validate_indices);
-        logging.info("successfully load data %s with %d to validate..." % (input_directory, validate_set_x.shape[0]))
-    else:
-        validate_dataset = None;
-
-    return (train_dataset, train_indices), (validate_dataset, validate_indices);
-'''
-
-class Configuration(object):
-    def __init__(self, arguments):
-        # generic argument set 4
-        self.learning_rate = arguments.learning_rate;
-        assert self.learning_rate > 0;
-        self.learning_rate_decay_style = arguments.learning_rate_decay_style;
-        assert self.learning_rate_decay_style == None or self.learning_rate_decay_style in ["inverse_t", "exponential"];
-        self.learning_rate_decay_parameter = arguments.learning_rate_decay_parameter;
-        assert self.learning_rate_decay_parameter >= 0;
-
-        # generic argument set 3
-        self.minibatch_size = arguments.minibatch_size;
-        assert (self.minibatch_size > 0);
-        self.number_of_epochs = arguments.number_of_epochs;
-        assert (self.number_of_epochs > 0);
-        self.snapshot_interval = arguments.snapshot_interval;
-        # assert(options.snapshot_interval > 0);
-
-        # generic argument set 2
-        #objective_function = arguments.objective_function;
-        self.objective_function = getattr(objectives, arguments.objective_function)
-        #update_function = arguments.update_function;
-        self.update_function = getattr(updates, arguments.update_function)
-
-        self.regularizer_functions = {};
-        for regularizer_weight_mapping in arguments.regularize_functions:
-            fields = regularizer_weight_mapping.split(":");
-            regularizer_function = getattr(regularization, fields[0]);
-            if len(fields)==1:
-                self.regularizer_functions[regularizer_function] = 1.0;
-            elif len(fields)==2:
-                tokens = fields[1].split(",");
-                if len(tokens)==1:
-                    weight = float(tokens[0]);
-                else:
-                    weight = [float(token) for token in tokens];
-                self.regularizer_functions[regularizer_function] = weight;
-            else:
-                logging.error("unrecognized regularizer function setting %s..." % (regularizer_weight_mapping));
-
-        # generic argument set 1
-        self.input_directory = arguments.input_directory;
-        assert os.path.exists(self.input_directory)
-
-        output_directory = arguments.output_directory;
-        assert (output_directory != None);
-        if not os.path.exists(output_directory):
-            os.mkdir(os.path.abspath(output_directory));
-        # adjusting output directory
-        now = datetime.datetime.now();
-        suffix = now.strftime("%y%m%d-%H%M%S-%f") + "";
-        #suffix += "-%s" % ("mlp");
-        output_directory = os.path.join(output_directory, suffix);
-        assert not os.path.exists(output_directory)
-        #os.mkdir(os.path.abspath(output_directory));
-        self.output_directory = output_directory;
-
-        self.validation_data = arguments.validation_data;
-
 def validate_generic_arguments(arguments):
     # generic argument set 4
-    #self.learning_rate = arguments.learning_rate;
     assert arguments.learning_rate > 0;
-    #self.learning_rate_decay_style = arguments.learning_rate_decay_style;
-    assert arguments.learning_rate_decay_style == None or arguments.learning_rate_decay_style in ["inverse_t", "exponential"];
-    #self.learning_rate_decay_parameter = arguments.learning_rate_decay_parameter;
-    assert arguments.learning_rate_decay_parameter >= 0;
+    if arguments.learning_rate_decay!=None:
+        learning_rate_decay_tokens = arguments.learning_rate_decay.split(",");
+        assert len(learning_rate_decay_tokens)==4;
+        assert learning_rate_decay_tokens[0] in ["iteration", "epoch"];
+        assert learning_rate_decay_tokens[1] in ["inverse_t", "exponential", "step"];
+        learning_rate_decay_tokens[2] = float(learning_rate_decay_tokens[2]);
+        learning_rate_decay_tokens[3] = float(learning_rate_decay_tokens[3]);
+        arguments.learning_rate_decay = learning_rate_decay_tokens;
 
     # generic argument set 3
     assert arguments.minibatch_size > 0;
@@ -216,10 +126,140 @@ def validate_generic_arguments(arguments):
     #os.mkdir(os.path.abspath(output_directory));
     arguments.output_directory = output_directory;
 
-    #self.validation_data = arguments.validation_data;
-    assert arguments.validation_data >= -1;
-
     return arguments;
+
+def construct_discriminative_parser():
+    model_parser = construct_generic_parser();
+
+    # model argument set
+    model_parser.add_argument("--validation_data", dest="validation_data", type=int, action='store', default=0,
+                                help="validation data [0 - no validation data used], -1 - load validate.(feature|label).npy for validation]");
+    model_parser.add_argument("--validation_interval", dest="validation_interval", type=int, action='store', default=1000,
+                              help="validation interval in number of mini-batches [1000]");
+
+    return model_parser;
+
+def validate_discriminative_arguments(arguments):
+    arguments = validate_generic_arguments(arguments);
+
+    # model argument set
+    assert arguments.validation_data >= -1;
+    assert (arguments.validation_interval > 0);
+
+    return arguments
+
+def add_convpool_options(model_parser):
+    # model argument set 1
+    model_parser.add_argument("--convolution_filters", dest="convolution_filters", action='store', default=None,
+                              help="number of convolution filters [None], example, '32,16' represents 32 and 16 filters for convolution layers respectively");
+    model_parser.add_argument("--convolution_nonlinearities", dest="convolution_nonlinearities", action='store', default=None,
+                              help="activation functions of convolution layers [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively");
+    model_parser.add_argument("--pool_modes", dest="pool_modes", action='store', default="max",
+                              help="pool modes after each convolution layers [max], set to none to omit, example, 'max,max,none,none,max'");
+
+    return model_parser;
+
+def validate_convpool_arguments(arguments):
+    # model argument set 1
+    assert arguments.convolution_filters != None
+    conv_filters = arguments.convolution_filters.split(",")
+    arguments.convolution_filters = [int(conv_filter) for conv_filter in conv_filters]
+
+    assert arguments.convolution_nonlinearities != None
+    conv_nonlinearities = arguments.convolution_nonlinearities.split(",")
+    arguments.convolution_nonlinearities = [getattr(nonlinearities, conv_nonlinearity) for conv_nonlinearity in
+                                            conv_nonlinearities]
+
+    assert len(conv_filters) == len(conv_nonlinearities)
+
+    assert arguments.pool_modes != None
+    pool_modes = arguments.pool_modes.split(",")
+    if len(pool_modes) == 1:
+        pool_modes *= len(arguments.convolution_filters);
+    for pool_mode_index in xrange(len(pool_modes)):
+        if pool_modes[pool_mode_index].lower() == "none":
+            pool_modes[pool_mode_index] = None;
+    arguments.pool_modes = pool_modes
+
+    assert len(conv_filters) == len(pool_modes)
+
+    return arguments
+
+def add_dense_options(model_parser):
+    # model argument set 1
+    model_parser.add_argument("--dense_dimensions", dest="dense_dimensions", action='store', default=None,
+                              help="dimension of different layer [None], example, '100,500,10' represents 3 layers contains 100, 500, and 10 neurons respectively");
+    model_parser.add_argument("--dense_nonlinearities", dest="dense_nonlinearities", action='store', default=None,
+                              help="activation functions of different layer [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively");
+
+    return model_parser;
+
+def validate_dense_arguments(arguments):
+    # model argument set 1
+    assert arguments.dense_dimensions != None
+    dense_dimensions = arguments.dense_dimensions.split(",")
+    arguments.dense_dimensions = [int(dimensionality) for dimensionality in dense_dimensions]
+
+    assert arguments.dense_nonlinearities != None
+    dense_nonlinearities = arguments.dense_nonlinearities.split(",")
+    arguments.dense_nonlinearities = [getattr(nonlinearities, dense_nonlinearity) for dense_nonlinearity in dense_nonlinearities]
+
+    assert len(arguments.dense_nonlinearities) == len(arguments.dense_dimensions);
+
+    return arguments
+
+def add_dropout_options(model_parser):
+    # model argument set 2
+    model_parser.add_argument("--layer_activation_parameters", dest="layer_activation_parameters", action='store', default="1.0",
+                              help="dropout probability of different layer [1], either one number of a list of numbers, example, '0.2' represents 0.2 dropout rate for all input+hidden layers, or '0.2,0.5' represents 0.2 dropout rate for input layer and 0.5 dropout rate for first hidden layer respectively");
+    model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store', default="bernoulli",
+                              help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively");
+
+    return model_parser;
+
+def validate_dropout_arguments(arguments, number_of_layers):
+    # model argument set
+    layer_activation_styles = arguments.layer_activation_styles;
+    layer_activation_style_tokens = layer_activation_styles.split(",")
+    if len(layer_activation_style_tokens) == 1:
+        layer_activation_styles = [layer_activation_styles for layer_index in xrange(number_of_layers)]
+    elif len(layer_activation_style_tokens) == number_of_layers:
+        layer_activation_styles = layer_activation_style_tokens
+        # [float(layer_activation_parameter) for layer_activation_parameter in layer_activation_parameter_tokens]
+    assert len(layer_activation_styles) == number_of_layers;
+    assert (layer_activation_style in set(
+        ["bernoulli", "beta_bernoulli", "reciprocal_beta_bernoulli", "reverse_reciprocal_beta_bernoulli",
+         "mixed_beta_bernoulli"]) for layer_activation_style in layer_activation_styles)
+    arguments.layer_activation_styles = layer_activation_styles;
+
+    layer_activation_parameters = arguments.layer_activation_parameters;
+    layer_activation_parameter_tokens = layer_activation_parameters.split(",")
+    if len(layer_activation_parameter_tokens) == 1:
+        layer_activation_parameters = [layer_activation_parameters for layer_index in xrange(number_of_layers)]
+    elif len(layer_activation_parameter_tokens) == number_of_layers:
+        layer_activation_parameters = layer_activation_parameter_tokens
+    assert len(layer_activation_parameters) == number_of_layers;
+
+    for layer_index in xrange(number_of_layers):
+        if layer_activation_styles[layer_index] == "bernoulli":
+            layer_activation_parameters[layer_index] = float(layer_activation_parameters[layer_index])
+            assert layer_activation_parameters[layer_index] <= 1;
+            assert layer_activation_parameters[layer_index] > 0;
+        elif layer_activation_styles[layer_index] == "beta_bernoulli" \
+                or layer_activation_styles[layer_index] == "reciprocal_beta_bernoulli" \
+                or layer_activation_styles[layer_index] == "reverse_reciprocal_beta_bernoulli" \
+                or layer_activation_styles[layer_index] == "mixed_beta_bernoulli":
+            layer_activation_parameter_tokens = layer_activation_parameters[layer_index].split("+");
+            assert len(layer_activation_parameter_tokens) == 2;
+            layer_activation_parameters[layer_index] = (float(layer_activation_parameter_tokens[0]),
+                                                        float(layer_activation_parameter_tokens[1]))
+            assert layer_activation_parameters[layer_index][0] > 0;
+            assert layer_activation_parameters[layer_index][1] > 0;
+            if layer_activation_styles[layer_index] == "mixed_beta_bernoulli":
+                assert layer_activation_parameters[layer_index][0] < 1;
+    arguments.layer_activation_parameters = layer_activation_parameters;
+
+    return arguments
 
 def load_data(input_directory, dataset="test"):
     data_set_x = numpy.load(os.path.join(input_directory, "%s.feature.npy" % dataset))
@@ -228,7 +268,7 @@ def load_data(input_directory, dataset="test"):
     logging.info("successfully load data %s with %d to %s..." % (input_directory, data_set_x.shape[0], dataset))
     return (data_set_x, data_set_y)
 
-def load_data_to_train_validate(input_directory, number_of_validate_data=0):
+def load_and_split_data(input_directory, number_of_validate_data=0):
     data_x = numpy.load(os.path.join(input_directory, "train.feature.npy"))
     data_y = numpy.load(os.path.join(input_directory, "train.label.npy"))
     assert data_x.shape[0] == len(data_y);

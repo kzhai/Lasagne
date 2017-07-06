@@ -1,5 +1,5 @@
 from .base import *
-from .cnn import *
+from .lenet import *
 #from .ctc import *
 #from .dae import *
 from .fdn import *

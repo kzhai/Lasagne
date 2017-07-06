@@ -11,11 +11,11 @@ from ..layers import noise, local, normalization
 from .. import init, nonlinearities, objectives, updates
 
 __all__ = [
-    "ConvolutionalNeuralNetwork",
-    "DynamicConvolutionalNeuralNetwork"
+    "LeNet",
+    "DynamicLeNet",
 ]
 
-class ConvolutionalNeuralNetwork(DiscriminativeNetwork):
+class LeNet(DiscriminativeNetwork):
     def __init__(self,
                  #input_network=None,
                  #input_shape,
@@ -25,8 +25,7 @@ class ConvolutionalNeuralNetwork(DiscriminativeNetwork):
                  convolution_nonlinearities,
                  # convolution_filter_sizes=None,
                  # maxpooling_sizes=None,
-
-                 local_convolution_filters,
+                 pool_modes,
 
                  dense_dimensions,
                  dense_nonlinearities,
@@ -36,30 +35,29 @@ class ConvolutionalNeuralNetwork(DiscriminativeNetwork):
 
                  objective_functions=objectives.categorical_crossentropy,
                  update_function=updates.nesterov_momentum,
+
                  learning_rate=1e-3,
-                 learning_rate_decay_style=None,
-                 learning_rate_decay_parameter=0,
+                 learning_rate_decay=None,
+                 #learning_rate_decay_style=None,
+                 #learning_rate_decay_parameter=0,
 
                  validation_interval=-1,
 
-                 convolution_filter_sizes=(5, 5),
+                 convolution_kernel_sizes=(5, 5),
                  convolution_strides=(1, 1),
                  convolution_pads=2,
 
-                 local_convolution_filter_sizes=(3, 3),
-                 local_convolution_strides=(1, 1),
-                 local_convolution_pads="same",
-
-                 pooling_sizes=(3, 3),
+                 pooling_kernel_sizes=(3, 3),
                  pooling_strides=(2, 2),
                  ):
-        super(ConvolutionalNeuralNetwork, self).__init__(incoming,
-                                                         objective_functions,
-                                                         update_function,
-                                                         learning_rate,
-                                                         learning_rate_decay_style,
-                                                         learning_rate_decay_parameter,
-                                                         validation_interval);
+        super(LeNet, self).__init__(incoming,
+                                    objective_functions,
+                                    update_function,
+                                    learning_rate,
+                                    learning_rate_decay,
+                                    #learning_rate_decay_style,
+                                    #learning_rate_decay_parameter,
+                                    validation_interval);
 
         # x = theano.tensor.matrix('x')  # the data is presented as rasterized images
         self._output_variable = theano.tensor.ivector() # the labels are presented as 1D vector of [int] labels
@@ -67,14 +65,14 @@ class ConvolutionalNeuralNetwork(DiscriminativeNetwork):
         #self._input_layer = layers.InputLayer(shape=input_shape);
         #self._input_variable = self._input_layer.input_var;
 
-        assert len(layer_activation_parameters) == len(dense_nonlinearities)# + len(convolution_nonlinearities)
-        assert len(layer_activation_styles) == len(dense_nonlinearities)# + len(convolution_nonlinearities)
+        assert len(layer_activation_parameters) == len(dense_nonlinearities) + len(convolution_nonlinearities)
+        assert len(layer_activation_styles) == len(dense_nonlinearities) + len(convolution_nonlinearities)
         assert len(convolution_filters) == len(convolution_nonlinearities);
+        assert len(convolution_filters) == len(pool_modes);
 
         dropout_layer_index = 0;
         neural_network = self._input_layer;
         for conv_layer_index in xrange(len(convolution_filters)):
-            '''
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
             activation_probability = noise.sample_activation_probability(previous_layer_shape, layer_activation_styles[dropout_layer_index], layer_activation_parameters[dropout_layer_index]);
@@ -82,13 +80,11 @@ class ConvolutionalNeuralNetwork(DiscriminativeNetwork):
             # print "before dropout", lasagne.layers.get_output_shape(neural_network)
             neural_network = noise.LinearDropoutLayer(neural_network, activation_probability=activation_probability);
             dropout_layer_index += 1;
-            '''
 
             conv_filter_number = convolution_filters[conv_layer_index];
             conv_nonlinearity = convolution_nonlinearities[conv_layer_index];
-            
             # conv_filter_size = convolution_filter_sizes[conv_layer_index]
-            conv_filter_size = convolution_filter_sizes;
+            conv_kernel_size = convolution_kernel_sizes;
             conv_stride = convolution_strides;
             conv_pad = convolution_pads;
 
@@ -103,39 +99,28 @@ class ConvolutionalNeuralNetwork(DiscriminativeNetwork):
                                                 b=init.Constant(0.),
                                                 nonlinearity=conv_nonlinearity,
                                                 num_filters=conv_filter_number,
-                                                filter_size=conv_filter_size,
+                                                filter_size=conv_kernel_size,
 
                                                 stride=conv_stride,
                                                 pad=conv_pad,
                                                 )
 
-            if conv_layer_index>0:
-                neural_network = normalization.LocalResponseNormalization2DLayer(neural_network);
+            pool_mode = pool_modes[conv_layer_index];
+            if pool_mode!=None:
+                pool_kernel_size = pooling_kernel_sizes
+                pool_stride = pooling_strides
 
-            # pooling_size = maxpooling_sizes[conv_layer_index];
-            pool_size = pooling_sizes
-            pool_stride = pooling_strides
-
-            # print "before maxpooling", layers.get_output_shape(neural_network)
-            # Max-pooling layer of factor 2 in both dimensions:
-            filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
-            if numpy.any(filter_size_for_pooling < pool_size):
-                print "warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (layers.get_output_shape(neural_network), pool_size)
-                continue;
-            neural_network = layers.MaxPool2DLayer(neural_network,
-                                                   pool_size=pool_size,
-                                                   stride=pool_stride,
-                                                   )
-            if conv_layer_index==0:
-                neural_network = normalization.LocalResponseNormalization2DLayer(neural_network);
-
-        for local_layer_index in xrange(len(local_convolution_filters)):
-            neural_network = local.LocallyConnected2DLayer(neural_network,
-                                                           local_convolution_filters[local_layer_index],
-                                                           filter_size=local_convolution_filter_sizes,
-                                                           stride=local_convolution_strides,
-                                                           pad=local_convolution_pads
-                                                           )
+                # print "before maxpooling", layers.get_output_shape(neural_network)
+                # Max-pooling layer of factor 2 in both dimensions:
+                filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
+                if numpy.any(filter_size_for_pooling < pool_kernel_size):
+                    print "warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (layers.get_output_shape(neural_network), pool_kernel_size)
+                    continue;
+                neural_network = layers.Pool2DLayer(neural_network,
+                                                    pool_size=pool_kernel_size,
+                                                    stride=pool_stride,
+                                                    mode=pool_mode
+                                                    )
 
         assert len(dense_dimensions) == len(dense_nonlinearities)
         for dense_layer_index in xrange(len(dense_dimensions)):
@@ -316,7 +301,7 @@ class ConvolutionalNeuralNetwork(DiscriminativeNetwork):
                 print 'pre-training layer %i, epoch %d, average cost %f, time elapsed %f' % (dae_index + 1, pretrain_epoch_index, numpy.mean(average_pretrain_loss), end_time - start_time)
     """
 
-class DynamicConvolutionalNeuralNetwork(DiscriminativeNetwork):
+class DynamicLeNet(DiscriminativeNetwork):
     def __init__(self,
                  # input_network=None,
                  # input_shape,
@@ -325,9 +310,7 @@ class DynamicConvolutionalNeuralNetwork(DiscriminativeNetwork):
                  convolution_filters,
                  convolution_nonlinearities,
                  # convolution_filter_sizes=None,
-                 # maxpooling_sizes=None,
-
-                 local_convolution_filters,
+                 pool_modes,
 
                  dense_dimensions,
                  dense_nonlinearities,
@@ -337,34 +320,33 @@ class DynamicConvolutionalNeuralNetwork(DiscriminativeNetwork):
 
                  objective_functions=objectives.categorical_crossentropy,
                  update_function=updates.nesterov_momentum,
+
                  learning_rate=1e-3,
-                 learning_rate_decay_style=None,
-                 learning_rate_decay_parameter=0,
+                 learning_rate_decay=None,
+                 #learning_rate_decay_style=None,
+                 #learning_rate_decay_parameter=0,
 
                  dropout_rate_update_interval=-1,
                  update_hidden_layer_dropout_only=False,
 
                  validation_interval=-1,
 
-                 convolution_filter_sizes=(5, 5),
+                 convolution_kernel_sizes=(5, 5),
                  convolution_strides=(1, 1),
                  convolution_pads=2,
 
-                 local_convolution_filter_sizes=(3, 3),
-                 local_convolution_strides=(1, 1),
-                 local_convolution_pads="same",
-
-                 pooling_sizes=(3, 3),
+                 pooling_kernel_sizes=(3, 3),
                  pooling_strides=(2, 2),
 
                  ):
-        super(DynamicConvolutionalNeuralNetwork, self).__init__(incoming,
-                                                                objective_functions,
-                                                                update_function,
-                                                                learning_rate,
-                                                                learning_rate_decay_style,
-                                                                learning_rate_decay_parameter,
-                                                                validation_interval);
+        super(DynamicLeNet, self).__init__(incoming,
+                                           objective_functions,
+                                           update_function,
+                                           learning_rate,
+                                           learning_rate_decay,
+                                           #learning_rate_decay_style,
+                                           #learning_rate_decay_parameter,
+                                           validation_interval);
 
         self._dropout_rate_update_interval = dropout_rate_update_interval;
 
@@ -374,16 +356,16 @@ class DynamicConvolutionalNeuralNetwork(DiscriminativeNetwork):
         # self._input_layer = layers.InputLayer(shape=input_shape);
         # self._input_variable = self._input_layer.input_var;
 
-        assert len(layer_activation_parameters) == len(dense_nonlinearities)# + len(convolution_nonlinearities)
-        assert len(layer_activation_styles) == len(dense_nonlinearities)# + len(convolution_nonlinearities)
+        assert len(layer_activation_parameters) == len(dense_nonlinearities) + len(convolution_nonlinearities)
+        assert len(layer_activation_styles) == len(dense_nonlinearities) + len(convolution_nonlinearities)
         assert len(convolution_filters) == len(convolution_nonlinearities);
+        assert len(convolution_filters) == len(pool_modes);
 
         dropout_layer_index = 0;
 
         neural_network = self._input_layer;
         #print "after input", layers.get_output_shape(neural_network);
         for conv_layer_index in xrange(len(convolution_filters)):
-            '''
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
             activation_probability = noise.sample_activation_probability(previous_layer_shape,
@@ -399,17 +381,15 @@ class DynamicConvolutionalNeuralNetwork(DiscriminativeNetwork):
                 neural_network = noise.AdaptiveDropoutLayer(neural_network,
                                                             activation_probability=activation_probability);
             dropout_layer_index += 1;
-            '''
 
             conv_filter_number = convolution_filters[conv_layer_index];
             conv_nonlinearity = convolution_nonlinearities[conv_layer_index];
 
             # conv_filter_size = convolution_filter_sizes[conv_layer_index]
-            conv_filter_size = convolution_filter_sizes;
+            conv_filter_size = convolution_kernel_sizes;
             conv_stride = convolution_strides;
             conv_pad = convolution_pads;
 
-            # print "before convolution", lasagne.layers.get_output_shape(neural_network)
             # Convolutional layer with 32 kernels of size 5x5. Strided and padded convolutions are supported as well; see the docstring.
             neural_network = layers.Conv2DLayer(neural_network,
                                                 W=init.GlorotUniform(gain=init.GlorotUniformGain[conv_nonlinearity]),
@@ -427,37 +407,22 @@ class DynamicConvolutionalNeuralNetwork(DiscriminativeNetwork):
                                                 )
             #print "after convolution", layers.get_output_shape(neural_network);
 
-            if conv_layer_index>0:
-                neural_network = normalization.LocalResponseNormalization2DLayer(neural_network);
+            pool_mode = pool_modes[conv_layer_index];
+            if pool_mode != None:
+                pool_size = pooling_kernel_sizes
+                pool_stride = pooling_strides
 
-            # pooling_size = maxpooling_sizes[conv_layer_index];
-            pool_size = pooling_sizes
-            pool_stride = pooling_strides
-
-            # print "before maxpooling", layers.get_output_shape(neural_network)
-            # Max-pooling layer of factor 2 in both dimensions:
-            filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
-            if numpy.any(filter_size_for_pooling < pool_size):
-                print "warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (layers.get_output_shape(neural_network), pool_size)
-                continue;
-            neural_network = layers.MaxPool2DLayer(neural_network,
-                                                   pool_size=pool_size,
-                                                   stride=pool_stride,
-                                                   )
-            if conv_layer_index==0:
-                neural_network = normalization.LocalResponseNormalization2DLayer(neural_network);
-
-            #print "after maxpooling", layers.get_output_shape(neural_network);
-
-        for local_layer_index in xrange(len(local_convolution_filters)):
-            neural_network = local.LocallyConnected2DLayer(neural_network,
-                                                           local_convolution_filters[local_layer_index],
-                                                           filter_size=local_convolution_filter_sizes,
-                                                           stride=local_convolution_strides,
-                                                           pad=local_convolution_pads
-                                                           )
-
-            #print "after local renormalize", layers.get_output_shape(neural_network);
+                # Max-pooling layer of factor 2 in both dimensions:
+                filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
+                if numpy.any(filter_size_for_pooling < pool_size):
+                    print "warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (layers.get_output_shape(neural_network), pool_size)
+                    continue;
+                neural_network = layers.Pool2DLayer(neural_network,
+                                                    pool_size=pool_size,
+                                                    stride=pool_stride,
+                                                    mode=pool_mode,
+                                                    )
+                #print "after maxpooling", layers.get_output_shape(neural_network);
 
         assert len(dense_dimensions) == len(dense_nonlinearities)
         for dense_layer_index in xrange(len(dense_dimensions)):
@@ -468,7 +433,6 @@ class DynamicConvolutionalNeuralNetwork(DiscriminativeNetwork):
                                                                          layer_activation_parameters[dropout_layer_index]);
             activation_probability = activation_probability.astype(theano.config.floatX);
             activation_probability = numpy.reshape(activation_probability, input_layer_shape)
-            # print "before dropout", lasagne.layers.get_output_shape(neural_network)
             if update_hidden_layer_dropout_only and dense_layer_index == 0:
                 neural_network = noise.LinearDropoutLayer(neural_network,
                                                           activation_probability=activation_probability);
@@ -481,7 +445,6 @@ class DynamicConvolutionalNeuralNetwork(DiscriminativeNetwork):
             layer_shape = dense_dimensions[dense_layer_index]
             layer_nonlinearity = dense_nonlinearities[dense_layer_index];
 
-            # print "before dense", lasagne.layers.get_output_shape(neural_network)
             neural_network = layers.DenseLayer(neural_network,
                                                layer_shape,
                                                W=init.GlorotUniform(gain=init.GlorotUniformGain[layer_nonlinearity]),
@@ -496,7 +459,7 @@ class DynamicConvolutionalNeuralNetwork(DiscriminativeNetwork):
         self.build_functions();
 
     def build_functions(self):
-        super(DynamicConvolutionalNeuralNetwork, self).build_functions();
+        super(DynamicLeNet, self).build_functions();
 
         # Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
         dropout_loss = self.get_loss(self._output_variable, deterministic=True);

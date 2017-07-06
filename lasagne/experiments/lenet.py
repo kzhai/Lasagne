@@ -7,27 +7,21 @@ import timeit
 
 from .. import networks
 from .. import nonlinearities, objectives
-from .base import load_data, load_data_to_train_validate
+from .base import load_data, load_and_split_data
 
 __all__ = [
-    "train_cnn",
+    "train_lenet",
 ]
 
-def construct_cnn_parser():
-    from .base import construct_generic_parser
-    model_parser = construct_generic_parser();
+def construct_lenet_parser():
+    from .base import construct_discriminative_parser, add_convpool_options, add_dense_options, add_dropout_options
 
-    model_parser.description = "convolutional neural network argument";
+    model_parser = construct_discriminative_parser();
+    model_parser = add_convpool_options(model_parser);
+    model_parser = add_dense_options(model_parser);
+    model_parser = add_dropout_options(model_parser);
 
-    # model argument set 1
-    model_parser.add_argument("--convolution_filters", dest="convolution_filters", action='store', default=None,
-                              help="number of convolution filters [None], example, '32,16' represents 32 and 16 filters for convolution layers respectively");
-    model_parser.add_argument("--convolution_nonlinearities", dest="convolution_nonlinearities", action='store', default=None,
-                              help="activation functions of convolution layers [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively");
-
-    model_parser.add_argument("--local_convolution_filters", dest="local_convolution_filters", action='store', default=None,
-                              help="number of locally connected convolution filters [None], example, '32,16' represents 32 and 16 filters for locally connected convolution layers respectively");
-
+    '''
     # model argument set 2
     model_parser.add_argument("--dense_dimensions", dest="dense_dimensions", action='store', default=None,
                               help="dimension of different layer [None], example, '100,500,10' represents 3 layers contains 100, 500, and 10 neurons respectively");
@@ -39,7 +33,7 @@ def construct_cnn_parser():
                               help="dropout probability of different layer [1], either one number of a list of numbers, example, '0.2' represents 0.2 dropout rate for all input+hidden layers, or '0.2,0.5' represents 0.2 dropout rate for input layer and 0.5 dropout rate for first hidden layer respectively");
     model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store', default="bernoulli",
                               help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively");
-
+    '''
     '''
     # model argument set 4
     model_parser.add_argument("--convolution_filter_sizes", dest="convolution_filter_sizes", action='store', default="5*5",
@@ -70,10 +64,6 @@ def construct_cnn_parser():
     #
     #
 
-    # model argument set
-    model_parser.add_argument("--validation_interval", dest="validation_interval", type=int, action='store', default=1000,
-                              help="validation interval in number of mini-batches [1000]");
-
     '''
     model_parser.add_argument("--pretrained_model_file", dest="pretrained_model_file",
                               help="pretrained model file [None]");
@@ -85,82 +75,24 @@ def construct_cnn_parser():
 
     return model_parser
 
-def validate_cnn_arguments(arguments):
-    from .base import validate_generic_arguments
-    arguments = validate_generic_arguments(arguments);
+def validate_lenet_arguments(arguments):
+    from .base import validate_discriminative_arguments, validate_convpool_arguments, validate_dense_arguments, validate_dropout_arguments
 
-    # model argument set 1
-    assert arguments.convolution_filters != None
-    convolution_filters = arguments.convolution_filters.split(",")
-    arguments.convolution_filters = [int(convolution_filter) for convolution_filter in convolution_filters]
+    arguments = validate_discriminative_arguments(arguments);
 
-    assert arguments.convolution_nonlinearities != None
-    convolution_nonlinearities = arguments.convolution_nonlinearities.split(",")
-    arguments.convolution_nonlinearities = [getattr(nonlinearities, layer_nonlinearity) for layer_nonlinearity in convolution_nonlinearities]
-
-    assert len(convolution_nonlinearities) == len(convolution_filters)
+    arguments = validate_convpool_arguments(arguments);
     number_of_convolution_layers = len(arguments.convolution_filters);
 
-    assert arguments.local_convolution_filters != None
-    local_convolution_filters = arguments.local_convolution_filters.split(",")
-    arguments.local_convolution_filters = [int(local_convolution_filter) for local_convolution_filter in local_convolution_filters]
-    number_of_local_convolution_layers = len(arguments.local_convolution_filters);
-
-    # model argument set 2
-    assert arguments.dense_dimensions != None
-    dense_dimensions = arguments.dense_dimensions.split(",")
-    arguments.dense_dimensions = [int(dimensionality) for dimensionality in dense_dimensions]
-
-    assert arguments.dense_nonlinearities != None
-    dense_nonlinearities = arguments.dense_nonlinearities.split(",")
-    arguments.dense_nonlinearities = [getattr(nonlinearities, layer_nonlinearity) for layer_nonlinearity in dense_nonlinearities]
-
-    assert len(dense_dimensions) == len(dense_nonlinearities)
+    arguments = validate_dense_arguments(arguments);
     number_of_dense_layers = len(arguments.dense_dimensions);
 
-    #number_of_layers = number_of_convolution_layers + number_of_dense_layers;
-    number_of_layers = number_of_dense_layers;
+    number_of_layers = number_of_convolution_layers + number_of_dense_layers;
+    arguments = validate_dropout_arguments(arguments, number_of_layers);
 
-    # model argument set 3
-    layer_activation_styles = arguments.layer_activation_styles;
-    layer_activation_style_tokens = layer_activation_styles.split(",")
-    if len(layer_activation_style_tokens) == 1:
-        layer_activation_styles = [layer_activation_styles for layer_index in xrange(number_of_layers)]
-    elif len(layer_activation_style_tokens) == number_of_layers:
-        layer_activation_styles = layer_activation_style_tokens
-        # [float(layer_activation_parameter) for layer_activation_parameter in layer_activation_parameter_tokens]
-    assert len(layer_activation_styles) == number_of_layers;
-    assert (layer_activation_style in set(
-        ["bernoulli", "beta_bernoulli", "reciprocal_beta_bernoulli", "reverse_reciprocal_beta_bernoulli",
-         "mixed_beta_bernoulli"]) for layer_activation_style in layer_activation_styles)
-    arguments.layer_activation_styles = layer_activation_styles;
-
-    layer_activation_parameters = arguments.layer_activation_parameters;
-    layer_activation_parameter_tokens = layer_activation_parameters.split(",")
-    if len(layer_activation_parameter_tokens) == 1:
-        layer_activation_parameters = [layer_activation_parameters for layer_index in xrange(number_of_layers)]
-    elif len(layer_activation_parameter_tokens) == number_of_layers:
-        layer_activation_parameters = layer_activation_parameter_tokens
-    assert len(layer_activation_parameters) == number_of_layers;
-
-    for layer_index in xrange(number_of_layers):
-        if layer_activation_styles[layer_index] == "bernoulli":
-            layer_activation_parameters[layer_index] = float(layer_activation_parameters[layer_index])
-            assert layer_activation_parameters[layer_index] <= 1;
-            assert layer_activation_parameters[layer_index] > 0;
-        elif layer_activation_styles[layer_index] == "beta_bernoulli" or layer_activation_styles[
-            layer_index] == "reciprocal_beta_bernoulli" or layer_activation_styles[
-            layer_index] == "reverse_reciprocal_beta_bernoulli" or layer_activation_styles[
-            layer_index] == "mixed_beta_bernoulli":
-            layer_activation_parameter_tokens = layer_activation_parameters[layer_index].split("+");
-            assert len(layer_activation_parameter_tokens) == 2;
-            layer_activation_parameters[layer_index] = (
-            float(layer_activation_parameter_tokens[0]), float(layer_activation_parameter_tokens[1]))
-            assert layer_activation_parameters[layer_index][0] > 0;
-            assert layer_activation_parameters[layer_index][1] > 0;
-            if layer_activation_styles[layer_index] == "mixed_beta_bernoulli":
-                assert layer_activation_parameters[layer_index][0] < 1;
-    arguments.layer_activation_parameters = layer_activation_parameters;
+    #assert arguments.local_convolution_filters != None
+    #local_convolution_filters = arguments.local_convolution_filters.split(",")
+    #arguments.local_convolution_filters = [int(local_convolution_filter) for local_convolution_filter in local_convolution_filters]
+    #number_of_local_convolution_layers = len(arguments.local_convolution_filters);
 
     '''
     # model argument set 4
@@ -224,10 +156,6 @@ def validate_cnn_arguments(arguments):
     arguments.pooling_strides = pooling_strides;
     '''
 
-    # model argument set
-    assert (arguments.validation_interval > 0);
-    arguments.validation_interval = arguments.validation_interval;
-
     '''
     dae_regularizer_lambdas = arguments.dae_regularizer_lambdas
     if isinstance(dae_regularizer_lambdas, int):
@@ -253,14 +181,14 @@ def validate_cnn_arguments(arguments):
 
     return arguments
 
-def train_cnn():
+def train_lenet():
     """
     Demonstrate stochastic gradient descent optimization for a multilayer perceptron
     This is demonstrated on MNIST.
     """
 
-    arguments, additionals = construct_cnn_parser().parse_known_args()
-    settings = validate_cnn_arguments(arguments);
+    arguments, additionals = construct_lenet_parser().parse_known_args()
+    settings = validate_lenet_arguments(arguments);
 
     input_directory = settings.input_directory
     output_directory = settings.output_directory
@@ -271,15 +199,17 @@ def train_cnn():
     validation_data = settings.validation_data
     minibatch_size = settings.minibatch_size
 
-    print "========== ========== ========== ========== =========="
+    print "========== ==========", "parameters", "========== =========="
     for key, value in vars(settings).iteritems():
         print "%s=%s" % (key, value);
-    print "========== ========== ========== ========== =========="
+    print "========== ==========", "additional", "========== =========="
+    for addition in additionals:
+        print "%s" % (addition);
 
-    logging.info("========== ========== ========== ========== ==========")
+    logging.info("========== ==========" + "parameters" + "========== ==========")
     for key, value in vars(settings).iteritems():
         logging.info("%s=%s" % (key, value));
-    logging.info("========== ========== ========== ========== ==========")
+    logging.info("========== ==========" + "parameters" + "========== ==========")
 
     cPickle.dump(settings, open(os.path.join(output_directory, "settings.pkl"), 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
@@ -292,7 +222,7 @@ def train_cnn():
     test_dataset = load_data(input_directory, dataset="test")
 
     if validation_data>=0:
-        train_dataset_info, validate_dataset_info = load_data_to_train_validate(input_directory, validation_data);
+        train_dataset_info, validate_dataset_info = load_and_split_data(input_directory, validation_data);
         train_dataset, train_indices = train_dataset_info;
         validate_dataset, validate_indices =validate_dataset_info;
         numpy.save(os.path.join(output_directory, "train.index.npy"), train_indices);
@@ -311,15 +241,14 @@ def train_cnn():
     #
     #
 
-    network = networks.ConvolutionalNeuralNetwork(
+    network = networks.LeNet(
         incoming=input_shape,
 
         convolution_filters=settings.convolution_filters,
         convolution_nonlinearities=settings.convolution_nonlinearities,
         # convolution_filter_sizes=None,
         # maxpooling_sizes=None,
-
-        local_convolution_filters=settings.local_convolution_filters,
+        pool_modes=settings.pool_modes,
 
         dense_dimensions=settings.dense_dimensions,
         dense_nonlinearities=settings.dense_nonlinearities,
@@ -331,8 +260,10 @@ def train_cnn():
         update_function=settings.update,
 
         learning_rate = settings.learning_rate,
-        learning_rate_decay_style=settings.learning_rate_decay_style,
-        learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
+        learning_rate_decay=settings.learning_rate_decay,
+        #learning_rate_decay_style=settings.learning_rate_decay_style,
+        #learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
+
         validation_interval=settings.validation_interval,
     )
 
@@ -380,11 +311,5 @@ def train_cnn():
         network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index));
     print >> sys.stderr, ('The code for file %s ran for %.2fm' % (os.path.split(__file__)[1], (end_train - start_train) / 60.))
 
-def resume_cnn():
-    pass
-
-def test_cnn():
-    pass
-
 if __name__ == '__main__':
-    train_cnn()
+    train_lenet()
