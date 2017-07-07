@@ -25,9 +25,8 @@ def decay_learning_rate(learning_rate, epoch_or_iteration_index, learning_rate_d
     #learning_rate = 1e-3, learning_rate_decay_style = None, learning_rate_decay_parameter = 0
     #learning_rate, learning_rate_decay_style, learning_rate_decay_parameter = learning_rate_configuration;
     if learning_rate_decay == None:
-        return learning_rate
-
-    if learning_rate_decay[1] == "inverse_t":
+        current_learning_rate = learning_rate;
+    elif learning_rate_decay[1] == "inverse_t":
         current_learning_rate = learning_rate * learning_rate_decay[2] / (1. + learning_rate_decay[3] * epoch_or_iteration_index)
     elif learning_rate_decay[1] == "exponential":
         current_learning_rate = learning_rate * learning_rate_decay[2] * numpy.exp(- learning_rate_decay[3] * epoch_or_iteration_index);
@@ -36,7 +35,7 @@ def decay_learning_rate(learning_rate, epoch_or_iteration_index, learning_rate_d
     else:
         current_learning_rate = learning_rate;
 
-    return current_learning_rate
+    return numpy.float32(current_learning_rate)
 
 class Network(object):
     def __init__(self,
@@ -77,7 +76,7 @@ class Network(object):
         self.objective_functions_change_stack = [];
         self.regularizer_functions_change_stack = [];
         self.update_function_change_stack = [];
-        self.learning_rate_change_stack = [];
+        #self.learning_rate_change_stack = [];
         self.learning_rate_decay_change_stack = [];
         #self.learning_rate_decay_style_change_stack = []
         #self.learning_rate_decay_parameter_change_stack = []
@@ -299,14 +298,15 @@ class Network(object):
         self.__set_update_function(update);
         self.build_functions();
 
-    def set_learning_rate(self, learning_rate):
-        self.learning_rate = learning_rate;
-        self.learning_rate_change_stack.append((self.epoch_index, self.learning_rate));
-
     def set_learning_rate_decay(self, learning_rate_decay):
         self.learning_rate_decay = learning_rate_decay;
         self.learning_rate_decay_change_stack.append((self.epoch_index, self.learning_rate_decay));
 
+    '''
+    def set_learning_rate(self, learning_rate):
+        self.learning_rate = learning_rate;
+        self.learning_rate_change_stack.append((self.epoch_index, self.learning_rate));
+        
     def set_learning_rate_decay_style(self, learning_rate_decay_style):
         self.learning_rate_decay_style = learning_rate_decay_style;
         self.learning_rate_decay_style_change_stack.append((self.epoch_index, self.learning_rate_decay_style));
@@ -314,6 +314,7 @@ class Network(object):
     def set_learning_rate_decay_parameter(self, learning_rate_decay_parameter):
         self.learning_rate_decay_parameter = learning_rate_decay_parameter;
         self.learning_rate_decay_parameter_change_stack.append((self.epoch_index, self.learning_rate_decay_parameter));
+    '''
 
     '''
     def build_functions(self):
