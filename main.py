@@ -1,10 +1,6 @@
 import argparse
-import numpy
 
 def main():
-    #options = parse_args();
-    #train_mlp(options)
-
     model_selector = argparse.ArgumentParser(description="model selector")
     model_selector.add_argument("--model", dest="model", action='store', default=None, help="model [None]");
 
@@ -17,19 +13,24 @@ def main():
     print additionals
     print "========== ========== ========== ========== =========="
 
-
     if arguments.model == "mlp":
         from lasagne.experiments.mlp import train_mlp
         train_mlp()
     elif arguments.model == "dmlp":
-        from lasagne.experiments.dmlp import train_dmlp
+        from lasagne.experiments.mlpd import train_dmlp
         train_dmlp()
-    elif arguments.model == "cnn":
-        from lasagne.experiments.cnn import train_cnn
-        train_cnn()
-    elif arguments.model == "dcnn":
-        from lasagne.experiments.dcnn import train_dcnn
-        train_dcnn()
+    elif arguments.model == "lenet":
+        from lasagne.experiments.lenet import train_lenet
+        train_lenet()
+    elif arguments.model == "dlenet":
+        from lasagne.experiments.lenetd import train_dlenet
+        train_dlenet()
+    elif arguments.model == "alexnet":
+        from lasagne.experiments.alexnet import train_alexnet
+        train_alexnet()
+    elif arguments.model == "dalexnet":
+        from lasagne.experiments.alexnetd import train_dalexnet
+        train_dalexnet()
     elif arguments.model == "snn":
         from lasagne.experiments.snn import train_snn
         train_snn()
