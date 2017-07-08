@@ -76,16 +76,16 @@ class Network(object):
         self.objective_functions_change_stack = [];
         self.regularizer_functions_change_stack = [];
         self.update_function_change_stack = [];
-        #self.learning_rate_change_stack = [];
         self.learning_rate_decay_change_stack = [];
+        self.learning_rate_change_stack = [];
         #self.learning_rate_decay_style_change_stack = []
         #self.learning_rate_decay_parameter_change_stack = []
 
         self.__set_objective_functions(objective_functions)
         self.__set_regularizer_functions();
         self.__set_update_function(update_function);
-        self.set_learning_rate(learning_rate);
         self.set_learning_rate_decay(learning_rate_decay);
+        self.set_learning_rate(learning_rate);
         #self.set_learning_rate_decay_style(learning_rate_decay_style);
         #self.set_learning_rate_decay_parameter(learning_rate_decay_parameter);
 
@@ -302,11 +302,11 @@ class Network(object):
         self.learning_rate_decay = learning_rate_decay;
         self.learning_rate_decay_change_stack.append((self.epoch_index, self.learning_rate_decay));
 
-    '''
     def set_learning_rate(self, learning_rate):
         self.learning_rate = learning_rate;
         self.learning_rate_change_stack.append((self.epoch_index, self.learning_rate));
-        
+
+    '''
     def set_learning_rate_decay_style(self, learning_rate_decay_style):
         self.learning_rate_decay_style = learning_rate_decay_style;
         self.learning_rate_decay_style_change_stack.append((self.epoch_index, self.learning_rate_decay_style));
