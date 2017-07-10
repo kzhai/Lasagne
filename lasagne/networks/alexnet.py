@@ -100,7 +100,7 @@ class AlexNet(DiscriminativeNetwork):
             # print "before convolution", lasagne.layers.get_output_shape(neural_network)
             # Convolutional layer with 32 kernels of size 5x5. Strided and padded convolutions are supported as well; see the docstring.
             neural_network = layers.Conv2DLayer(neural_network,
-                                                W=init.GlorotUniform(gain=(0.01*init.GlorotUniformGain[conv_nonlinearity])),
+                                                W=init.GlorotUniform(gain=(0.1*init.GlorotUniformGain[conv_nonlinearity])),
                                                 b=init.Constant(1.),
                                                 nonlinearity=conv_nonlinearity,
                                                 num_filters=conv_filter_number,
@@ -271,7 +271,7 @@ class DynamicAlexNet(DiscriminativeNetwork):
 
             # Convolutional layer with 32 kernels of size 5x5. Strided and padded convolutions are supported as well; see the docstring.
             neural_network = layers.Conv2DLayer(neural_network,
-                                                W=init.GlorotUniform(gain=(1e-3*init.GlorotUniformGain[conv_nonlinearity])),
+                                                W=init.GlorotUniform(gain=(0.1*init.GlorotUniformGain[conv_nonlinearity])),
                                                 # This is ONLY for CIFAR-10 dataset.
                                                 # W=init.Uniform(0.1**(1+len(convolution_filters)-conv_layer_index)),
                                                 # W=init.HeNormal(gain=0.1),
@@ -312,7 +312,7 @@ class DynamicAlexNet(DiscriminativeNetwork):
                                                                filter_size=local_convolution_filter_sizes,
                                                                stride=local_convolution_strides,
                                                                pad=local_convolution_pads,
-                                                               W=init.GlorotUniform(1e-2),
+                                                               W=init.GlorotUniform(),
                                                                b=init.Constant(0.),
                                                                )
 
@@ -339,7 +339,7 @@ class DynamicAlexNet(DiscriminativeNetwork):
 
             neural_network = layers.DenseLayer(neural_network,
                                                layer_shape,
-                                               W=init.GlorotUniform(gain=(1e-1*init.GlorotUniformGain[layer_nonlinearity])),
+                                               W=init.GlorotUniform(gain=(init.GlorotUniformGain[layer_nonlinearity])),
                                                nonlinearity=layer_nonlinearity)
             #print "after dense", layers.get_output_shape(neural_network);
 
