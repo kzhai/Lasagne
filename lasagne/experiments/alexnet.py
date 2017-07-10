@@ -24,6 +24,8 @@ def construct_alexnet_parser():
     # model argument set 1
     model_parser.add_argument("--number_of_lrn_layers", dest="number_of_lrn_layers", type=int, action='store', default=2,
                               help="number of local response normalize layers [2]");
+    model_parser.add_argument("--locally_connected_filters", dest="locally_connected_filters", action='store', default=None,
+                              help="locally connected filter [None], example, '64,32' represents 64 and 32 filters");
 
     '''
     # model argument set 4
@@ -82,6 +84,11 @@ def validate_alexnet_arguments(arguments):
 
     # model argument set 1
     assert arguments.number_of_lrn_layers<=number_of_convolution_layers
+
+    if arguments.locally_connected_filters==None:
+        arguments.locally_connected_filters = [];
+    else:
+        arguments.locally_connected_filters = [int(locally_connected_filter) for locally_connected_filter in arguments.locally_connected_filters.split(",")];
 
     '''
     # model argument set 4
@@ -235,9 +242,11 @@ def train_alexnet():
         convolution_nonlinearities=settings.convolution_nonlinearities,
         # convolution_filter_sizes=None,
         # maxpooling_sizes=None,
-
+        
         number_of_layers_to_LRN=settings.number_of_lrn_layers,
         pool_modes=settings.pool_modes,
+
+        locally_connected_filters=settings.locally_connected_filters,
 
         dense_dimensions=settings.dense_dimensions,
         dense_nonlinearities=settings.dense_nonlinearities,

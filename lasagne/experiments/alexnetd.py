@@ -103,6 +103,8 @@ def train_dalexnet():
         number_of_layers_to_LRN=settings.number_of_lrn_layers,
         pool_modes=settings.pool_modes,
 
+        locally_connected_filters=settings.locally_connected_filters,
+
         dense_dimensions=settings.dense_dimensions,
         dense_nonlinearities=settings.dense_nonlinearities,
 
