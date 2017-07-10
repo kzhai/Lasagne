@@ -100,15 +100,15 @@ class AlexNet(DiscriminativeNetwork):
             # print "before convolution", lasagne.layers.get_output_shape(neural_network)
             # Convolutional layer with 32 kernels of size 5x5. Strided and padded convolutions are supported as well; see the docstring.
             neural_network = layers.Conv2DLayer(neural_network,
-                                                W=init.GlorotUniform(gain=(1e-3*init.GlorotUniformGain[conv_nonlinearity])),
+                                                W=init.GlorotUniform(gain=(0.01*init.GlorotUniformGain[conv_nonlinearity])),
                                                 b=init.Constant(1.),
                                                 nonlinearity=conv_nonlinearity,
                                                 num_filters=conv_filter_number,
                                                 filter_size=conv_filter_size,
-
                                                 stride=conv_stride,
                                                 pad=conv_pad,
                                                 )
+            #print "convolution", numpy.mean(neural_network.W.eval()), numpy.max(neural_network.W.eval()), numpy.min(neural_network.W.eval());
 
             if conv_layer_index < number_of_layers_to_LRN:
                 neural_network = normalization.LocalResponseNormalization2DLayer(neural_network);
@@ -130,16 +130,17 @@ class AlexNet(DiscriminativeNetwork):
                                                     mode=pool_mode,
                                                     )
 
-        if locally_connected_filters==None or len(locally_connected_filters)==0:
+        if locally_connected_filters!=None and len(locally_connected_filters)>0:
             for local_layer_index in xrange(len(locally_connected_filters)):
                 neural_network = local.LocallyConnected2DLayer(neural_network,
                                                                locally_connected_filters[local_layer_index],
                                                                filter_size=local_convolution_filter_sizes,
                                                                stride=local_convolution_strides,
                                                                pad=local_convolution_pads,
-                                                               W=init.GlorotUniform(1e-2),
+                                                               W=init.GlorotUniform(),
                                                                b=init.Constant(0.),
                                                                )
+                #print "locally-connected", numpy.mean(neural_network.W.eval()), numpy.max(neural_network.W.eval()), numpy.min(neural_network.W.eval());
 
         assert len(dense_dimensions) == len(dense_nonlinearities)
         for dense_layer_index in xrange(len(dense_dimensions)):
@@ -161,10 +162,11 @@ class AlexNet(DiscriminativeNetwork):
             # print "before dense", lasagne.layers.get_output_shape(neural_network)
             neural_network = layers.DenseLayer(neural_network,
                                                layer_shape,
-                                               W=init.GlorotUniform(gain=1e-1*init.GlorotUniformGain[layer_nonlinearity]),
+                                               W=init.GlorotUniform(gain=init.GlorotUniformGain[layer_nonlinearity]),
                                                # This is ONLY for CIFAR-10 dataset.
                                                # W=init.HeNormal('relu'),
                                                nonlinearity=layer_nonlinearity)
+            #print "dense", numpy.mean(neural_network.W.eval()), numpy.max(neural_network.W.eval()), numpy.min(neural_network.W.eval());
 
         self._neural_network = neural_network;
 
