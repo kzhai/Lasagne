@@ -63,14 +63,18 @@ class MultiLayerPerceptron(DiscriminativeNetwork):
         neural_network = self._input_layer;
         for layer_index in xrange(len(layer_dimensions)):
             previous_layer_dimension = layers.get_output_shape(neural_network)[1:];
-            activation_probability = noise.sample_activation_probability(previous_layer_dimension, layer_activation_styles[layer_index], layer_activation_parameters[layer_index]);
+            activation_probability = noise.sample_activation_probability(previous_layer_dimension,
+                                                                         layer_activation_styles[layer_index],
+                                                                         layer_activation_parameters[layer_index]);
 
-            neural_network = noise.LinearDropoutLayer(neural_network, activation_probability=activation_probability);
+            neural_network = noise.LinearDropoutLayer(neural_network,
+                                                      activation_probability=activation_probability);
 
             layer_dimension = layer_dimensions[layer_index]
             layer_nonlinearity = layer_nonlinearities[layer_index];
 
-            neural_network = layers.DenseLayer(neural_network, layer_dimension, W=init.GlorotUniform(gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
+            neural_network = layers.DenseLayer(neural_network, layer_dimension, W=init.GlorotUniform(
+                gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
 
             '''
             if pretrained_network_layers == None or len(pretrained_network_layers) <= layer_index:
@@ -150,7 +154,6 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
             activation_probability = noise.sample_activation_probability(previous_layer_dimension,
                                                                          layer_activation_styles[layer_index],
                                                                          layer_activation_parameters[layer_index]);
-            activation_probability = activation_probability.astype(theano.config.floatX);
 
             if update_hidden_layer_dropout_only and layer_index==0:
                 neural_network = noise.LinearDropoutLayer(neural_network,

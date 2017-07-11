@@ -35,7 +35,8 @@ def decay_learning_rate(learning_rate, epoch_or_iteration_index, learning_rate_d
     else:
         current_learning_rate = learning_rate;
 
-    return numpy.float32(current_learning_rate)
+    return current_learning_rate.astype(theano.config.floatX)
+    #return numpy.float32(current_learning_rate)
 
 class Network(object):
     def __init__(self,

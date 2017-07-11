@@ -318,7 +318,7 @@ def sample_activation_probability(input_dimensions, activation_style, activation
         sys.stderr.write("error: unrecognized configuration...\n");
         sys.exit();
 
-    return activation_probability.astype(numpy.float32)
+    return activation_probability.astype(theano.config.floatX)
 
 def get_filter(input_shape, retain_probability, rng=RandomStreams()):
     filter = rng.binomial(size=input_shape, n=1, p=retain_probability, dtype=theano.config.floatX);

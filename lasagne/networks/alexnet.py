@@ -17,8 +17,6 @@ __all__ = [
 
 class AlexNet(DiscriminativeNetwork):
     def __init__(self,
-                 # input_network=None,
-                 # input_shape,
                  incoming,
 
                  convolution_filters,
@@ -83,10 +81,13 @@ class AlexNet(DiscriminativeNetwork):
             '''
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
-            activation_probability = noise.sample_activation_probability(previous_layer_shape, layer_activation_styles[dropout_layer_index], layer_activation_parameters[dropout_layer_index]);
+            activation_probability = noise.sample_activation_probability(previous_layer_shape,
+                                                                         layer_activation_styles[dropout_layer_index],
+                                                                         layer_activation_parameters[dropout_layer_index]);
             activation_probability = numpy.reshape(activation_probability, input_layer_shape)
             # print "before dropout", lasagne.layers.get_output_shape(neural_network)
-            neural_network = noise.LinearDropoutLayer(neural_network, activation_probability=activation_probability);
+            neural_network = noise.LinearDropoutLayer(neural_network,
+                                                      activation_probability=activation_probability);
             dropout_layer_index += 1;
             '''
 
@@ -100,7 +101,7 @@ class AlexNet(DiscriminativeNetwork):
             # print "before convolution", lasagne.layers.get_output_shape(neural_network)
             # Convolutional layer with 32 kernels of size 5x5. Strided and padded convolutions are supported as well; see the docstring.
             neural_network = layers.Conv2DLayer(neural_network,
-                                                W=init.GlorotUniform(gain=(0.1*init.GlorotUniformGain[conv_nonlinearity])),
+                                                W=init.GlorotUniform(gain=(init.GlorotUniformGain[conv_nonlinearity])),
                                                 b=init.Constant(1.),
                                                 nonlinearity=conv_nonlinearity,
                                                 num_filters=conv_filter_number,
@@ -151,9 +152,7 @@ class AlexNet(DiscriminativeNetwork):
                                                                          layer_activation_parameters[
                                                                              dropout_layer_index]);
             activation_probability = numpy.reshape(activation_probability, input_layer_shape)
-            # print "before dropout", lasagne.layers.get_output_shape(neural_network)
-            neural_network = noise.LinearDropoutLayer(neural_network,
-                                                      activation_probability=activation_probability);
+            neural_network = noise.LinearDropoutLayer(neural_network, activation_probability=activation_probability);
             dropout_layer_index += 1;
 
             layer_shape = dense_dimensions[dense_layer_index]
@@ -163,8 +162,6 @@ class AlexNet(DiscriminativeNetwork):
             neural_network = layers.DenseLayer(neural_network,
                                                layer_shape,
                                                W=init.GlorotUniform(gain=init.GlorotUniformGain[layer_nonlinearity]),
-                                               # This is ONLY for CIFAR-10 dataset.
-                                               # W=init.HeNormal('relu'),
                                                nonlinearity=layer_nonlinearity)
             #print "dense", numpy.mean(neural_network.W.eval()), numpy.max(neural_network.W.eval()), numpy.min(neural_network.W.eval());
 
@@ -213,7 +210,6 @@ class DynamicAlexNet(DiscriminativeNetwork):
 
                  pooling_kernel_sizes=(3, 3),
                  pooling_strides=(2, 2),
-
                  ):
         super(DynamicAlexNet, self).__init__(incoming,
                                              objective_functions,
@@ -249,7 +245,6 @@ class DynamicAlexNet(DiscriminativeNetwork):
             activation_probability = noise.sample_activation_probability(previous_layer_shape,
                                                                          layer_activation_styles[dropout_layer_index],
                                                                          layer_activation_parameters[dropout_layer_index]);
-            activation_probability = activation_probability.astype(theano.config.floatX);
             activation_probability = numpy.reshape(activation_probability, input_layer_shape)
             # print "before dropout", lasagne.layers.get_output_shape(neural_network)
             if update_hidden_layer_dropout_only:
@@ -264,14 +259,13 @@ class DynamicAlexNet(DiscriminativeNetwork):
             conv_filter_number = convolution_filters[conv_layer_index];
             conv_nonlinearity = convolution_nonlinearities[conv_layer_index];
 
-            # conv_filter_size = convolution_filter_sizes[conv_layer_index]
             conv_filter_size = convolution_kernel_sizes;
             conv_stride = convolution_strides;
             conv_pad = convolution_pads;
 
             # Convolutional layer with 32 kernels of size 5x5. Strided and padded convolutions are supported as well; see the docstring.
             neural_network = layers.Conv2DLayer(neural_network,
-                                                W=init.GlorotUniform(gain=(0.1*init.GlorotUniformGain[conv_nonlinearity])),
+                                                W=init.GlorotUniform(gain=(init.GlorotUniformGain[conv_nonlinearity])),
                                                 # This is ONLY for CIFAR-10 dataset.
                                                 # W=init.Uniform(0.1**(1+len(convolution_filters)-conv_layer_index)),
                                                 # W=init.HeNormal(gain=0.1),
@@ -305,7 +299,7 @@ class DynamicAlexNet(DiscriminativeNetwork):
                                                     mode=pool_mode,
                                                     )
 
-        if locally_connected_filters==None or len(locally_connected_filters)==0:
+        if locally_connected_filters!=None and len(locally_connected_filters)>0:
             for local_layer_index in xrange(len(locally_connected_filters)):
                 neural_network = local.LocallyConnected2DLayer(neural_network,
                                                                locally_connected_filters[local_layer_index],
@@ -322,8 +316,8 @@ class DynamicAlexNet(DiscriminativeNetwork):
             previous_layer_shape = numpy.prod(input_layer_shape)
             activation_probability = noise.sample_activation_probability(previous_layer_shape,
                                                                          layer_activation_styles[dropout_layer_index],
-                                                                         layer_activation_parameters[dropout_layer_index]);
-            activation_probability = activation_probability.astype(theano.config.floatX);
+                                                                         layer_activation_parameters[
+                                                                             dropout_layer_index]);
             activation_probability = numpy.reshape(activation_probability, input_layer_shape)
             if update_hidden_layer_dropout_only and dense_layer_index == 0:
                 neural_network = noise.LinearDropoutLayer(neural_network,
