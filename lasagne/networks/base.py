@@ -12,7 +12,7 @@ import timeit
 import types
 
 from .. import layers
-from .. import objectives, regularization, utils
+from .. import objectives, regularization, updates, utils
 
 __all__ = [
     "decay_learning_rate",
@@ -45,6 +45,7 @@ class Network(object):
                  update_function,
                  learning_rate=1e-3,
                  learning_rate_decay=None,
+                 max_norm_constraint=0,
                  #learning_rate_decay_style=None,
                  #learning_rate_decay_parameter=0,
                  ):
@@ -79,6 +80,7 @@ class Network(object):
         self.update_function_change_stack = [];
         self.learning_rate_decay_change_stack = [];
         self.learning_rate_change_stack = [];
+        self.max_norm_constraint_change_stack = [];
         #self.learning_rate_decay_style_change_stack = []
         #self.learning_rate_decay_parameter_change_stack = []
 
@@ -87,6 +89,7 @@ class Network(object):
         self.__set_update_function(update_function);
         self.set_learning_rate_decay(learning_rate_decay);
         self.set_learning_rate(learning_rate);
+        self.set_max_norm_constraint(max_norm_constraint);
         #self.set_learning_rate_decay_style(learning_rate_decay_style);
         #self.set_learning_rate_decay_parameter(learning_rate_decay_parameter);
 
@@ -307,6 +310,10 @@ class Network(object):
         self.learning_rate = learning_rate;
         self.learning_rate_change_stack.append((self.epoch_index, self.learning_rate));
 
+    def set_max_norm_constraint(self, max_norm_constraint):
+        self.max_norm_constraint = max_norm_constraint;
+        self.max_norm_constraint_change_stack.append((self.epoch_index, self.max_norm_constraint));
+
     '''
     def set_learning_rate_decay_style(self, learning_rate_decay_style):
         self.learning_rate_decay_style = learning_rate_decay_style;
@@ -373,6 +380,7 @@ class DiscriminativeNetwork(Network):
                  update_function,
                  learning_rate=1e-3,
                  learning_rate_decay=None,
+                 max_norm_constraint=0,
                  #learning_rate_decay_style=None,
                  #learning_rate_decay_parameter=0,
                  validation_interval=-1,
@@ -383,6 +391,7 @@ class DiscriminativeNetwork(Network):
                                                     update_function,
                                                     learning_rate,
                                                     learning_rate_decay,
+                                                    max_norm_constraint,
                                                     #learning_rate_decay_style,
                                                     #learning_rate_decay_parameter
                                                     );
@@ -426,6 +435,21 @@ class DiscriminativeNetwork(Network):
         # Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
         trainable_params = self.get_network_params(trainable=True)
         trainable_params_updates = self._update_function(train_loss, trainable_params, self._learning_rate_variable, momentum=0.95)
+
+        if self.max_norm_constraint>0:
+            for param in self.get_network_params(trainable=True, regularizable=True):
+                ndim = param.ndim
+                if ndim == 2:  # DenseLayer
+                    sum_over = (0,)
+                elif ndim in [3, 4, 5]:  # Conv{1,2,3}DLayer
+                    sum_over = tuple(range(1, ndim));
+                elif ndim == 6:  # LocallyConnected{2}DLayer
+                    sum_over = tuple(range(1, ndim));
+                else:
+                    raise ValueError("Unsupported tensor dimensionality {}.".format(ndim))
+                trainable_params_updates[param] = updates.norm_constraint(trainable_params_updates[param],
+                                                                          self.max_norm_constraint,
+                                                                          norm_axes=sum_over);
 
         # Compile a function performing a training step on a mini-batch (by giving the updates dictionary) and returning the corresponding training train_loss:
         self._train_function = theano.function(

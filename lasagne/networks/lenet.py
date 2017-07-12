@@ -38,6 +38,7 @@ class LeNet(DiscriminativeNetwork):
 
                  learning_rate=1e-3,
                  learning_rate_decay=None,
+                 max_norm_constraint=0,
                  #learning_rate_decay_style=None,
                  #learning_rate_decay_parameter=0,
 
@@ -55,6 +56,7 @@ class LeNet(DiscriminativeNetwork):
                                     update_function,
                                     learning_rate,
                                     learning_rate_decay,
+                                    max_norm_constraint,
                                     #learning_rate_decay_style,
                                     #learning_rate_decay_parameter,
                                     validation_interval);
@@ -323,6 +325,7 @@ class DynamicLeNet(DiscriminativeNetwork):
 
                  learning_rate=1e-3,
                  learning_rate_decay=None,
+                 max_norm_constraint=0,
                  #learning_rate_decay_style=None,
                  #learning_rate_decay_parameter=0,
 
@@ -344,6 +347,7 @@ class DynamicLeNet(DiscriminativeNetwork):
                                            update_function,
                                            learning_rate,
                                            learning_rate_decay,
+                                           max_norm_constraint,
                                            #learning_rate_decay_style,
                                            #learning_rate_decay_parameter,
                                            validation_interval);

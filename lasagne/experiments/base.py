@@ -59,6 +59,8 @@ def construct_generic_parser():
                                 help="learning rate [1e-2]")
     generic_parser.add_argument("--learning_rate_decay", dest="learning_rate_decay", action='store', default=None,
                                 help="learning rate decay [None], example, 'iteration,inverse_t,0.2,0.1', 'epoch,exponential,1.7,0.1', 'epoch,step,0.2,100'");
+    generic_parser.add_argument("--max_norm_constraint", dest="max_norm_constraint", type=float, action='store', default=0,
+                                help="max norm constraint [0 - None]")
     '''
     generic_parser.add_argument("--learning_rate_decay_style", dest="learning_rate_decay_style", action='store',
                                 default=None,
@@ -82,6 +84,7 @@ def validate_generic_arguments(arguments):
         learning_rate_decay_tokens[2] = float(learning_rate_decay_tokens[2]);
         learning_rate_decay_tokens[3] = float(learning_rate_decay_tokens[3]);
         arguments.learning_rate_decay = learning_rate_decay_tokens;
+    assert arguments.max_norm_constraint >= 0;
 
     # generic argument set 3
     assert arguments.minibatch_size > 0;

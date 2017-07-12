@@ -28,6 +28,7 @@ class MultiLayerPerceptron(DiscriminativeNetwork):
                  update_function=updates.nesterov_momentum,
                  learning_rate=1e-3,
                  learning_rate_decay=None,
+                 max_norm_constraint=0,
                  #learning_rate_decay_style=None,
                  #learning_rate_decay_parameter=0,
 
@@ -38,6 +39,7 @@ class MultiLayerPerceptron(DiscriminativeNetwork):
                                                    update_function,
                                                    learning_rate,
                                                    learning_rate_decay,
+                                                   max_norm_constraint,
                                                    #learning_rate_decay_style,
                                                    #learning_rate_decay_parameter,
                                                    validation_interval,
@@ -111,6 +113,7 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
 
                  learning_rate=1e-3,
                  learning_rate_decay=None,
+                 max_norm_constraint=0,
                  #learning_rate_decay_style=None,
                  #learning_rate_decay_parameter=0,
 
@@ -124,6 +127,7 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
                                                           update_function,
                                                           learning_rate,
                                                           learning_rate_decay,
+                                                          max_norm_constraint,
                                                           #learning_rate_decay_style,
                                                           #learning_rate_decay_parameter,
                                                           validation_interval,
