@@ -68,7 +68,7 @@ class VariationalDropoutTypeANetwork(DiscriminativeNetwork):
 
         #neural_network = input_network;
         neural_network = self._input_layer;
-        for layer_index in xrange(len(layer_dimensions)):
+        for layer_index in range(len(layer_dimensions)):
             #previous_layer_dimension = layers.get_output_shape(neural_network)[1:];
             #activation_probability = noise.sample_activation_probability(previous_layer_dimension, layer_activation_styles[layer_index], layer_activation_parameters[layer_index]);
 
@@ -221,7 +221,7 @@ class VariationalDropoutTypeBNetwork(DiscriminativeNetwork):
 
         #neural_network = input_network;
         neural_network = self._input_layer;
-        for layer_index in xrange(len(layer_dimensions)):
+        for layer_index in range(len(layer_dimensions)):
             #previous_layer_dimension = layers.get_output_shape(neural_network)[1:];
             #activation_probability = noise.sample_activation_probability(previous_layer_dimension, layer_activation_styles[layer_index], layer_activation_parameters[layer_index]);
 
@@ -285,12 +285,12 @@ class VariationalDropoutTypeBNetwork(DiscriminativeNetwork):
 def print_output_dimension(checkpoint_text, neural_network, batch_size):
     reference_to_input_layers = [input_layer for input_layer in layers.get_all_layers(neural_network) if
                                  isinstance(input_layer, layers.InputLayer)];
-    print checkpoint_text, ":", layers.get_output_shape(neural_network, {reference_to_input_layers[0]: (batch_size, 784)})
+    print(checkpoint_text, ":", layers.get_output_shape(neural_network, {reference_to_input_layers[0]: (batch_size, 784)}))
 
 def print_output(checkpoint_text, neural_network, data):
     reference_to_input_layers = [input_layer for input_layer in layers.get_all_layers(neural_network) if
                                  isinstance(input_layer, layers.InputLayer)];
-    print checkpoint_text, ":", layers.get_output(neural_network, {reference_to_input_layers[0]: data}).eval()
+    print(checkpoint_text, ":", layers.get_output(neural_network, {reference_to_input_layers[0]: data}).eval())
 
 def main():
     from ..experiments import load_mnist
@@ -345,7 +345,7 @@ def main():
         update_function=updates.nesterov_momentum,
     )
     '''
-    print network.get_network_params(regularizable=False,adaptable=True);
+    print(network.get_network_params(regularizable=False,adaptable=True));
 
     ########################
     # START MODEL TRAINING #
@@ -359,13 +359,13 @@ def main():
 
     for epoch_index in range(number_of_epochs):
         network.train(train_dataset, minibatch_size, validate_dataset, test_dataset);
-        print "PROGRESS: %f%%" % (100. * epoch_index / number_of_epochs);
+        print("PROGRESS: %f%%" % (100. * epoch_index / number_of_epochs));
     end_train = timeit.default_timer()
 
-    print "Optimization complete..."
+    print("Optimization complete...")
     logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
         network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index));
-    print 'The code finishes in %.2fm' % ((end_train - start_train) / 60.)
+    print('The code finishes in %.2fm' % ((end_train - start_train) / 60.))
 
 if __name__ == '__main__':
     main();

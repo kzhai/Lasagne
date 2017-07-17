@@ -179,7 +179,7 @@ def validate_convpool_arguments(arguments):
     pool_modes = arguments.pool_modes.split(",")
     if len(pool_modes) == 1:
         pool_modes *= len(arguments.convolution_filters);
-    for pool_mode_index in xrange(len(pool_modes)):
+    for pool_mode_index in range(len(pool_modes)):
         if pool_modes[pool_mode_index].lower() == "none":
             pool_modes[pool_mode_index] = None;
     arguments.pool_modes = pool_modes
@@ -225,7 +225,7 @@ def validate_dropout_arguments(arguments, number_of_layers):
     layer_activation_styles = arguments.layer_activation_styles;
     layer_activation_style_tokens = layer_activation_styles.split(",")
     if len(layer_activation_style_tokens) == 1:
-        layer_activation_styles = [layer_activation_styles for layer_index in xrange(number_of_layers)]
+        layer_activation_styles = [layer_activation_styles for layer_index in range(number_of_layers)]
     elif len(layer_activation_style_tokens) == number_of_layers:
         layer_activation_styles = layer_activation_style_tokens
         # [float(layer_activation_parameter) for layer_activation_parameter in layer_activation_parameter_tokens]
@@ -238,12 +238,12 @@ def validate_dropout_arguments(arguments, number_of_layers):
     layer_activation_parameters = arguments.layer_activation_parameters;
     layer_activation_parameter_tokens = layer_activation_parameters.split(",")
     if len(layer_activation_parameter_tokens) == 1:
-        layer_activation_parameters = [layer_activation_parameters for layer_index in xrange(number_of_layers)]
+        layer_activation_parameters = [layer_activation_parameters for layer_index in range(number_of_layers)]
     elif len(layer_activation_parameter_tokens) == number_of_layers:
         layer_activation_parameters = layer_activation_parameter_tokens
     assert len(layer_activation_parameters) == number_of_layers;
 
-    for layer_index in xrange(number_of_layers):
+    for layer_index in range(number_of_layers):
         if layer_activation_styles[layer_index] == "bernoulli":
             layer_activation_parameters[layer_index] = float(layer_activation_parameters[layer_index])
             assert layer_activation_parameters[layer_index] <= 1;

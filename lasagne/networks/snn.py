@@ -54,7 +54,7 @@ class StandoutNeuralNetworkTypeA(DiscriminativeNetwork):
 
         neural_network = self._input_layer;
 
-        for layer_index in xrange(len(layer_dimensions)):
+        for layer_index in range(len(layer_dimensions)):
             previous_layer_dimension = layers.get_output_shape(neural_network)[1:];
             # activation_probability = noise.sample_activation_probability(previous_layer_dimension, layer_activation_styles[layer_index], layer_activation_parameters[layer_index]);
             # activation_probability = sample_activation_probability(previous_layer_dimension, layer_activation_styles[layer_index], layer_activation_parameters[layer_index]);
@@ -213,9 +213,9 @@ class StandoutNeuralNetworkTypeA(DiscriminativeNetwork):
         logging.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
             self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss,
             average_train_accuracy * 100))
-        print 'train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+        print('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
             self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss,
-            average_train_accuracy * 100)
+            average_train_accuracy * 100))
 
         self.epoch_index += 1;
 
@@ -266,7 +266,7 @@ class StandoutNeuralNetworkTypeB(DiscriminativeNetwork):
         activation_probability = numpy.zeros(previous_layer_dimension) + input_activation_rate;
         neural_network = layers.LinearDropoutLayer(neural_network, activation_probability=activation_probability);
 
-        for layer_index in xrange(len(layer_dimensions)):
+        for layer_index in range(len(layer_dimensions)):
             layer_dimension = layer_dimensions[layer_index]
             layer_nonlinearity = layer_nonlinearities[layer_index];
 
@@ -313,12 +313,12 @@ def main():
     )
 
     #print layers.get_all_params(network)
-    print network.get_network_params(trainable=True);
-    print network.get_network_params(trainable=True, adaptable=True);
-    print network.get_network_params(trainable=True, adaptable=False);
-    print network.get_network_params(regularizable=False);
-    print network.get_network_params(regularizable=False, adaptable=True);
-    print network.get_network_params(regularizable=False, adaptable=False);
+    print(network.get_network_params(trainable=True));
+    print(network.get_network_params(trainable=True, adaptable=True));
+    print(network.get_network_params(trainable=True, adaptable=False));
+    print(network.get_network_params(regularizable=False));
+    print(network.get_network_params(regularizable=False, adaptable=True));
+    print(network.get_network_params(regularizable=False, adaptable=False));
     #network.set_L1_regularizer_lambda([0, 0, 0])
     #network.set_L2_regularizer_lambda([0, 0, 0])
 
@@ -333,13 +333,13 @@ def main():
     minibatch_size = 1000;
     for epoch_index in range(number_of_epochs):
         network.train(train_dataset, minibatch_size, validate_dataset, test_dataset);
-        print "PROGRESS: %f%%" % (100. * epoch_index / number_of_epochs);
+        print("PROGRESS: %f%%" % (100. * epoch_index / number_of_epochs));
     end_train = timeit.default_timer()
 
-    print "Optimization complete..."
+    print("Optimization complete...")
     logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
         network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index));
-    print 'The code finishes in %.2fm' % ((end_train - start_train) / 60.)
+    print('The code finishes in %.2fm' % ((end_train - start_train) / 60.))
 
 if __name__ == '__main__':
     main();

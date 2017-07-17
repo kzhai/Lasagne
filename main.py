@@ -6,12 +6,12 @@ def main():
 
     arguments, additionals = model_selector.parse_known_args()
 
-    print "========== ========== ========== ========== =========="
-    for key, value in vars(arguments).iteritems():
-        print "%s=%s" % (key, value);
-    print "========== ========== ========== ========== =========="
-    print additionals
-    print "========== ========== ========== ========== =========="
+    print("========== ========== ========== ========== ==========")
+    for key, value in vars(arguments).items():
+        print("%s=%s" % (key, value));
+    print("========== ========== ========== ========== ==========")
+    print(additionals)
+    print("========== ========== ========== ========== ==========")
 
     if arguments.model == "mlp":
         from lasagne.experiments.mlp import train_mlp

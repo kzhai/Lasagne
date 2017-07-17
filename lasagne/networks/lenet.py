@@ -74,7 +74,7 @@ class LeNet(DiscriminativeNetwork):
 
         dropout_layer_index = 0;
         neural_network = self._input_layer;
-        for conv_layer_index in xrange(len(convolution_filters)):
+        for conv_layer_index in range(len(convolution_filters)):
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
             activation_probability = noise.sample_activation_probability(previous_layer_shape, layer_activation_styles[dropout_layer_index], layer_activation_parameters[dropout_layer_index]);
@@ -116,7 +116,7 @@ class LeNet(DiscriminativeNetwork):
                 # Max-pooling layer of factor 2 in both dimensions:
                 filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
                 if numpy.any(filter_size_for_pooling < pool_kernel_size):
-                    print "warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (layers.get_output_shape(neural_network), pool_kernel_size)
+                    print("warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (layers.get_output_shape(neural_network), pool_kernel_size))
                     continue;
                 neural_network = layers.Pool2DLayer(neural_network,
                                                     pool_size=pool_kernel_size,
@@ -125,7 +125,7 @@ class LeNet(DiscriminativeNetwork):
                                                     )
 
         assert len(dense_dimensions) == len(dense_nonlinearities)
-        for dense_layer_index in xrange(len(dense_dimensions)):
+        for dense_layer_index in range(len(dense_dimensions)):
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
             activation_probability = noise.sample_activation_probability(previous_layer_shape, layer_activation_styles[dropout_layer_index], layer_activation_parameters[dropout_layer_index]);
@@ -188,7 +188,7 @@ class LeNet(DiscriminativeNetwork):
             layer_corruption_levels = numpy.zeros((len(layers) - 1) / 2 - 1)
         assert len(layer_corruption_levels) == (len(layers) - 1) / 2 - 1;
             
-        for hidden_layer_index in xrange(2, len(layers) - 1, 2):
+        for hidden_layer_index in range(2, len(layers) - 1, 2):
             hidden_layer = layers[hidden_layer_index];
             # this is to get around the dropout layer
             # input = hidden_layer.input
@@ -280,14 +280,14 @@ class LeNet(DiscriminativeNetwork):
         number_of_minibatches_to_pretrain = data_x.shape[0] / minibatch_size
     
         # start_time = timeit.default_timer()
-        for dae_index in xrange(len(denoising_auto_encoders)):
+        for dae_index in range(len(denoising_auto_encoders)):
             # denoising_auto_encoder = denoising_auto_encoders[dae_index]
             # layer_corruption_level = layer_corruption_levels[dae_index]
-            for pretrain_epoch_index in xrange(number_of_epochs):
+            for pretrain_epoch_index in range(number_of_epochs):
                 start_time = time.time()
                  
                 average_pretrain_loss = []
-                for minibatch_index in xrange(number_of_minibatches_to_pretrain):
+                for minibatch_index in range(number_of_minibatches_to_pretrain):
                     iteration_index = pretrain_epoch_index * number_of_minibatches_to_pretrain + minibatch_index
                 
                     minibatch_x = data_x[minibatch_index * minibatch_size:(minibatch_index + 1) * minibatch_size, :]
@@ -340,14 +340,12 @@ class DynamicLeNet(DiscriminativeNetwork):
 
                  pooling_kernel_sizes=(3, 3),
                  pooling_strides=(2, 2),
-
                  ):
         super(DynamicLeNet, self).__init__(incoming,
                                            objective_functions,
                                            update_function,
                                            learning_rate,
                                            learning_rate_decay,
-                                           max_norm_constraint,
                                            #learning_rate_decay_style,
                                            #learning_rate_decay_parameter,
                                            validation_interval);
@@ -369,7 +367,7 @@ class DynamicLeNet(DiscriminativeNetwork):
 
         neural_network = self._input_layer;
         #print "after input", layers.get_output_shape(neural_network);
-        for conv_layer_index in xrange(len(convolution_filters)):
+        for conv_layer_index in range(len(convolution_filters)):
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
             activation_probability = noise.sample_activation_probability(previous_layer_shape,
@@ -419,7 +417,7 @@ class DynamicLeNet(DiscriminativeNetwork):
                 # Max-pooling layer of factor 2 in both dimensions:
                 filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
                 if numpy.any(filter_size_for_pooling < pool_size):
-                    print "warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (layers.get_output_shape(neural_network), pool_size)
+                    print("warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (layers.get_output_shape(neural_network), pool_size))
                     continue;
                 neural_network = layers.Pool2DLayer(neural_network,
                                                     pool_size=pool_size,
@@ -429,7 +427,7 @@ class DynamicLeNet(DiscriminativeNetwork):
                 #print "after maxpooling", layers.get_output_shape(neural_network);
 
         assert len(dense_dimensions) == len(dense_nonlinearities)
-        for dense_layer_index in xrange(len(dense_dimensions)):
+        for dense_layer_index in range(len(dense_dimensions)):
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
             activation_probability = noise.sample_activation_probability(previous_layer_shape,
@@ -546,7 +544,7 @@ class DynamicLeNet(DiscriminativeNetwork):
             layer_corruption_levels = numpy.zeros((len(layers) - 1) / 2 - 1)
         assert len(layer_corruption_levels) == (len(layers) - 1) / 2 - 1;
 
-        for hidden_layer_index in xrange(2, len(layers) - 1, 2):
+        for hidden_layer_index in range(2, len(layers) - 1, 2):
             hidden_layer = layers[hidden_layer_index];
             # this is to get around the dropout layer
             # input = hidden_layer.input
@@ -638,14 +636,14 @@ class DynamicLeNet(DiscriminativeNetwork):
         number_of_minibatches_to_pretrain = data_x.shape[0] / minibatch_size
 
         # start_time = timeit.default_timer()
-        for dae_index in xrange(len(denoising_auto_encoders)):
+        for dae_index in range(len(denoising_auto_encoders)):
             # denoising_auto_encoder = denoising_auto_encoders[dae_index]
             # layer_corruption_level = layer_corruption_levels[dae_index]
-            for pretrain_epoch_index in xrange(number_of_epochs):
+            for pretrain_epoch_index in range(number_of_epochs):
                 start_time = time.time()
 
                 average_pretrain_loss = []
-                for minibatch_index in xrange(number_of_minibatches_to_pretrain):
+                for minibatch_index in range(number_of_minibatches_to_pretrain):
                     iteration_index = pretrain_epoch_index * number_of_minibatches_to_pretrain + minibatch_index
 
                     minibatch_x = data_x[minibatch_index * minibatch_size:(minibatch_index + 1) * minibatch_size, :]

@@ -13,16 +13,18 @@ __all__ = [
     "train_fdn",
 ]
 
+
 def construct_fdn_parser():
     from .base import construct_discriminative_parser, add_dense_options
     model_parser = construct_discriminative_parser();
     model_parser = add_dense_options(model_parser);
 
     # model argument set 2
-    model_parser.add_argument("--layer_activation_parameters", dest="layer_activation_parameters", action='store', default="1.0",
+    model_parser.add_argument("--layer_activation_parameters", dest="layer_activation_parameters", action='store',
+                              default="1.0",
                               help="dropout probability of different layer [1], either one number of a list of numbers, example, '0.2' represents 0.2 dropout rate for all input+hidden layers, or '0.2,0.5' represents 0.2 dropout rate for input layer and 0.5 dropout rate for first hidden layer respectively");
-    #model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store', default="bernoulli",
-                              #help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively");
+    # model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store', default="bernoulli",
+    # help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively");
 
     '''
     model_parser.add_argument("--pretrained_model_file", dest="pretrained_model_file",
@@ -36,6 +38,7 @@ def construct_fdn_parser():
 
     return model_parser;
 
+
 def validate_fdn_arguments(arguments):
     from .base import validate_discriminative_arguments, validate_dense_arguments
     arguments = validate_discriminative_arguments(arguments);
@@ -46,7 +49,7 @@ def validate_fdn_arguments(arguments):
     layer_activation_parameters = arguments.layer_activation_parameters;
     layer_activation_parameter_tokens = layer_activation_parameters.split(",")
     if len(layer_activation_parameter_tokens) == 1:
-        layer_activation_parameters = [layer_activation_parameters for layer_index in xrange(number_of_layers)]
+        layer_activation_parameters = [layer_activation_parameters for layer_index in range(number_of_layers)]
     elif len(layer_activation_parameter_tokens) == number_of_layers:
         layer_activation_parameters = layer_activation_parameter_tokens
     assert len(layer_activation_parameters) == number_of_layers;
@@ -79,6 +82,7 @@ def validate_fdn_arguments(arguments):
 
     return arguments
 
+
 def train_fdn():
     """
     Demonstrate stochastic gradient descent optimization for a multilayer perceptron
@@ -86,7 +90,7 @@ def train_fdn():
     """
 
     arguments, additionals = construct_fdn_parser().parse_known_args();
-    #arguments, additionals = model_parser.parse_known_args()
+    # arguments, additionals = model_parser.parse_known_args()
 
     settings = validate_fdn_arguments(arguments);
 
@@ -95,7 +99,8 @@ def train_fdn():
     assert not os.path.exists(output_directory)
     os.mkdir(output_directory);
 
-    logging.basicConfig(filename=os.path.join(output_directory, "model.log"), level=logging.DEBUG, format='%(asctime)s | %(name)s | %(levelname)s | %(message)s');
+    logging.basicConfig(filename=os.path.join(output_directory, "model.log"), level=logging.DEBUG,
+                        format='%(asctime)s | %(name)s | %(levelname)s | %(message)s');
     validation_data = settings.validation_data
     minibatch_size = settings.minibatch_size
 
@@ -112,7 +117,8 @@ def train_fdn():
         logging.info("%s=%s" % (key, value));
     logging.info("========== ========== ========== ========== ==========")
 
-    cPickle.dump(settings, open(os.path.join(output_directory, "settings.pkl"), 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
+    cPickle.dump(settings, open(os.path.join(output_directory, "settings.pkl"), 'wb'),
+                 protocol=cPickle.HIGHEST_PROTOCOL);
 
     #
     #
@@ -121,10 +127,10 @@ def train_fdn():
     #
 
     test_dataset = load_data(input_directory, dataset="test");
-    if validation_data>=0:
+    if validation_data >= 0:
         train_dataset_info, validate_dataset_info = load_and_split_data(input_directory, validation_data);
         train_dataset, train_indices = train_dataset_info;
-        validate_dataset, validate_indices =validate_dataset_info;
+        validate_dataset, validate_indices = validate_dataset_info;
         numpy.save(os.path.join(output_directory, "train.index.npy"), train_indices);
         numpy.save(os.path.join(output_directory, "validate.index.npy"), validate_indices);
     else:
@@ -148,23 +154,23 @@ def train_fdn():
         layer_nonlinearities=settings.dense_nonlinearities,
 
         layer_activation_parameters=settings.layer_activation_parameters,
-        #layer_activation_styles=settings.layer_activation_styles,
+        # layer_activation_styles=settings.layer_activation_styles,
 
         objective_functions=settings.objective,
         update_function=settings.update,
         # pretrained_model=pretrained_model
 
-        learning_rate = settings.learning_rate,
+        learning_rate=settings.learning_rate,
         learning_rate_decay=settings.learning_rate_decay,
         max_norm_constraint=settings.max_norm_constraint,
-        #learning_rate_decay_style=settings.learning_rate_decay_style,
-        #learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
+        # learning_rate_decay_style=settings.learning_rate_decay_style,
+        # learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
         validation_interval=settings.validation_interval,
     )
 
     network.set_regularizers(settings.regularizer);
-    #network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
-    #network.set_L2_regularizer_lambda(settings.L2_regularizer_lambdas)
+    # network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
+    # network.set_L2_regularizer_lambda(settings.L2_regularizer_lambdas)
 
     ########################
     # START MODEL TRAINING #
@@ -176,7 +182,7 @@ def train_fdn():
     for epoch_index in range(settings.number_of_epochs):
         network.train(train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory);
 
-        if settings.snapshot_interval>0 and network.epoch_index % settings.snapshot_interval == 0:
+        if settings.snapshot_interval > 0 and network.epoch_index % settings.snapshot_interval == 0:
             model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
             cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
 
@@ -190,13 +196,17 @@ def train_fdn():
     print "Optimization complete..."
     logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
         network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index));
-    print >> sys.stderr, ('The code for file %s ran for %.2fm' % (os.path.split(__file__)[1], (end_train - start_train) / 60.))
+    print >> sys.stderr, (
+        'The code for file %s ran for %.2fm' % (os.path.split(__file__)[1], (end_train - start_train) / 60.))
+
 
 def resume_fdn():
     pass
 
+
 def test_fdn():
     pass
+
 
 if __name__ == '__main__':
     train_fdn()

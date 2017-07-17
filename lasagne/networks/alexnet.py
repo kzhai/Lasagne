@@ -79,7 +79,7 @@ class AlexNet(DiscriminativeNetwork):
 
         dropout_layer_index = 0;
         neural_network = self._input_layer;
-        for conv_layer_index in xrange(len(convolution_filters)):
+        for conv_layer_index in range(len(convolution_filters)):
             '''
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
@@ -124,8 +124,8 @@ class AlexNet(DiscriminativeNetwork):
                 # Max-pooling layer of factor 2 in both dimensions:
                 filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
                 if numpy.any(filter_size_for_pooling < pool_size):
-                    print "warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (
-                    layers.get_output_shape(neural_network), pool_size)
+                    print("warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (
+                    layers.get_output_shape(neural_network), pool_size))
                     continue;
                 neural_network = layers.Pool2DLayer(neural_network,
                                                     pool_size=pool_size,
@@ -134,7 +134,7 @@ class AlexNet(DiscriminativeNetwork):
                                                     )
 
         if locally_connected_filters!=None and len(locally_connected_filters)>0:
-            for local_layer_index in xrange(len(locally_connected_filters)):
+            for local_layer_index in range(len(locally_connected_filters)):
                 neural_network = local.LocallyConnected2DLayer(neural_network,
                                                                locally_connected_filters[local_layer_index],
                                                                filter_size=local_convolution_filter_sizes,
@@ -146,7 +146,7 @@ class AlexNet(DiscriminativeNetwork):
                 #print "locally-connected", numpy.mean(neural_network.W.eval()), numpy.max(neural_network.W.eval()), numpy.min(neural_network.W.eval());
 
         assert len(dense_dimensions) == len(dense_nonlinearities)
-        for dense_layer_index in xrange(len(dense_dimensions)):
+        for dense_layer_index in range(len(dense_dimensions)):
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
             activation_probability = noise.sample_activation_probability(previous_layer_shape,
@@ -242,7 +242,7 @@ class DynamicAlexNet(DiscriminativeNetwork):
 
         neural_network = self._input_layer;
         #print "after input", layers.get_output_shape(neural_network);
-        for conv_layer_index in xrange(len(convolution_filters)):
+        for conv_layer_index in range(len(convolution_filters)):
             '''
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
@@ -294,8 +294,8 @@ class DynamicAlexNet(DiscriminativeNetwork):
                 # Max-pooling layer of factor 2 in both dimensions:
                 filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
                 if numpy.any(filter_size_for_pooling < pool_size):
-                    print "warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (
-                        layers.get_output_shape(neural_network), pool_size)
+                    print("warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (
+                        layers.get_output_shape(neural_network), pool_size))
                     continue;
                 neural_network = layers.Pool2DLayer(neural_network,
                                                     pool_size=pool_size,
@@ -304,7 +304,7 @@ class DynamicAlexNet(DiscriminativeNetwork):
                                                     )
 
         if locally_connected_filters!=None and len(locally_connected_filters)>0:
-            for local_layer_index in xrange(len(locally_connected_filters)):
+            for local_layer_index in range(len(locally_connected_filters)):
                 neural_network = local.LocallyConnected2DLayer(neural_network,
                                                                locally_connected_filters[local_layer_index],
                                                                filter_size=local_convolution_filter_sizes,
@@ -315,7 +315,7 @@ class DynamicAlexNet(DiscriminativeNetwork):
                                                                )
 
         assert len(dense_dimensions) == len(dense_nonlinearities)
-        for dense_layer_index in xrange(len(dense_dimensions)):
+        for dense_layer_index in range(len(dense_dimensions)):
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
             activation_probability = noise.sample_activation_probability(previous_layer_shape,

@@ -1,11 +1,8 @@
 from itertools import chain
 
-import copy
-import cPickle
 import logging
 import numpy
 import os
-import sys
 import theano
 import theano.tensor
 import timeit
@@ -21,22 +18,24 @@ __all__ = [
     "Network",
 ]
 
+
 def decay_learning_rate(learning_rate, epoch_or_iteration_index, learning_rate_decay=None):
-    #learning_rate = 1e-3, learning_rate_decay_style = None, learning_rate_decay_parameter = 0
-    #learning_rate, learning_rate_decay_style, learning_rate_decay_parameter = learning_rate_configuration;
-    if learning_rate_decay == None:
-        current_learning_rate = learning_rate;
+    if learning_rate_decay is None:
+        current_learning_rate = learning_rate
     elif learning_rate_decay[1] == "inverse_t":
-        current_learning_rate = learning_rate * learning_rate_decay[2] / (1. + learning_rate_decay[3] * epoch_or_iteration_index)
+        current_learning_rate = learning_rate * learning_rate_decay[2] / (1. + learning_rate_decay[3] *
+                                                                          epoch_or_iteration_index)
     elif learning_rate_decay[1] == "exponential":
-        current_learning_rate = learning_rate * learning_rate_decay[2] * numpy.exp(- learning_rate_decay[3] * epoch_or_iteration_index);
+        current_learning_rate = learning_rate * learning_rate_decay[2] * numpy.exp(- learning_rate_decay[3] *
+                                                                                   epoch_or_iteration_index)
     elif learning_rate_decay[1] == "step":
-        current_learning_rate = learning_rate * numpy.power(learning_rate_decay[2], epoch_or_iteration_index // learning_rate_decay[3]);
+        current_learning_rate = learning_rate * numpy.power(learning_rate_decay[2], epoch_or_iteration_index //
+                                                            learning_rate_decay[3])
     else:
-        current_learning_rate = learning_rate;
+        current_learning_rate = learning_rate
 
     return current_learning_rate.astype(theano.config.floatX)
-    #return numpy.float32(current_learning_rate)
+
 
 class Network(object):
     def __init__(self,
@@ -46,25 +45,24 @@ class Network(object):
                  learning_rate=1e-3,
                  learning_rate_decay=None,
                  max_norm_constraint=0,
-                 #learning_rate_decay_style=None,
-                 #learning_rate_decay_parameter=0,
                  ):
         if isinstance(incoming, tuple):
             self._input_shape = incoming
-            self._input_layer = layers.InputLayer(shape=self._input_shape);
+            self._input_layer = layers.InputLayer(shape=self._input_shape)
         else:
             self._input_shape = incoming.output_shape
             self._input_layer = incoming
 
         if any(d is not None and d <= 0 for d in self._input_shape):
-            raise ValueError(("Cannot create Layer with a non-positive input_shape dimension. input_shape=%r") % (
-            self._input_shape))
+            raise ValueError("Cannot create Layer with a non-positive input_shape dimension. input_shape=%r" %
+                             self._input_shape)
 
-        input_layers = [layer for layer in layers.get_all_layers(self._input_layer) if isinstance(layer, layers.InputLayer)]
-        assert len(input_layers)==1;
-        #self._input_variable = self._input_layer.input_var;
-        self._input_variable = input_layers[0].input_var;
-        self._learning_rate_variable = theano.tensor.scalar();
+        input_layers = [layer for layer in layers.get_all_layers(self._input_layer) if isinstance(layer,
+                                                                                                  layers.InputLayer)]
+        assert len(input_layers) == 1
+
+        self._input_variable = input_layers[0].input_var
+        self._learning_rate_variable = theano.tensor.scalar()
 
         #
         #
@@ -72,24 +70,24 @@ class Network(object):
         #
         #
 
-        self.epoch_index = 0;
-        self.minibatch_index = 0;
+        self.epoch_index = 0
+        self.minibatch_index = 0
 
-        self.objective_functions_change_stack = [];
-        self.regularizer_functions_change_stack = [];
-        self.update_function_change_stack = [];
-        self.learning_rate_decay_change_stack = [];
-        self.learning_rate_change_stack = [];
-        self.max_norm_constraint_change_stack = [];
+        self.objective_functions_change_stack = []
+        self.regularizer_functions_change_stack = []
+        self.update_function_change_stack = []
+        self.learning_rate_decay_change_stack = []
+        self.learning_rate_change_stack = []
+        self.max_norm_constraint_change_stack = []
         #self.learning_rate_decay_style_change_stack = []
         #self.learning_rate_decay_parameter_change_stack = []
 
         self.__set_objective_functions(objective_functions)
-        self.__set_regularizer_functions();
-        self.__set_update_function(update_function);
-        self.set_learning_rate_decay(learning_rate_decay);
-        self.set_learning_rate(learning_rate);
-        self.set_max_norm_constraint(max_norm_constraint);
+        self.__set_regularizer_functions()
+        self.__set_update_function(update_function)
+        self.set_learning_rate_decay(learning_rate_decay)
+        self.set_learning_rate(learning_rate)
+        self.set_max_norm_constraint(max_norm_constraint)
         #self.set_learning_rate_decay_style(learning_rate_decay_style);
         #self.set_learning_rate_decay_parameter(learning_rate_decay_parameter);
 
@@ -104,13 +102,13 @@ class Network(object):
         #self._layer_L2_regularizer_lambdas = None;
 
     def get_input(self, **kwargs):
-        return layers.get_output(self._input_layer, **kwargs);
+        return layers.get_output(self._input_layer, **kwargs)
 
     def get_output(self, inputs=None, **kwargs):
         return layers.get_output(self._neural_network, inputs, **kwargs)
 
     def get_output_shape(self, input_shapes=None):
-        return layers.get_output_shape(self._neural_network, input_shapes);
+        return layers.get_output_shape(self._neural_network, input_shapes)
 
     '''
     def get_all_layers(self, treat_as_input=None):
@@ -170,7 +168,7 @@ class Network(object):
     def get_regularizers(self, **kwargs):
         assert hasattr(self, "_neural_network");
         regularizer = 0;
-        for regularizer_function, lambdas in self._regularizer_functions.iteritems():
+        for regularizer_function, lambdas in self._regularizer_functions.items():
             assert type(regularizer_function) is types.FunctionType;
             if regularizer_function==regularization.rademacher \
                     or regularizer_function == regularization.rademacher_p_2_q_2 \
@@ -185,7 +183,7 @@ class Network(object):
                         if isinstance(layer, layers.dense.DenseLayer):
                             dense_layers.append(layer);
                     assert len(dense_layers)==len(lambdas), (dense_layers, lambdas);
-                    regularizer += regularization.regularize_layer_params_weighted(dict(zip(dense_layers, lambdas)), regularizer_function, **kwargs);
+                    regularizer += regularization.regularize_layer_params_weighted(dict(list(zip(dense_layers, lambdas))), regularizer_function, **kwargs);
                 elif type(lambdas) is float:
                     regularizer += lambdas * regularization.regularize_network_params(self._neural_network, regularizer_function, **kwargs);
                 else:
@@ -275,7 +273,7 @@ class Network(object):
             if type(regularizer_functions) is types.FunctionType:
                 _regularizer_functions[regularizer_functions] = 1.0;
             elif type(regularizer_functions) is dict:
-                for regularizer_function, lambdas in regularizer_functions.iteritems():
+                for regularizer_function, lambdas in regularizer_functions.items():
                     assert type(regularizer_function) is types.FunctionType;
                     if type(lambdas) is list:
                         for weight in lambdas:
@@ -413,7 +411,7 @@ class DiscriminativeNetwork(Network):
         if objective_functions == None:
             #objective = theano.tensor.mean(self._objective_functions(output, label), dtype=theano.config.floatX);
             objective = 0;
-            for objective_function, weight in self._objective_functions.items():
+            for objective_function, weight in list(self._objective_functions.items()):
                 objective += weight * theano.tensor.mean(objective_function(output, label), dtype=theano.config.floatX);
         else:
             #TODO: expand to multiple objective functions
@@ -507,8 +505,8 @@ class DiscriminativeNetwork(Network):
         # average_test_loss, average_test_accuracy, test_running_time = self.network.test(test_dataset);
         logging.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
             self.epoch_index, self.minibatch_index, test_running_time, average_test_loss, average_test_accuracy * 100))
-        print('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
-            self.epoch_index, self.minibatch_index, test_running_time, average_test_loss, average_test_accuracy * 100))
+        print(('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+            self.epoch_index, self.minibatch_index, test_running_time, average_test_loss, average_test_accuracy * 100)))
 
     def validate(self, validate_dataset, test_dataset=None, best_model_file_path=None):
         # average_validate_loss, average_validate_accuracy, validate_running_time = self.test(validate_dataset);
@@ -521,9 +519,9 @@ class DiscriminativeNetwork(Network):
         logging.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
             self.epoch_index, self.minibatch_index, validate_running_time, average_validate_loss,
             average_validate_accuracy * 100))
-        print('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+        print(('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
             self.epoch_index, self.minibatch_index, validate_running_time, average_validate_loss,
-            average_validate_accuracy * 100))
+            average_validate_accuracy * 100)))
 
         # if we got the best validation score until now
         if average_validate_accuracy > self.best_validate_accuracy:
@@ -628,9 +626,9 @@ class DiscriminativeNetwork(Network):
         logging.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
             self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss,
             average_train_accuracy * 100))
-        print 'train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+        print('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
             self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss,
-            average_train_accuracy * 100)
+            average_train_accuracy * 100))
 
         #print 'train: epoch %i, minibatch %i, learning-rate %g' % (self.epoch_index, self.minibatch_index, learning_rate)
 

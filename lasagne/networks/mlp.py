@@ -63,7 +63,7 @@ class MultiLayerPerceptron(DiscriminativeNetwork):
 
         #neural_network = input_network;
         neural_network = self._input_layer;
-        for layer_index in xrange(len(layer_dimensions)):
+        for layer_index in range(len(layer_dimensions)):
             previous_layer_dimension = layers.get_output_shape(neural_network)[1:];
             activation_probability = noise.sample_activation_probability(previous_layer_dimension,
                                                                          layer_activation_styles[layer_index],
@@ -153,7 +153,7 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
 
         # neural_network = input_network;
         neural_network = self._input_layer;
-        for layer_index in xrange(len(layer_dimensions)):
+        for layer_index in range(len(layer_dimensions)):
             previous_layer_dimension = layers.get_output_shape(neural_network)[1:];
             activation_probability = noise.sample_activation_probability(previous_layer_dimension,
                                                                          layer_activation_styles[layer_index],
@@ -286,7 +286,7 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
             layer_corruption_levels = numpy.zeros((len(layers) - 1) / 2 - 1)
         assert len(layer_corruption_levels) == (len(layers) - 1) / 2 - 1;
 
-        for hidden_layer_index in xrange(2, len(layers) - 1, 2):
+        for hidden_layer_index in range(2, len(layers) - 1, 2):
             hidden_layer = layers[hidden_layer_index];
             # this is to get around the dropout layer
             # input = hidden_layer.input
@@ -358,12 +358,12 @@ class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
             denoising_auto_encoders.append(denoising_auto_encoder);
 
         pretrain_time = timeit.default_timer()
-        for dae_index in xrange(len(denoising_auto_encoders)):
+        for dae_index in range(len(denoising_auto_encoders)):
             denoising_auto_encoder = denoising_auto_encoders[dae_index]
             # layer_corruption_level = layer_corruption_levels[dae_index]
 
             layer_pretrain_time = 0;
-            for pretrain_epoch_index in xrange(number_of_epochs):
+            for pretrain_epoch_index in range(number_of_epochs):
                 layer_epoch_pretrain_time = denoising_auto_encoder.train(pretrain_data, minibatch_size)
                 layer_pretrain_time += layer_epoch_pretrain_time;
             logging.info('pretrain layer %i with denoising auto-encoder finishes in %fs' % (dae_index + 1, layer_pretrain_time))
@@ -438,13 +438,13 @@ def main():
     minibatch_size = 1000;
     for epoch_index in range(number_of_epochs):
         network.train(train_dataset, minibatch_size, validate_dataset, test_dataset);
-        print "PROGRESS: %f%%" % (100. * epoch_index / number_of_epochs);
+        print("PROGRESS: %f%%" % (100. * epoch_index / number_of_epochs));
     end_train = timeit.default_timer()
 
-    print "Optimization complete..."
+    print("Optimization complete...")
     logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
         network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index));
-    print 'The code finishes in %.2fm' % ((end_train - start_train) / 60.)
+    print('The code finishes in %.2fm' % ((end_train - start_train) / 60.))
 
 if __name__ == '__main__':
     main();

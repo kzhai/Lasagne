@@ -438,6 +438,7 @@ def categorical_accuracy(predictions, targets, top_k=1):
 import theano.tensor as T
 from .layers import get_all_params
 
+
 # first part is the KL divergence of the priors
 def priorKL(output_layer):
     """
@@ -461,6 +462,7 @@ def priorKL(output_layer):
     # will get taken apart again in the autodiff
     return sum([0.5*T.sum(T.log(alpha)) + c1*T.sum(alpha) + c2*T.sum(T.pow(alpha,2))
                                  + c3*T.sum(T.pow(alpha,3)) for alpha in alphas])
+
 
 def sparsityKL(layer_or_layers):
     """

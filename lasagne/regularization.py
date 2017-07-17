@@ -232,7 +232,7 @@ def regularize_layer_weighted(layers, penalty, tags={'regularizable': True}, **k
     Theano scalar
         a scalar expression for the cost
     """
-    return sum(coeff * sum(penalty(layer_tuple, tags, **kwargs)) for layer_tuple, coeff in layers.items());
+    return sum(coeff * sum(penalty(layer_tuple, tags, **kwargs)) for layer_tuple, coeff in list(layers.items()));
 
 def l1_norm(X, axis=None):
     return T.sum(abs(X), axis=axis)
