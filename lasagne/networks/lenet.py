@@ -59,39 +59,39 @@ class LeNet(DiscriminativeNetwork):
                                     max_norm_constraint,
                                     #learning_rate_decay_style,
                                     #learning_rate_decay_parameter,
-                                    validation_interval);
+                                    validation_interval)
 
         # x = theano.tensor.matrix('x')  # the data is presented as rasterized images
         self._output_variable = theano.tensor.ivector() # the labels are presented as 1D vector of [int] labels
 
-        #self._input_layer = layers.InputLayer(shape=input_shape);
-        #self._input_variable = self._input_layer.input_var;
+        #self._input_layer = layers.InputLayer(shape=input_shape)
+        #self._input_variable = self._input_layer.input_var
 
         assert len(layer_activation_parameters) == len(dense_nonlinearities) + len(convolution_nonlinearities)
         assert len(layer_activation_styles) == len(dense_nonlinearities) + len(convolution_nonlinearities)
-        assert len(convolution_filters) == len(convolution_nonlinearities);
-        assert len(convolution_filters) == len(pool_modes);
+        assert len(convolution_filters) == len(convolution_nonlinearities)
+        assert len(convolution_filters) == len(pool_modes)
 
-        dropout_layer_index = 0;
-        neural_network = self._input_layer;
+        dropout_layer_index = 0
+        neural_network = self._input_layer
         for conv_layer_index in range(len(convolution_filters)):
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
-            activation_probability = noise.sample_activation_probability(previous_layer_shape, layer_activation_styles[dropout_layer_index], layer_activation_parameters[dropout_layer_index]);
+            activation_probability = noise.sample_activation_probability(previous_layer_shape, layer_activation_styles[dropout_layer_index], layer_activation_parameters[dropout_layer_index])
             activation_probability = numpy.reshape(activation_probability, input_layer_shape)
             # print "before dropout", lasagne.layers.get_output_shape(neural_network)
-            neural_network = noise.LinearDropoutLayer(neural_network, activation_probability=activation_probability);
-            dropout_layer_index += 1;
+            neural_network = noise.LinearDropoutLayer(neural_network, activation_probability=activation_probability)
+            dropout_layer_index += 1
 
-            conv_filter_number = convolution_filters[conv_layer_index];
-            conv_nonlinearity = convolution_nonlinearities[conv_layer_index];
+            conv_filter_number = convolution_filters[conv_layer_index]
+            conv_nonlinearity = convolution_nonlinearities[conv_layer_index]
             # conv_filter_size = convolution_filter_sizes[conv_layer_index]
-            conv_kernel_size = convolution_kernel_sizes;
-            conv_stride = convolution_strides;
-            conv_pad = convolution_pads;
+            conv_kernel_size = convolution_kernel_sizes
+            conv_stride = convolution_strides
+            conv_pad = convolution_pads
 
             # print "before convolution", lasagne.layers.get_output_shape(neural_network)
-            # Convolutional layer with 32 kernels of size 5x5. Strided and padded convolutions are supported as well; see the docstring.
+            # Convolutional layer with 32 kernels of size 5x5. Strided and padded convolutions are supported as well see the docstring.
             neural_network = layers.Conv2DLayer(neural_network,
                                                 W=init.GlorotUniform(gain=init.GlorotUniformGain[conv_nonlinearity]),
                                                 # This is ONLY for CIFAR-10 dataset.
@@ -107,7 +107,7 @@ class LeNet(DiscriminativeNetwork):
                                                 pad=conv_pad,
                                                 )
 
-            pool_mode = pool_modes[conv_layer_index];
+            pool_mode = pool_modes[conv_layer_index]
             if pool_mode!=None:
                 pool_kernel_size = pooling_kernel_sizes
                 pool_stride = pooling_strides
@@ -117,7 +117,7 @@ class LeNet(DiscriminativeNetwork):
                 filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
                 if numpy.any(filter_size_for_pooling < pool_kernel_size):
                     print("warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (layers.get_output_shape(neural_network), pool_kernel_size))
-                    continue;
+                    continue
                 neural_network = layers.Pool2DLayer(neural_network,
                                                     pool_size=pool_kernel_size,
                                                     stride=pool_stride,
@@ -128,15 +128,15 @@ class LeNet(DiscriminativeNetwork):
         for dense_layer_index in range(len(dense_dimensions)):
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
-            activation_probability = noise.sample_activation_probability(previous_layer_shape, layer_activation_styles[dropout_layer_index], layer_activation_parameters[dropout_layer_index]);
+            activation_probability = noise.sample_activation_probability(previous_layer_shape, layer_activation_styles[dropout_layer_index], layer_activation_parameters[dropout_layer_index])
             activation_probability = numpy.reshape(activation_probability, input_layer_shape)
             # print "before dropout", lasagne.layers.get_output_shape(neural_network)
             neural_network = noise.LinearDropoutLayer(neural_network,
-                                                      activation_probability=activation_probability);
-            dropout_layer_index += 1;
+                                                      activation_probability=activation_probability)
+            dropout_layer_index += 1
 
             layer_shape = dense_dimensions[dense_layer_index]
-            layer_nonlinearity = dense_nonlinearities[dense_layer_index];
+            layer_nonlinearity = dense_nonlinearities[dense_layer_index]
             
             # print "before dense", lasagne.layers.get_output_shape(neural_network)
             neural_network = layers.DenseLayer(neural_network,
@@ -146,19 +146,19 @@ class LeNet(DiscriminativeNetwork):
                                                #W=init.HeNormal('relu'),
                                                nonlinearity=layer_nonlinearity)
             
-        self._neural_network = neural_network;
+        self._neural_network = neural_network
 
-        self.build_functions();
+        self.build_functions()
 
     """
     def dae_regularizer(self):
         if self._layer_dae_regularizer_lambdas == None:
-            return 0;
+            return 0
         else:
-            dae_regularization = 0;
+            dae_regularization = 0
             for dae_layer in self._layer_dae_regularizer_lambdas:
                 dae_regularization += self._layer_dae_regularizer_lambdas[dae_layer] * dae_layer.get_objective_to_minimize()
-            return dae_regularization;
+            return dae_regularization
 
     def set_dae_regularizer_lambda(self,
                                    layer_dae_regularizer_lambdas,
@@ -167,38 +167,38 @@ class LeNet(DiscriminativeNetwork):
                                    L2_regularizer_lambdas=None
                                    ):
         if layer_dae_regularizer_lambdas == None or all(layer_dae_regularizer_lambda == 0 for layer_dae_regularizer_lambda in layer_dae_regularizer_lambdas):
-            self._layer_dae_regularizer_lambdas = None;
+            self._layer_dae_regularizer_lambdas = None
         else:
-            assert len(layer_dae_regularizer_lambdas) == (len(self.get_all_layers()) - 1) / 2 - 1;
-            dae_regularizer_layers = self.__build_dae_network(layer_corruption_levels, L1_regularizer_lambdas, L2_regularizer_lambdas);
-            self._layer_dae_regularizer_lambdas = {temp_layer:layer_dae_regularizer_lambda for temp_layer, layer_dae_regularizer_lambda in zip(dae_regularizer_layers, layer_dae_regularizer_lambdas)};
+            assert len(layer_dae_regularizer_lambdas) == (len(self.get_all_layers()) - 1) / 2 - 1
+            dae_regularizer_layers = self.__build_dae_network(layer_corruption_levels, L1_regularizer_lambdas, L2_regularizer_lambdas)
+            self._layer_dae_regularizer_lambdas = {temp_layer:layer_dae_regularizer_lambda for temp_layer, layer_dae_regularizer_lambda in zip(dae_regularizer_layers, layer_dae_regularizer_lambdas)}
             
-        return;
+        return
     
     def __build_dae_network(self,
                             layer_corruption_levels=None,
                             L1_regularizer_lambdas=None,
                             L2_regularizer_lambdas=None
                             ):
-        layers = self.get_all_layers();
+        layers = self.get_all_layers()
         
-        denoising_auto_encoders = [];
+        denoising_auto_encoders = []
         
         if layer_corruption_levels is None:
             layer_corruption_levels = numpy.zeros((len(layers) - 1) / 2 - 1)
-        assert len(layer_corruption_levels) == (len(layers) - 1) / 2 - 1;
+        assert len(layer_corruption_levels) == (len(layers) - 1) / 2 - 1
             
         for hidden_layer_index in range(2, len(layers) - 1, 2):
-            hidden_layer = layers[hidden_layer_index];
+            hidden_layer = layers[hidden_layer_index]
             # this is to get around the dropout layer
             # input = hidden_layer.input
-            input_layer = layers[hidden_layer_index - 2];
-            hidden_layer_shape = hidden_layer.num_units;
+            input_layer = layers[hidden_layer_index - 2]
+            hidden_layer_shape = hidden_layer.num_units
             hidden_layer_nonlinearity = hidden_layer.nonlinearity
             
             # this is to get around the dropout layer
-            # layer_corruption_level = layer_corruption_levels[hidden_layer_index - 1];
-            layer_corruption_level = layer_corruption_levels[hidden_layer_index / 2 - 1];
+            # layer_corruption_level = layer_corruption_levels[hidden_layer_index - 1]
+            layer_corruption_level = layer_corruption_levels[hidden_layer_index / 2 - 1]
             
             denoising_auto_encoder = DenoisingAutoEncoder(
                 input=input_layer,
@@ -215,15 +215,15 @@ class LeNet(DiscriminativeNetwork):
                 b_encoder=hidden_layer.b,
                 )
             
-            denoising_auto_encoders.append(denoising_auto_encoder);
+            denoising_auto_encoders.append(denoising_auto_encoder)
 
-        return denoising_auto_encoders;
+        return denoising_auto_encoders
     """
 
     """
     def pretrain_with_dae(self, data_x, layer_corruption_levels=None, number_of_epochs=50, minibatch_size=1, learning_rate=1e-3, momentum=0.95):
-        denoising_auto_encoders = self.__build_dae_network(layer_corruption_levels);
-        pretrain_functions = [];
+        denoising_auto_encoders = self.__build_dae_network(layer_corruption_levels)
+        pretrain_functions = []
         for denoising_auto_encoder in denoising_auto_encoders:
             '''
             train_prediction = lasagne.layers.get_output(denoising_auto_encoder)
@@ -231,15 +231,15 @@ class LeNet(DiscriminativeNetwork):
             pretrain_loss = theano.tensor.mean(-theano.tensor.sum(pretrain_loss, axis=1))
             '''
             
-            pretrain_loss = denoising_auto_encoder.get_objective_to_minimize();
+            pretrain_loss = denoising_auto_encoder.get_objective_to_minimize()
             # pretrain_loss = theano.tensor.mean(theano.tensor.nnet.categorical_crossentropy(train_prediction, y))
             
             '''
             # We could add some weight decay as well here, see lasagne.regularization.
-            dae_layers = lasagne.layers.get_all_layers(denoising_auto_encoders);
-            L1_regularizer_layer_lambdas = {temp_layer:L1_regularizer_lambda for temp_layer, L1_regularizer_lambda in zip(dae_layers[1:], L1_regularizer_lambdas)};
+            dae_layers = lasagne.layers.get_all_layers(denoising_auto_encoders)
+            L1_regularizer_layer_lambdas = {temp_layer:L1_regularizer_lambda for temp_layer, L1_regularizer_lambda in zip(dae_layers[1:], L1_regularizer_lambdas)}
             L1_regularizer = lasagne.regularization.regularize_layer_params_weighted(L1_regularizer_layer_lambdas, lasagne.regularization.l1)
-            L2_regularizer_layer_lambdas = {temp_layer:L2_regularizer_lambda for temp_layer, L2_regularizer_lambda in zip(dae_layers[1:], L2_regularizer_lambdas)};
+            L2_regularizer_layer_lambdas = {temp_layer:L2_regularizer_lambda for temp_layer, L2_regularizer_lambda in zip(dae_layers[1:], L2_regularizer_lambdas)}
             L2_regularizer = lasagne.regularization.regularize_layer_params_weighted(L2_regularizer_layer_lambdas, lasagne.regularization.l2)
             pretrain_loss += L1_regularizer + L2_regularizer
             '''
@@ -275,7 +275,7 @@ class LeNet(DiscriminativeNetwork):
                 updates=updates
             )
             
-            pretrain_functions.append(pretrain_function);
+            pretrain_functions.append(pretrain_function)
         
         number_of_minibatches_to_pretrain = data_x.shape[0] / minibatch_size
     
@@ -293,7 +293,7 @@ class LeNet(DiscriminativeNetwork):
                     minibatch_x = data_x[minibatch_index * minibatch_size:(minibatch_index + 1) * minibatch_size, :]
                     
                     function_output = pretrain_functions[dae_index](minibatch_x)
-                    temp_average_pretrain_loss = function_output[0];
+                    temp_average_pretrain_loss = function_output[0]
                     # print temp_average_pretrain_loss
                     
                     average_pretrain_loss.append(temp_average_pretrain_loss)
@@ -348,51 +348,51 @@ class DynamicLeNet(DiscriminativeNetwork):
                                            learning_rate_decay,
                                            #learning_rate_decay_style,
                                            #learning_rate_decay_parameter,
-                                           validation_interval);
+                                           validation_interval)
 
-        self._dropout_rate_update_interval = dropout_rate_update_interval;
+        self._dropout_rate_update_interval = dropout_rate_update_interval
 
         # x = theano.tensor.matrix('x')  # the data is presented as rasterized images
         self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
-        # self._input_layer = layers.InputLayer(shape=input_shape);
-        # self._input_variable = self._input_layer.input_var;
+        # self._input_layer = layers.InputLayer(shape=input_shape)
+        # self._input_variable = self._input_layer.input_var
 
         assert len(layer_activation_parameters) == len(dense_nonlinearities) + len(convolution_nonlinearities)
         assert len(layer_activation_styles) == len(dense_nonlinearities) + len(convolution_nonlinearities)
-        assert len(convolution_filters) == len(convolution_nonlinearities);
-        assert len(convolution_filters) == len(pool_modes);
+        assert len(convolution_filters) == len(convolution_nonlinearities)
+        assert len(convolution_filters) == len(pool_modes)
 
-        dropout_layer_index = 0;
+        dropout_layer_index = 0
 
-        neural_network = self._input_layer;
-        #print "after input", layers.get_output_shape(neural_network);
+        neural_network = self._input_layer
+        #print "after input", layers.get_output_shape(neural_network)
         for conv_layer_index in range(len(convolution_filters)):
             input_layer_shape = layers.get_output_shape(neural_network)[1:]
             previous_layer_shape = numpy.prod(input_layer_shape)
             activation_probability = noise.sample_activation_probability(previous_layer_shape,
                                                                          layer_activation_styles[dropout_layer_index],
-                                                                         layer_activation_parameters[dropout_layer_index]);
-            activation_probability = activation_probability.astype(theano.config.floatX);
+                                                                         layer_activation_parameters[dropout_layer_index])
+            activation_probability = activation_probability.astype(theano.config.floatX)
             activation_probability = numpy.reshape(activation_probability, input_layer_shape)
             # print "before dropout", lasagne.layers.get_output_shape(neural_network)
             if update_hidden_layer_dropout_only:
                 neural_network = noise.LinearDropoutLayer(neural_network,
-                                                          activation_probability=activation_probability);
+                                                          activation_probability=activation_probability)
             else:
                 neural_network = noise.AdaptiveDropoutLayer(neural_network,
-                                                            activation_probability=activation_probability);
-            dropout_layer_index += 1;
+                                                            activation_probability=activation_probability)
+            dropout_layer_index += 1
 
-            conv_filter_number = convolution_filters[conv_layer_index];
-            conv_nonlinearity = convolution_nonlinearities[conv_layer_index];
+            conv_filter_number = convolution_filters[conv_layer_index]
+            conv_nonlinearity = convolution_nonlinearities[conv_layer_index]
 
             # conv_filter_size = convolution_filter_sizes[conv_layer_index]
-            conv_filter_size = convolution_kernel_sizes;
-            conv_stride = convolution_strides;
-            conv_pad = convolution_pads;
+            conv_filter_size = convolution_kernel_sizes
+            conv_stride = convolution_strides
+            conv_pad = convolution_pads
 
-            # Convolutional layer with 32 kernels of size 5x5. Strided and padded convolutions are supported as well; see the docstring.
+            # Convolutional layer with 32 kernels of size 5x5. Strided and padded convolutions are supported as well see the docstring.
             neural_network = layers.Conv2DLayer(neural_network,
                                                 W=init.GlorotUniform(gain=init.GlorotUniformGain[conv_nonlinearity]),
                                                 # This is ONLY for CIFAR-10 dataset.
@@ -407,9 +407,9 @@ class DynamicLeNet(DiscriminativeNetwork):
                                                 stride=conv_stride,
                                                 pad=conv_pad,
                                                 )
-            #print "after convolution", layers.get_output_shape(neural_network);
+            #print "after convolution", layers.get_output_shape(neural_network)
 
-            pool_mode = pool_modes[conv_layer_index];
+            pool_mode = pool_modes[conv_layer_index]
             if pool_mode != None:
                 pool_size = pooling_kernel_sizes
                 pool_stride = pooling_strides
@@ -418,13 +418,13 @@ class DynamicLeNet(DiscriminativeNetwork):
                 filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
                 if numpy.any(filter_size_for_pooling < pool_size):
                     print("warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (layers.get_output_shape(neural_network), pool_size))
-                    continue;
+                    continue
                 neural_network = layers.Pool2DLayer(neural_network,
                                                     pool_size=pool_size,
                                                     stride=pool_stride,
                                                     mode=pool_mode,
                                                     )
-                #print "after maxpooling", layers.get_output_shape(neural_network);
+                #print "after maxpooling", layers.get_output_shape(neural_network)
 
         assert len(dense_dimensions) == len(dense_nonlinearities)
         for dense_layer_index in range(len(dense_dimensions)):
@@ -432,20 +432,20 @@ class DynamicLeNet(DiscriminativeNetwork):
             previous_layer_shape = numpy.prod(input_layer_shape)
             activation_probability = noise.sample_activation_probability(previous_layer_shape,
                                                                          layer_activation_styles[dropout_layer_index],
-                                                                         layer_activation_parameters[dropout_layer_index]);
-            activation_probability = activation_probability.astype(theano.config.floatX);
+                                                                         layer_activation_parameters[dropout_layer_index])
+            activation_probability = activation_probability.astype(theano.config.floatX)
             activation_probability = numpy.reshape(activation_probability, input_layer_shape)
             if update_hidden_layer_dropout_only and dense_layer_index == 0:
                 neural_network = noise.LinearDropoutLayer(neural_network,
-                                                          activation_probability=activation_probability);
+                                                          activation_probability=activation_probability)
             else:
-                # neural_network = noise.TrainableDropoutLayer(neural_network, activation_probability=init.Constant(layer_activation_parameters[layer_index]));
+                # neural_network = noise.TrainableDropoutLayer(neural_network, activation_probability=init.Constant(layer_activation_parameters[layer_index]))
                 neural_network = noise.AdaptiveDropoutLayer(neural_network,
-                                                            activation_probability=activation_probability);
-            dropout_layer_index += 1;
+                                                            activation_probability=activation_probability)
+            dropout_layer_index += 1
 
             layer_shape = dense_dimensions[dense_layer_index]
-            layer_nonlinearity = dense_nonlinearities[dense_layer_index];
+            layer_nonlinearity = dense_nonlinearities[dense_layer_index]
 
             neural_network = layers.DenseLayer(neural_network,
                                                layer_shape,
@@ -454,20 +454,20 @@ class DynamicLeNet(DiscriminativeNetwork):
                                                # W=init.HeNormal('relu'),
                                                nonlinearity=layer_nonlinearity)
 
-            #print "after dense", layers.get_output_shape(neural_network);
+            #print "after dense", layers.get_output_shape(neural_network)
 
-        self._neural_network = neural_network;
+        self._neural_network = neural_network
 
-        self.build_functions();
+        self.build_functions()
 
     def build_functions(self):
-        super(DynamicLeNet, self).build_functions();
+        super(DynamicLeNet, self).build_functions()
 
         # Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
-        dropout_loss = self.get_loss(self._output_variable, deterministic=True);
+        dropout_loss = self.get_loss(self._output_variable, deterministic=True)
         dropout_accuracy = self.get_objectives(self._output_variable,
                                                objective_functions="categorical_accuracy",
-                                               deterministic=True);
+                                               deterministic=True)
 
         adaptable_params = self.get_network_params(adaptable=True)
         adaptable_params_updates = self._update_function(dropout_loss, adaptable_params,
@@ -491,30 +491,30 @@ class DynamicLeNet(DiscriminativeNetwork):
         '''
 
     def train_minibatch(self, minibatch_x, minibatch_y, learning_rate):
-        minibatch_running_time = timeit.default_timer();
+        minibatch_running_time = timeit.default_timer()
         train_function_outputs = self._train_function(minibatch_x, minibatch_y, learning_rate)
-        minibatch_average_train_loss = train_function_outputs[0];
-        minibatch_average_train_accuracy = train_function_outputs[1];
+        minibatch_average_train_loss = train_function_outputs[0]
+        minibatch_average_train_accuracy = train_function_outputs[1]
 
         if self._dropout_rate_update_interval > 0 and self.minibatch_index % self._dropout_rate_update_interval == 0:
             train_dropout_function_outputs = self._train_dropout_function(minibatch_x, minibatch_y, learning_rate)
-            # minibatch_average_train_dropout_loss = train_dropout_function_outputs[0];
-            # minibatch_average_train_dropout_accuracy = train_dropout_function_outputs[1];
-        minibatch_running_time = timeit.default_timer() - minibatch_running_time;
+            # minibatch_average_train_dropout_loss = train_dropout_function_outputs[0]
+            # minibatch_average_train_dropout_accuracy = train_dropout_function_outputs[1]
+        minibatch_running_time = timeit.default_timer() - minibatch_running_time
 
-        #print self._debug_function(minibatch_x, minibatch_y, learning_rate);
+        #print self._debug_function(minibatch_x, minibatch_y, learning_rate)
 
         return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
 
     """
     def dae_regularizer(self):
         if self._layer_dae_regularizer_lambdas == None:
-            return 0;
+            return 0
         else:
-            dae_regularization = 0;
+            dae_regularization = 0
             for dae_layer in self._layer_dae_regularizer_lambdas:
                 dae_regularization += self._layer_dae_regularizer_lambdas[dae_layer] * dae_layer.get_objective_to_minimize()
-            return dae_regularization;
+            return dae_regularization
 
     def set_dae_regularizer_lambda(self,
                                    layer_dae_regularizer_lambdas,
@@ -523,38 +523,38 @@ class DynamicLeNet(DiscriminativeNetwork):
                                    L2_regularizer_lambdas=None
                                    ):
         if layer_dae_regularizer_lambdas == None or all(layer_dae_regularizer_lambda == 0 for layer_dae_regularizer_lambda in layer_dae_regularizer_lambdas):
-            self._layer_dae_regularizer_lambdas = None;
+            self._layer_dae_regularizer_lambdas = None
         else:
-            assert len(layer_dae_regularizer_lambdas) == (len(self.get_all_layers()) - 1) / 2 - 1;
-            dae_regularizer_layers = self.__build_dae_network(layer_corruption_levels, L1_regularizer_lambdas, L2_regularizer_lambdas);
-            self._layer_dae_regularizer_lambdas = {temp_layer:layer_dae_regularizer_lambda for temp_layer, layer_dae_regularizer_lambda in zip(dae_regularizer_layers, layer_dae_regularizer_lambdas)};
+            assert len(layer_dae_regularizer_lambdas) == (len(self.get_all_layers()) - 1) / 2 - 1
+            dae_regularizer_layers = self.__build_dae_network(layer_corruption_levels, L1_regularizer_lambdas, L2_regularizer_lambdas)
+            self._layer_dae_regularizer_lambdas = {temp_layer:layer_dae_regularizer_lambda for temp_layer, layer_dae_regularizer_lambda in zip(dae_regularizer_layers, layer_dae_regularizer_lambdas)}
 
-        return;
+        return
 
     def __build_dae_network(self,
                             layer_corruption_levels=None,
                             L1_regularizer_lambdas=None,
                             L2_regularizer_lambdas=None
                             ):
-        layers = self.get_all_layers();
+        layers = self.get_all_layers()
 
-        denoising_auto_encoders = [];
+        denoising_auto_encoders = []
 
         if layer_corruption_levels is None:
             layer_corruption_levels = numpy.zeros((len(layers) - 1) / 2 - 1)
-        assert len(layer_corruption_levels) == (len(layers) - 1) / 2 - 1;
+        assert len(layer_corruption_levels) == (len(layers) - 1) / 2 - 1
 
         for hidden_layer_index in range(2, len(layers) - 1, 2):
-            hidden_layer = layers[hidden_layer_index];
+            hidden_layer = layers[hidden_layer_index]
             # this is to get around the dropout layer
             # input = hidden_layer.input
-            input_layer = layers[hidden_layer_index - 2];
-            hidden_layer_shape = hidden_layer.num_units;
+            input_layer = layers[hidden_layer_index - 2]
+            hidden_layer_shape = hidden_layer.num_units
             hidden_layer_nonlinearity = hidden_layer.nonlinearity
 
             # this is to get around the dropout layer
-            # layer_corruption_level = layer_corruption_levels[hidden_layer_index - 1];
-            layer_corruption_level = layer_corruption_levels[hidden_layer_index / 2 - 1];
+            # layer_corruption_level = layer_corruption_levels[hidden_layer_index - 1]
+            layer_corruption_level = layer_corruption_levels[hidden_layer_index / 2 - 1]
 
             denoising_auto_encoder = DenoisingAutoEncoder(
                 input=input_layer,
@@ -571,15 +571,15 @@ class DynamicLeNet(DiscriminativeNetwork):
                 b_encoder=hidden_layer.b,
                 )
 
-            denoising_auto_encoders.append(denoising_auto_encoder);
+            denoising_auto_encoders.append(denoising_auto_encoder)
 
-        return denoising_auto_encoders;
+        return denoising_auto_encoders
     """
 
     """
     def pretrain_with_dae(self, data_x, layer_corruption_levels=None, number_of_epochs=50, minibatch_size=1, learning_rate=1e-3, momentum=0.95):
-        denoising_auto_encoders = self.__build_dae_network(layer_corruption_levels);
-        pretrain_functions = [];
+        denoising_auto_encoders = self.__build_dae_network(layer_corruption_levels)
+        pretrain_functions = []
         for denoising_auto_encoder in denoising_auto_encoders:
             '''
             train_prediction = lasagne.layers.get_output(denoising_auto_encoder)
@@ -587,15 +587,15 @@ class DynamicLeNet(DiscriminativeNetwork):
             pretrain_loss = theano.tensor.mean(-theano.tensor.sum(pretrain_loss, axis=1))
             '''
 
-            pretrain_loss = denoising_auto_encoder.get_objective_to_minimize();
+            pretrain_loss = denoising_auto_encoder.get_objective_to_minimize()
             # pretrain_loss = theano.tensor.mean(theano.tensor.nnet.categorical_crossentropy(train_prediction, y))
 
             '''
             # We could add some weight decay as well here, see lasagne.regularization.
-            dae_layers = lasagne.layers.get_all_layers(denoising_auto_encoders);
-            L1_regularizer_layer_lambdas = {temp_layer:L1_regularizer_lambda for temp_layer, L1_regularizer_lambda in zip(dae_layers[1:], L1_regularizer_lambdas)};
+            dae_layers = lasagne.layers.get_all_layers(denoising_auto_encoders)
+            L1_regularizer_layer_lambdas = {temp_layer:L1_regularizer_lambda for temp_layer, L1_regularizer_lambda in zip(dae_layers[1:], L1_regularizer_lambdas)}
             L1_regularizer = lasagne.regularization.regularize_layer_params_weighted(L1_regularizer_layer_lambdas, lasagne.regularization.l1)
-            L2_regularizer_layer_lambdas = {temp_layer:L2_regularizer_lambda for temp_layer, L2_regularizer_lambda in zip(dae_layers[1:], L2_regularizer_lambdas)};
+            L2_regularizer_layer_lambdas = {temp_layer:L2_regularizer_lambda for temp_layer, L2_regularizer_lambda in zip(dae_layers[1:], L2_regularizer_lambdas)}
             L2_regularizer = lasagne.regularization.regularize_layer_params_weighted(L2_regularizer_layer_lambdas, lasagne.regularization.l2)
             pretrain_loss += L1_regularizer + L2_regularizer
             '''
@@ -631,7 +631,7 @@ class DynamicLeNet(DiscriminativeNetwork):
                 updates=updates
             )
 
-            pretrain_functions.append(pretrain_function);
+            pretrain_functions.append(pretrain_function)
 
         number_of_minibatches_to_pretrain = data_x.shape[0] / minibatch_size
 
@@ -649,7 +649,7 @@ class DynamicLeNet(DiscriminativeNetwork):
                     minibatch_x = data_x[minibatch_index * minibatch_size:(minibatch_index + 1) * minibatch_size, :]
 
                     function_output = pretrain_functions[dae_index](minibatch_x)
-                    temp_average_pretrain_loss = function_output[0];
+                    temp_average_pretrain_loss = function_output[0]
                     # print temp_average_pretrain_loss
 
                     average_pretrain_loss.append(temp_average_pretrain_loss)

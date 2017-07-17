@@ -1,188 +1,147 @@
-import cPickle
 import logging
-import numpy
 import os
-import sys
-import timeit
 
-from .. import networks
+import numpy
+
 from .. import layers
-from .base import load_data, load_and_split_data
+from .. import networks
 
 __all__ = [
-    "train_dmlp",
+	"train_dmlp",
 ]
 
+
 def construct_dmlp_parser():
-    from .mlp import construct_mlp_parser
-    model_parser = construct_mlp_parser();
+	from .mlp import construct_mlp_parser
+	model_parser = construct_mlp_parser()
 
-    model_parser.description = "dynamic multi-layer perceptron argument";
+	model_parser.description = "dynamic multi-layer perceptron argument"
 
-    # model argument set
-    model_parser.add_argument("--dropout_rate_update_interval", dest="dropout_rate_update_interval", type=int, action='store', default=0,
-                              help="dropout rate update interval [0=no update]");
-    model_parser.add_argument('--update_hidden_layer_dropout_only', dest="update_hidden_layer_dropout_only", action='store_true', default=False,
-                              help="update hidden layer dropout only [False]")
+	# model argument set
+	model_parser.add_argument("--dropout_rate_update_interval", dest="dropout_rate_update_interval", type=int,
+	                          action='store', default=0,
+	                          help="dropout rate update interval [0=no update]")
+	model_parser.add_argument('--update_hidden_layer_dropout_only', dest="update_hidden_layer_dropout_only",
+	                          action='store_true', default=False,
+	                          help="update hidden layer dropout only [False]")
 
-    return model_parser;
+	return model_parser
+
 
 def validate_dmlp_arguments(arguments):
-    from .mlp import validate_mlp_arguments;
-    arguments = validate_mlp_arguments(arguments);
+	from .mlp import validate_mlp_arguments
+	arguments = validate_mlp_arguments(arguments)
 
-    # model argument set
-    assert (arguments.dropout_rate_update_interval >= 0);
+	# model argument set
+	assert (arguments.dropout_rate_update_interval >= 0)
 
-    return arguments
+	return arguments
+
 
 def train_dmlp():
-    """
-    Demonstrate stochastic gradient descent optimization for a multilayer perceptron
-    This is demonstrated on MNIST.
-    """
+	"""
+	Demonstrate stochastic gradient descent optimization for a multilayer perceptron
+	This is demonstrated on MNIST.
+	"""
 
-    arguments, additionals = construct_dmlp_parser().parse_known_args();
-    #arguments, additionals = model_parser.parse_known_args()
+	from .base import config_model
+	settings = config_model(construct_dmlp_parser, validate_dmlp_arguments)
 
-    settings = validate_dmlp_arguments(arguments);
+	network = networks.DynamicMultiLayerPerceptron(
+		incoming=settings.input_shape,
 
-    input_directory = settings.input_directory
-    output_directory = settings.output_directory
-    assert not os.path.exists(output_directory)
-    os.mkdir(output_directory);
+		layer_dimensions=settings.dense_dimensions,
+		layer_nonlinearities=settings.dense_nonlinearities,
 
-    logging.basicConfig(filename=os.path.join(output_directory, "model.log"), level=logging.DEBUG, format='%(asctime)s | %(name)s | %(levelname)s | %(message)s');
-    validation_data = settings.validation_data
-    minibatch_size = settings.minibatch_size
+		layer_activation_parameters=settings.layer_activation_parameters,
+		layer_activation_styles=settings.layer_activation_styles,
 
-    print "========== ==========", "parameters", "========== =========="
-    for key, value in vars(settings).iteritems():
-        print "%s=%s" % (key, value);
-    print "========== ==========", "additional", "========== =========="
-    for addition in additionals:
-        print "%s" % (addition);
+		objective_functions=settings.objective,
+		update_function=settings.update,
+		# pretrained_model=pretrained_model
 
-    logging.info("========== ==========" + "parameters" + "========== ==========")
-    for key, value in vars(settings).iteritems():
-        logging.info("%s=%s" % (key, value));
-    logging.info("========== ==========" + "parameters" + "========== ==========")
+		learning_rate=settings.learning_rate,
+		learning_rate_decay=settings.learning_rate_decay,
+		max_norm_constraint=settings.max_norm_constraint,
+		# learning_rate_decay_style=settings.learning_rate_decay_style,
+		# learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
 
-    cPickle.dump(settings, open(os.path.join(output_directory, "settings.pkl"), 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
+		dropout_rate_update_interval=settings.dropout_rate_update_interval,
+		update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
 
-    #
-    #
-    #
-    #
-    #
+		validation_interval=settings.validation_interval,
+	)
 
-    test_dataset = load_data(input_directory, dataset="test");
-    if validation_data>=0:
-        train_dataset_info, validate_dataset_info = load_and_split_data(input_directory, validation_data);
-        train_dataset, train_indices = train_dataset_info;
-        validate_dataset, validate_indices =validate_dataset_info;
-        numpy.save(os.path.join(output_directory, "train.index.npy"), train_indices);
-        numpy.save(os.path.join(output_directory, "validate.index.npy"), validate_indices);
-    else:
-        train_dataset = load_data(input_directory, dataset="train");
-        validate_dataset = load_data(input_directory, dataset="validate");
-    train_set_x, train_set_y = train_dataset;
-    input_shape = list(train_set_x.shape[1:]);
-    input_shape.insert(0, None)
-    input_shape = tuple(input_shape)
+	network.set_regularizers(settings.regularizer)
+	# network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
+	# network.set_L2_regularizer_lambda(settings.L2_regularizer_lambdas)
 
-    #
-    #
-    #
-    #
-    #
+	from .base import train_model
+	train_model(network, settings)
 
-    network = networks.DynamicMultiLayerPerceptron(
-        incoming=input_shape,
+	'''
+	########################
+	# START MODEL TRAINING #
+	########################
 
-        layer_dimensions=settings.dense_dimensions,
-        layer_nonlinearities=settings.dense_nonlinearities,
+	start_train = timeit.default_timer()
+	# Finally, launch the training loop.
+	# We iterate over epochs:
 
-        layer_activation_parameters=settings.layer_activation_parameters,
-        layer_activation_styles=settings.layer_activation_styles,
+	if settings.debug:
+		snapshot_retain_rates(network, output_directory)
 
-        objective_functions=settings.objective,
-        update_function=settings.update,
-        # pretrained_model=pretrained_model
+	for epoch_index in range(settings.number_of_epochs):
+		network.train(train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory)
 
-        learning_rate = settings.learning_rate,
-        learning_rate_decay = settings.learning_rate_decay,
-        max_norm_constraint=settings.max_norm_constraint,
-        #learning_rate_decay_style=settings.learning_rate_decay_style,
-        #learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
+		if settings.snapshot_interval>0 and network.epoch_index % settings.snapshot_interval == 0:
+			model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
+			cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 
-        dropout_rate_update_interval=settings.dropout_rate_update_interval,
-        update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
+		print "PROGRESS: %f%%" % (100. * epoch_index / settings.number_of_epochs)
 
-        validation_interval=settings.validation_interval,
-    )
+		if settings.debug:
+			snapshot_retain_rates(network, output_directory)
 
-    network.set_regularizers(settings.regularizer);
-    #network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
-    #network.set_L2_regularizer_lambda(settings.L2_regularizer_lambdas)
+	model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
+	cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 
-    ########################
-    # START MODEL TRAINING #
-    ########################
+	end_train = timeit.default_timer()
 
-    start_train = timeit.default_timer()
-    # Finally, launch the training loop.
-    # We iterate over epochs:
+	print "Optimization complete..."
+	logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
+		network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index))
+	print >> sys.stderr, ('The code for file %s ran for %.2fm' % (os.path.split(__file__)[1], (end_train - start_train) / 60.))
+	'''
 
-    if settings.debug:
-        snapshot_retain_rates(network, output_directory)
-
-    for epoch_index in range(settings.number_of_epochs):
-        network.train(train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory);
-
-        if settings.snapshot_interval>0 and network.epoch_index % settings.snapshot_interval == 0:
-            model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-            cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
-
-        print "PROGRESS: %f%%" % (100. * epoch_index / settings.number_of_epochs);
-
-        if settings.debug:
-            snapshot_retain_rates(network, output_directory);
-
-    model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-    cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
-
-    end_train = timeit.default_timer()
-
-    print "Optimization complete..."
-    logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
-        network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index));
-    print >> sys.stderr, ('The code for file %s ran for %.2fm' % (os.path.split(__file__)[1], (end_train - start_train) / 60.))
 
 def snapshot_retain_rates(network, output_directory):
-    dropout_layer_index = 0;
-    for network_layer in network.get_network_layers():
-        if not isinstance(network_layer, layers.AdaptiveDropoutLayer):
-            continue;
+	dropout_layer_index = 0
+	for network_layer in network.get_network_layers():
+		if not isinstance(network_layer, layers.AdaptiveDropoutLayer):
+			continue
 
-        layer_retain_probability = network_layer.activation_probability.eval();
-        logging.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
-            network.epoch_index,
-            layer_retain_probability.shape,
-            numpy.mean(layer_retain_probability),
-            numpy.min(layer_retain_probability),
-            numpy.max(layer_retain_probability)));
+		layer_retain_probability = network_layer.activation_probability.eval()
+		logging.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
+			network.epoch_index,
+			layer_retain_probability.shape,
+			numpy.mean(layer_retain_probability),
+			numpy.min(layer_retain_probability),
+			numpy.max(layer_retain_probability)))
 
-        retain_rate_file = os.path.join(output_directory,
-                                        "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
-        numpy.save(retain_rate_file, layer_retain_probability);
-        dropout_layer_index += 1;
+		retain_rate_file = os.path.join(output_directory,
+		                                "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
+		numpy.save(retain_rate_file, layer_retain_probability)
+		dropout_layer_index += 1
+
 
 def resume_dmlp():
-    pass
+	pass
+
 
 def test_dmlp():
-    pass
+	pass
+
 
 if __name__ == '__main__':
-    train_dmlp()
+	train_dmlp()
