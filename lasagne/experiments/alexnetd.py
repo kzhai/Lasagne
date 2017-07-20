@@ -42,8 +42,9 @@ def train_dalexnet():
 	This is demonstrated on MNIST.
 	"""
 
-	from .base import config_model
+	from . import config_model, validate_config
 	settings = config_model(construct_dalexnet_parser, validate_dalexnet_arguments)
+	settings = validate_config(settings)
 
 	network = networks.DynamicAlexNet(
 		incoming=settings.input_shape,
@@ -94,7 +95,7 @@ def train_dalexnet():
 
 	network.set_regularizers(settings.regularizer)
 
-	from .base import train_model
+	from . import train_model
 	train_model(network, settings)
 
 	'''
@@ -110,19 +111,19 @@ def train_dalexnet():
 		snapshot_retain_rates(network, output_directory)
 
 	for epoch_index in range(settings.number_of_epochs):
-		network.train(train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory);
+		network.train(train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory)
 
 		if settings.snapshot_interval>0 and network.epoch_index % settings.snapshot_interval == 0:
 			model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-			#cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
+			#cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 
-		print("PROGRESS: %f%%" % (100. * epoch_index / settings.number_of_epochs));
+		print("PROGRESS: %f%%" % (100. * epoch_index / settings.number_of_epochs))
 
 		if settings.debug:
-			snapshot_retain_rates(network, output_directory);
+			snapshot_retain_rates(network, output_directory)
 
 	model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-	#cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
+	#cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 
 	end_train = timeit.default_timer()
 

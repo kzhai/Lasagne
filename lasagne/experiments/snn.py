@@ -6,7 +6,7 @@ __all__ = [
 
 
 def construct_snn_parser():
-	from .base import construct_discriminative_parser, add_dense_options
+	from . import construct_discriminative_parser, add_dense_options
 	model_parser = construct_discriminative_parser()
 	model_parser = add_dense_options(model_parser)
 
@@ -29,7 +29,7 @@ def construct_snn_parser():
 
 
 def validate_snn_arguments(arguments):
-	from .base import validate_discriminative_arguments, validate_dense_arguments
+	from . import validate_discriminative_arguments, validate_dense_arguments
 	arguments = validate_discriminative_arguments(arguments)
 	arguments = validate_dense_arguments(arguments)
 	number_of_layers = len(arguments.dense_dimensions)
@@ -69,8 +69,9 @@ def train_snn():
 	This is demonstrated on MNIST.
 	"""
 
-	from .base import config_model
+	from . import config_model, validate_config
 	settings = config_model(construct_snn_parser, validate_snn_arguments)
+	settings = validate_config(settings)
 
 	######################
 	# BUILD ACTUAL MODEL #
@@ -79,8 +80,8 @@ def train_snn():
 	network = networks.StandoutNeuralNetworkTypeB(
 		incoming=settings.input_shape,
 
-		layer_dimensions=settings.dense_dimensions,
-		layer_nonlinearities=settings.dense_nonlinearities,
+		dense_dimensions=settings.dense_dimensions,
+		dense_nonlinearities=settings.dense_nonlinearities,
 
 		input_activation_rate=settings.input_activation_rate,
 		# pretrained_model=None,
@@ -101,7 +102,7 @@ def train_snn():
 	# network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
 	# network.set_L2_regularizer_lambda(settings.L2_regularizer_lambdas)
 
-	from .base import train_model
+	from . import train_model
 	train_model(network, settings)
 
 

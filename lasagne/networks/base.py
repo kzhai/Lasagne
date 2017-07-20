@@ -88,18 +88,19 @@ class Network(object):
 		self.set_learning_rate_decay(learning_rate_decay)
 		self.set_learning_rate(learning_rate)
 		self.set_max_norm_constraint(max_norm_constraint)
-		# self.set_learning_rate_decay_style(learning_rate_decay_style)
-		# self.set_learning_rate_decay_parameter(learning_rate_decay_parameter)
 
-		# self.learning_change_stack = []
-		# (epoch_index, minibatch_index, learning_rate, learning_rate_decay_style, learning_rate_decay_parameter)
-		# self.network_change_stack = []
-		# (epoch_index, minibatch_index, objective_function, update_function, regularizer_information)
-		# self.data_change_stack = []
-		# (epoch_index, minibatch_index, train_dataset, validate_dataset, test_dataset)
+	# self.set_learning_rate_decay_style(learning_rate_decay_style)
+	# self.set_learning_rate_decay_parameter(learning_rate_decay_parameter)
 
-		# self._layer_L1_regularizer_lambdas = None
-		# self._layer_L2_regularizer_lambdas = None
+	# self.learning_change_stack = []
+	# (epoch_index, minibatch_index, learning_rate, learning_rate_decay_style, learning_rate_decay_parameter)
+	# self.network_change_stack = []
+	# (epoch_index, minibatch_index, objective_function, update_function, regularizer_information)
+	# self.data_change_stack = []
+	# (epoch_index, minibatch_index, train_dataset, validate_dataset, test_dataset)
+
+	# self._layer_L1_regularizer_lambdas = None
+	# self._layer_L2_regularizer_lambdas = None
 
 	def get_input(self, **kwargs):
 		return layers.get_output(self._input_layer, **kwargs)
@@ -398,11 +399,14 @@ class DiscriminativeNetwork(Network):
 		                                            # learning_rate_decay_parameter
 		                                            )
 
+		self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+
 		self.validation_interval = validation_interval
 		self.best_epoch_index = 0
 		self.best_minibatch_index = 0
 		self.best_validate_accuracy = 0
-		# self.best_validate_model = None
+
+	# self.best_validate_model = None
 
 	'''
 	@property

@@ -5,7 +5,7 @@ import numpy
 import theano
 import theano.tensor
 
-from .base import DiscriminativeNetwork
+from . import DiscriminativeNetwork
 from .. import init, nonlinearities, objectives, updates, regularization
 from .. import layers
 
@@ -19,8 +19,8 @@ class VariationalDropoutTypeANetwork(DiscriminativeNetwork):
 	def __init__(self,
 	             incoming,
 
-	             layer_dimensions,
-	             layer_nonlinearities,
+	             dense_dimensions,
+	             dense_nonlinearities,
 
 	             layer_activation_parameters=None,
 	             adaptive_styles="layerwise",
@@ -49,15 +49,15 @@ class VariationalDropoutTypeANetwork(DiscriminativeNetwork):
 		                                                     )
 
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
-		self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+		#self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
 		# self._input_layer = layers.InputLayer(shape=input_shape)
 		# self._input_variable = self._input_layer.input_var
 
-		assert len(layer_dimensions) == len(layer_nonlinearities)
-		assert len(layer_dimensions) == len(layer_activation_parameters)
-		assert len(layer_dimensions) == len(variational_dropout_regularizer_lambdas)
-		assert len(layer_dimensions) == len(adaptive_styles)
+		assert len(dense_dimensions) == len(dense_nonlinearities)
+		assert len(dense_dimensions) == len(layer_activation_parameters)
+		assert len(dense_dimensions) == len(variational_dropout_regularizer_lambdas)
+		assert len(dense_dimensions) == len(adaptive_styles)
 		assert (adaptive_style in set(["layerwise", "elementwise"]) for adaptive_style in adaptive_styles)
 
 		'''
@@ -70,14 +70,14 @@ class VariationalDropoutTypeANetwork(DiscriminativeNetwork):
 
 		# neural_network = input_network
 		neural_network = self._input_layer
-		for layer_index in range(len(layer_dimensions)):
+		for layer_index in range(len(dense_dimensions)):
 			# previous_layer_dimension = layers.get_output_shape(neural_network)[1:]
 			# activation_probability = noise.sample_activation_probability(previous_layer_dimension, layer_activation_styles[layer_index], layer_activation_parameters[layer_index])
 
 			# neural_network = noise.GeneralizedDropoutLayer(neural_network, activation_probability=activation_probability)
 
-			layer_dimension = layer_dimensions[layer_index]
-			layer_nonlinearity = layer_nonlinearities[layer_index]
+			layer_dimension = dense_dimensions[layer_index]
+			layer_nonlinearity = dense_nonlinearities[layer_index]
 
 			neural_network = layers.VariationalDropoutTypeALayer(neural_network,
 			                                                     activation_probability=layer_activation_parameters[
@@ -179,8 +179,8 @@ class VariationalDropoutTypeBNetwork(DiscriminativeNetwork):
 	def __init__(self,
 	             incoming,
 
-	             layer_dimensions,
-	             layer_nonlinearities,
+	             dense_dimensions,
+	             dense_nonlinearities,
 
 	             layer_activation_parameters=None,
 	             adaptive_styles="layerwise",
@@ -209,15 +209,15 @@ class VariationalDropoutTypeBNetwork(DiscriminativeNetwork):
 		                                                     )
 
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
-		self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+		#self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
 		# self._input_layer = layers.InputLayer(shape=input_shape)
 		# self._input_variable = self._input_layer.input_var
 
-		assert len(layer_dimensions) == len(layer_nonlinearities)
-		assert len(layer_dimensions) == len(layer_activation_parameters)
-		assert len(layer_dimensions) == len(variational_dropout_regularizer_lambdas)
-		assert len(layer_dimensions) == len(adaptive_styles)
+		assert len(dense_dimensions) == len(dense_nonlinearities)
+		assert len(dense_dimensions) == len(layer_activation_parameters)
+		assert len(dense_dimensions) == len(variational_dropout_regularizer_lambdas)
+		assert len(dense_dimensions) == len(adaptive_styles)
 		assert (adaptive_style in set(["layerwise", "elementwise", "weightwise"]) for adaptive_style in adaptive_styles)
 
 		'''
@@ -230,14 +230,14 @@ class VariationalDropoutTypeBNetwork(DiscriminativeNetwork):
 
 		# neural_network = input_network
 		neural_network = self._input_layer
-		for layer_index in range(len(layer_dimensions)):
+		for layer_index in range(len(dense_dimensions)):
 			# previous_layer_dimension = layers.get_output_shape(neural_network)[1:]
 			# activation_probability = noise.sample_activation_probability(previous_layer_dimension, layer_activation_styles[layer_index], layer_activation_parameters[layer_index])
 
 			# neural_network = noise.GeneralizedDropoutLayer(neural_network, activation_probability=activation_probability)
 
-			layer_dimension = layer_dimensions[layer_index]
-			layer_nonlinearity = layer_nonlinearities[layer_index]
+			layer_dimension = dense_dimensions[layer_index]
+			layer_nonlinearity = dense_nonlinearities[layer_index]
 
 			neural_network = layers.DenseLayer(neural_network, layer_dimension,
 			                                   W=init.GlorotUniform(gain=init.GlorotUniformGain[layer_nonlinearity]),
@@ -250,8 +250,8 @@ class VariationalDropoutTypeBNetwork(DiscriminativeNetwork):
 
 			self.layers_coeff[neural_network] = variational_dropout_regularizer_lambdas[layer_index]
 
-			# print_output_dimension("checkpoint", neural_network, 100)
-			# print_output("checkpoint", neural_network, numpy.random.random((100, 784)))
+		# print_output_dimension("checkpoint", neural_network, 100)
+		# print_output("checkpoint", neural_network, numpy.random.random((100, 784)))
 
 		self._neural_network = neural_network
 
@@ -300,7 +300,8 @@ def print_output_dimension(checkpoint_text, neural_network, batch_size):
 	reference_to_input_layers = [input_layer for input_layer in layers.get_all_layers(neural_network) if
 	                             isinstance(input_layer, layers.InputLayer)]
 	print(
-	checkpoint_text, ":", layers.get_output_shape(neural_network, {reference_to_input_layers[0]: (batch_size, 784)}))
+		checkpoint_text, ":",
+		layers.get_output_shape(neural_network, {reference_to_input_layers[0]: (batch_size, 784)}))
 
 
 def print_output(checkpoint_text, neural_network, data):
@@ -328,8 +329,8 @@ def main():
 	network = VariationalDropoutTypeANetwork(
 		incoming=input_shape,
 
-		layer_dimensions=[32, 64, 10],
-		layer_nonlinearities=[nonlinearities.rectify, nonlinearities.rectify, nonlinearities.softmax],
+		dense_dimensions=[32, 64, 10],
+		dense_nonlinearities=[nonlinearities.rectify, nonlinearities.rectify, nonlinearities.softmax],
 
 		layer_activation_parameters=[0.8, 0.5, 0.5],
 		adaptive_styles=["elementwise", "elementwise", "elementwise"],

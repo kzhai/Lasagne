@@ -44,14 +44,15 @@ def train_dmlp():
 	This is demonstrated on MNIST.
 	"""
 
-	from .base import config_model
+	from . import config_model, validate_config
 	settings = config_model(construct_dmlp_parser, validate_dmlp_arguments)
+	settings = validate_config(settings)
 
 	network = networks.DynamicMultiLayerPerceptron(
 		incoming=settings.input_shape,
 
-		layer_dimensions=settings.dense_dimensions,
-		layer_nonlinearities=settings.dense_nonlinearities,
+		dense_dimensions=settings.dense_dimensions,
+		dense_nonlinearities=settings.dense_nonlinearities,
 
 		layer_activation_parameters=settings.layer_activation_parameters,
 		layer_activation_styles=settings.layer_activation_styles,
@@ -76,7 +77,7 @@ def train_dmlp():
 	# network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
 	# network.set_L2_regularizer_lambda(settings.L2_regularizer_lambdas)
 
-	from .base import train_model
+	from . import train_model
 	train_model(network, settings)
 
 	'''

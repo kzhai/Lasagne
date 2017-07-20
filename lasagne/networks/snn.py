@@ -4,7 +4,7 @@ import numpy
 import theano
 import theano.tensor
 
-from .base import DiscriminativeNetwork, decay_learning_rate
+from . import DiscriminativeNetwork, decay_learning_rate
 from .. import init, nonlinearities, objectives, updates
 from .. import layers
 
@@ -18,8 +18,8 @@ class StandoutNeuralNetworkTypeA(DiscriminativeNetwork):
 	def __init__(self,
 	             incoming,
 
-	             layer_dimensions,
-	             layer_nonlinearities,
+	             dense_dimensions,
+	             dense_nonlinearities,
 
 	             input_activation_rate=1.0,
 	             # layer_activation_parameters=None,
@@ -47,15 +47,15 @@ class StandoutNeuralNetworkTypeA(DiscriminativeNetwork):
 		                                                 # learning_rate_decay_parameter,
 		                                                 validation_interval)
 
-		self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+		#self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
-		assert len(layer_dimensions) == len(layer_nonlinearities)
+		assert len(dense_dimensions) == len(dense_nonlinearities)
 		# assert len(layer_dimensions) == len(layer_activation_parameters)
 		# assert len(layer_dimensions) == len(layer_activation_styles)
 
 		neural_network = self._input_layer
 
-		for layer_index in range(len(layer_dimensions)):
+		for layer_index in range(len(dense_dimensions)):
 			previous_layer_dimension = layers.get_output_shape(neural_network)[1:]
 			# activation_probability = noise.sample_activation_probability(previous_layer_dimension, layer_activation_styles[layer_index], layer_activation_parameters[layer_index])
 			# activation_probability = sample_activation_probability(previous_layer_dimension, layer_activation_styles[layer_index], layer_activation_parameters[layer_index])
@@ -66,15 +66,15 @@ class StandoutNeuralNetworkTypeA(DiscriminativeNetwork):
 				neural_network = layers.LinearDropoutLayer(neural_network,
 				                                           activation_probability=input_activation_rate)
 
-			layer_dimension = layer_dimensions[layer_index]
-			layer_nonlinearity = layer_nonlinearities[layer_index]
+			layer_dimension = dense_dimensions[layer_index]
+			layer_nonlinearity = dense_nonlinearities[layer_index]
 
 			dense_layer = layers.DenseLayer(neural_network,
 			                                layer_dimension,
 			                                W=init.GlorotUniform(gain=init.GlorotUniformGain[layer_nonlinearity]),
 			                                nonlinearity=layer_nonlinearity)
 
-			if layer_index < len(layer_dimensions) - 1:
+			if layer_index < len(dense_dimensions) - 1:
 				dropout_layer = layers.StandoutLayer(neural_network, layer_dimension)
 				neural_network = layers.ElemwiseMergeLayer([dense_layer, dropout_layer], theano.tensor.mul)
 			else:
@@ -229,8 +229,8 @@ class StandoutNeuralNetworkTypeB(DiscriminativeNetwork):
 	def __init__(self,
 	             incoming,
 
-	             layer_dimensions,
-	             layer_nonlinearities,
+	             dense_dimensions,
+	             dense_nonlinearities,
 
 	             input_activation_rate=1.0,
 	             # layer_activation_parameters=None,
@@ -258,9 +258,9 @@ class StandoutNeuralNetworkTypeB(DiscriminativeNetwork):
 		                                                 # learning_rate_decay_parameter,
 		                                                 validation_interval)
 
-		self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+		#self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
-		assert len(layer_dimensions) == len(layer_nonlinearities)
+		assert len(dense_dimensions) == len(dense_nonlinearities)
 		# assert len(layer_dimensions) == len(layer_activation_parameters)
 		# assert len(layer_dimensions) == len(layer_activation_styles)
 
@@ -270,16 +270,16 @@ class StandoutNeuralNetworkTypeB(DiscriminativeNetwork):
 		activation_probability = numpy.zeros(previous_layer_dimension) + input_activation_rate
 		neural_network = layers.LinearDropoutLayer(neural_network, activation_probability=activation_probability)
 
-		for layer_index in range(len(layer_dimensions)):
-			layer_dimension = layer_dimensions[layer_index]
-			layer_nonlinearity = layer_nonlinearities[layer_index]
+		for layer_index in range(len(dense_dimensions)):
+			layer_dimension = dense_dimensions[layer_index]
+			layer_nonlinearity = dense_nonlinearities[layer_index]
 
 			dense_layer = layers.DenseLayer(neural_network,
 			                                layer_dimension,
 			                                W=init.GlorotUniform(gain=init.GlorotUniformGain[layer_nonlinearity]),
 			                                nonlinearity=layer_nonlinearity)
 
-			if layer_index < len(layer_dimensions) - 1:
+			if layer_index < len(dense_dimensions) - 1:
 				dropout_layer = layers.StandoutLayer(neural_network, layer_dimension, W=dense_layer.W, b=dense_layer.b)
 				neural_network = layers.ElemwiseMergeLayer([dense_layer, dropout_layer], theano.tensor.mul)
 			else:
@@ -309,8 +309,8 @@ def main():
 	network = StandoutNeuralNetworkTypeB(
 		incoming=input_shape,
 
-		layer_dimensions=[32, 64, 10],
-		layer_nonlinearities=[nonlinearities.rectify, nonlinearities.rectify, nonlinearities.softmax],
+		dense_dimensions=[32, 64, 10],
+		dense_nonlinearities=[nonlinearities.rectify, nonlinearities.rectify, nonlinearities.softmax],
 		input_activation_rate=0.8,
 
 		objective_functions=objectives.categorical_crossentropy,

@@ -2,6 +2,7 @@ from .base import *
 #from .ctc import *
 #from .dae import *
 from .alexnet import *
+from .elman import *
 from .fdn import *
 from .lenet import *
 from .mlp import *

@@ -6,7 +6,7 @@ __all__ = [
 
 
 def construct_alexnet_parser():
-	from .base import construct_discriminative_parser, add_convpool_options, add_dense_options, add_dropout_options
+	from . import construct_discriminative_parser, add_convpool_options, add_dense_options, add_dropout_options
 
 	model_parser = construct_discriminative_parser()
 	model_parser = add_convpool_options(model_parser)
@@ -64,8 +64,7 @@ def construct_alexnet_parser():
 
 
 def validate_alexnet_arguments(arguments):
-	from .base import validate_discriminative_arguments, validate_convpool_arguments, validate_dense_arguments, \
-		validate_dropout_arguments
+	from . import validate_discriminative_arguments, validate_convpool_arguments, validate_dense_arguments, validate_dropout_arguments
 
 	arguments = validate_discriminative_arguments(arguments)
 
@@ -180,8 +179,9 @@ def train_alexnet():
 	This is demonstrated on MNIST.
 	"""
 
-	from .base import config_model
+	from . import config_model, validate_config
 	settings = config_model(construct_alexnet_parser, validate_alexnet_arguments)
+	settings = validate_config(settings)
 
 	network = networks.AlexNet(
 		incoming=settings.input_shape,
@@ -228,7 +228,7 @@ def train_alexnet():
 
 	network.set_regularizers(settings.regularizer)
 
-	from .base import train_model
+	from . import train_model
 	train_model(network, settings)
 
 

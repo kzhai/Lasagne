@@ -4,7 +4,7 @@ import numpy
 import theano
 import theano.tensor
 
-from .base import DiscriminativeNetwork
+from . import DiscriminativeNetwork
 from .. import init, objectives, updates
 from .. import layers
 from ..layers import noise, local, normalization
@@ -66,7 +66,7 @@ class AlexNet(DiscriminativeNetwork):
 		                              validation_interval)
 
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
-		self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+		#self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
 		# self._input_layer = layers.InputLayer(shape=input_shape)
 		# self._input_variable = self._input_layer.input_var
@@ -228,7 +228,7 @@ class DynamicAlexNet(DiscriminativeNetwork):
 		self._dropout_rate_update_interval = dropout_rate_update_interval
 
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
-		self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+		#self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
 		# self._input_layer = layers.InputLayer(shape=input_shape)
 		# self._input_variable = self._input_layer.input_var

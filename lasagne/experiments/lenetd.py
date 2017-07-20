@@ -44,8 +44,9 @@ def train_dlenet():
 	This is demonstrated on MNIST.
 	"""
 
-	from .base import config_model
+	from . import config_model, validate_config
 	settings = config_model(construct_dlenet_parser, validate_dlenet_arguments)
+	settings = validate_config(settings)
 
 	network = networks.DynamicLeNet(
 		incoming=settings.input_shape,
@@ -94,7 +95,7 @@ def train_dlenet():
 
 	network.set_regularizers(settings.regularizer)
 
-	from .base import train_model
+	from . import train_model
 	train_model(network, settings)
 
 	'''
@@ -110,25 +111,25 @@ def train_dlenet():
 		snapshot_retain_rates(network, output_directory)
 
 	for epoch_index in range(settings.number_of_epochs):
-		network.train(train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory);
+		network.train(train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory)
 
 		if settings.snapshot_interval>0 and network.epoch_index % settings.snapshot_interval == 0:
 			model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-			#cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
+			#cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 
-		print "PROGRESS: %f%%" % (100. * epoch_index / settings.number_of_epochs);
+		print "PROGRESS: %f%%" % (100. * epoch_index / settings.number_of_epochs)
 
 		if settings.debug:
-			snapshot_retain_rates(network, output_directory);
+			snapshot_retain_rates(network, output_directory)
 
 	model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-	#cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL);
+	#cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 
 	end_train = timeit.default_timer()
 
 	print "Optimization complete..."
 	logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
-		network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index));
+		network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index))
 	print >> sys.stderr, ('The code for file %s ran for %.2fm' % (os.path.split(__file__)[1], (end_train - start_train) / 60.))
 	'''
 

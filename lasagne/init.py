@@ -372,7 +372,7 @@ class Orthogonal(Initializer):
 #
 #
 
-import nonlinearities
+from . import nonlinearities
 
 __all__ = [
     "GlorotUniformGain",

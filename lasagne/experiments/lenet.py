@@ -1,31 +1,61 @@
-from .. import networks
+from .. import networks, nonlinearities
 
 __all__ = [
+	"add_convpool_options",
+	"validate_convpool_arguments",
+	#
 	"train_lenet",
 ]
 
 
+def add_convpool_options(model_parser):
+	# model argument set 1
+	model_parser.add_argument("--convolution_filters", dest="convolution_filters", action='store', default=None,
+	                          help="number of convolution filters [None], example, '32,16' represents 32 and 16 filters for convolution layers respectively")
+	model_parser.add_argument("--convolution_nonlinearities", dest="convolution_nonlinearities", action='store',
+	                          default=None,
+	                          help="activation functions of convolution layers [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively")
+	model_parser.add_argument("--pool_modes", dest="pool_modes", action='store', default="max",
+	                          help="pool modes after each convolution layers [max], set to none to omit, example, 'max,max,none,none,max'")
+
+	return model_parser
+
+
+def validate_convpool_arguments(arguments):
+	# model argument set 1
+	assert arguments.convolution_filters != None
+	conv_filters = arguments.convolution_filters.split(",")
+	arguments.convolution_filters = [int(conv_filter) for conv_filter in conv_filters]
+
+	assert arguments.convolution_nonlinearities != None
+	conv_nonlinearities = arguments.convolution_nonlinearities.split(",")
+	arguments.convolution_nonlinearities = [getattr(nonlinearities, conv_nonlinearity) for conv_nonlinearity in
+	                                        conv_nonlinearities]
+
+	assert len(conv_filters) == len(conv_nonlinearities)
+
+	assert arguments.pool_modes != None
+	pool_modes = arguments.pool_modes.split(",")
+	if len(pool_modes) == 1:
+		pool_modes *= len(arguments.convolution_filters)
+	for pool_mode_index in range(len(pool_modes)):
+		if pool_modes[pool_mode_index].lower() == "none":
+			pool_modes[pool_mode_index] = None
+	arguments.pool_modes = pool_modes
+
+	assert len(conv_filters) == len(pool_modes)
+
+	return arguments
+
+
 def construct_lenet_parser():
-	from .base import construct_discriminative_parser, add_convpool_options, add_dense_options, add_dropout_options
+	from . import construct_discriminative_parser, add_dense_options, add_dropout_options
 
 	model_parser = construct_discriminative_parser()
 	model_parser = add_convpool_options(model_parser)
 	model_parser = add_dense_options(model_parser)
 	model_parser = add_dropout_options(model_parser)
 
-	'''
-	# model argument set 2
-	model_parser.add_argument("--dense_dimensions", dest="dense_dimensions", action='store', default=None,
-							  help="dimension of different layer [None], example, '100,500,10' represents 3 layers contains 100, 500, and 10 neurons respectively")
-	model_parser.add_argument("--dense_nonlinearities", dest="dense_nonlinearities", action='store', default=None,
-							  help="activation functions of different layer [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively")
-
-	# model argument set 3
-	model_parser.add_argument("--layer_activation_parameters", dest="layer_activation_parameters", action='store', default="1.0",
-							  help="dropout probability of different layer [1], either one number of a list of numbers, example, '0.2' represents 0.2 dropout rate for all input+hidden layers, or '0.2,0.5' represents 0.2 dropout rate for input layer and 0.5 dropout rate for first hidden layer respectively")
-	model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store', default="bernoulli",
-							  help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively")
-	'''
 	'''
 	# model argument set 4
 	model_parser.add_argument("--convolution_filter_sizes", dest="convolution_filter_sizes", action='store', default="5*5",
@@ -69,8 +99,7 @@ def construct_lenet_parser():
 
 
 def validate_lenet_arguments(arguments):
-	from .base import validate_discriminative_arguments, validate_convpool_arguments, validate_dense_arguments, \
-		validate_dropout_arguments
+	from . import validate_discriminative_arguments, validate_dense_arguments, validate_dropout_arguments
 
 	arguments = validate_discriminative_arguments(arguments)
 
@@ -182,8 +211,9 @@ def train_lenet():
 	This is demonstrated on MNIST.
 	"""
 
-	from .base import config_model
+	from . import config_model, validate_config
 	settings = config_model(construct_lenet_parser, validate_lenet_arguments)
+	settings = validate_config(settings)
 
 	network = networks.LeNet(
 		incoming=settings.input_shape,
@@ -229,7 +259,7 @@ def train_lenet():
 	# network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
 	# network.set_L2_regularizer_lambda(settings.L2_regularizer_lambdas)
 
-	from .base import train_model
+	from . import train_model
 	train_model(network, settings)
 
 
