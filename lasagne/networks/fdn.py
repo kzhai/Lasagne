@@ -4,7 +4,7 @@ import numpy
 import theano
 import theano.tensor
 
-from . import DiscriminativeNetwork
+from . import FeedForwardNetwork
 from .. import init, nonlinearities, objectives, updates
 from .. import layers
 
@@ -13,7 +13,7 @@ __all__ = [
 ]
 
 
-class FastDropoutNetwork(DiscriminativeNetwork):
+class FastDropoutNetwork(FeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 

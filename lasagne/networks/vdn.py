@@ -5,7 +5,7 @@ import numpy
 import theano
 import theano.tensor
 
-from . import DiscriminativeNetwork
+from . import FeedForwardNetwork
 from .. import init, nonlinearities, objectives, updates, regularization
 from .. import layers
 
@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 
-class VariationalDropoutTypeANetwork(DiscriminativeNetwork):
+class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 
@@ -175,7 +175,7 @@ class VariationalDropoutTypeANetwork(DiscriminativeNetwork):
 	'''
 
 
-class VariationalDropoutTypeBNetwork(DiscriminativeNetwork):
+class VariationalDropoutTypeBNetwork(FeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 

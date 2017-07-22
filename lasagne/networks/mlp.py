@@ -5,7 +5,7 @@ import numpy
 import theano
 import theano.tensor
 
-from . import DiscriminativeNetwork
+from . import FeedForwardNetwork
 from .. import init, nonlinearities, objectives, updates
 from .. import layers
 from ..layers import noise
@@ -16,7 +16,7 @@ __all__ = [
 ]
 
 
-class MultiLayerPerceptron(DiscriminativeNetwork):
+class MultiLayerPerceptron(FeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 
@@ -101,7 +101,7 @@ class MultiLayerPerceptron(DiscriminativeNetwork):
 		self.build_functions()
 
 
-class DynamicMultiLayerPerceptron(DiscriminativeNetwork):
+class DynamicMultiLayerPerceptron(FeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 

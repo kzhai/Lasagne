@@ -283,7 +283,7 @@ def validate_config(settings):
 	return settings
 
 
-def train_model(network, settings):
+def train_model(network, settings, dataset_preprocessing_function=None):
 	input_directory = settings.input_directory
 	output_directory = settings.output_directory
 	assert not os.path.exists(output_directory)
@@ -304,6 +304,17 @@ def train_model(network, settings):
 	# input_shape = list(train_set_x.shape[1:])
 	# input_shape.insert(0, None)
 	# input_shape = tuple(input_shape)
+
+	test_x, test_y = test_dataset
+	print type(test_x), test_x.shape, type(test_y), len(test_y)
+	print test_x.dtype, test_y.dtype
+	print test_x[0], type(test_x[0]), test_y[0], type(test_y[0])
+	print test_x[0].dtype, test_y[0].dtype
+
+	if dataset_preprocessing_function != None:
+		train_dataset = dataset_preprocessing_function(train_dataset)
+		validate_dataset = dataset_preprocessing_function(validate_dataset)
+		test_dataset = dataset_preprocessing_function(test_dataset)
 
 	logging.basicConfig(filename=os.path.join(output_directory, "model.log"), level=logging.DEBUG,
 	                    format='%(asctime)s | %(name)s | %(levelname)s | %(message)s')

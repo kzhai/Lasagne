@@ -4,7 +4,7 @@ import numpy
 import theano
 import theano.tensor
 
-from . import DiscriminativeNetwork
+from . import FeedForwardNetwork
 from .. import init, objectives, updates
 from .. import layers
 from ..layers import noise, local, normalization
@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 
-class AlexNet(DiscriminativeNetwork):
+class AlexNet(FeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 
@@ -172,7 +172,7 @@ class AlexNet(DiscriminativeNetwork):
 		self.build_functions()
 
 
-class DynamicAlexNet(DiscriminativeNetwork):
+class DynamicAlexNet(FeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 

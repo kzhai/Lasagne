@@ -4,7 +4,7 @@ import numpy
 import theano
 import theano.tensor
 
-from . import DiscriminativeNetwork
+from . import FeedForwardNetwork
 from .. import init, objectives, updates
 from .. import layers
 from ..layers import noise
@@ -15,7 +15,7 @@ __all__ = [
 ]
 
 
-class LeNet(DiscriminativeNetwork):
+class LeNet(FeedForwardNetwork):
 	def __init__(self,
 	             # input_network=None,
 	             # input_shape,
@@ -311,7 +311,7 @@ class LeNet(DiscriminativeNetwork):
 	"""
 
 
-class DynamicLeNet(DiscriminativeNetwork):
+class DynamicLeNet(FeedForwardNetwork):
 	def __init__(self,
 	             # input_network=None,
 	             # input_shape,

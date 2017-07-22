@@ -4,7 +4,7 @@ import numpy
 import theano
 import theano.tensor
 
-from . import DiscriminativeNetwork, decay_learning_rate
+from . import FeedForwardNetwork, decay_learning_rate
 from .. import init, nonlinearities, objectives, updates
 from .. import layers
 
@@ -14,7 +14,7 @@ __all__ = [
 ]
 
 
-class StandoutNeuralNetworkTypeA(DiscriminativeNetwork):
+class StandoutNeuralNetworkTypeA(FeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 
@@ -225,7 +225,7 @@ class StandoutNeuralNetworkTypeA(DiscriminativeNetwork):
 		return epoch_running_time
 
 
-class StandoutNeuralNetworkTypeB(DiscriminativeNetwork):
+class StandoutNeuralNetworkTypeB(FeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 
