@@ -305,11 +305,15 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	# input_shape.insert(0, None)
 	# input_shape = tuple(input_shape)
 
+	#train_dataset = (train_dataset[0][:100], train_dataset[1][:100])
+
+	'''
 	test_x, test_y = test_dataset
 	print type(test_x), test_x.shape, type(test_y), len(test_y)
 	print test_x.dtype, test_y.dtype
 	print test_x[0], type(test_x[0]), test_y[0], type(test_y[0])
 	print test_x[0].dtype, test_y[0].dtype
+	'''
 
 	if dataset_preprocessing_function != None:
 		train_dataset = dataset_preprocessing_function(train_dataset)

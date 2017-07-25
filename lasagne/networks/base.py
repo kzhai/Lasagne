@@ -923,8 +923,8 @@ class RecurrentNetwork(FeedForwardNetwork):
 
 			# And a full pass over the validation data:
 			if validate_dataset != None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
-				average_train_accuracy = total_train_accuracy / number_of_data
-				average_train_loss = total_train_loss / number_of_data
+				average_train_accuracy = total_train_accuracy / sequence_end_index
+				average_train_loss = total_train_loss / sequence_end_index
 				logging.info('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
@@ -946,8 +946,8 @@ class RecurrentNetwork(FeedForwardNetwork):
 			# cPickle.dump(self, open(output_file, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 			self.test(test_dataset)
 
-		average_train_accuracy = total_train_accuracy / number_of_data
-		average_train_loss = total_train_loss / number_of_data
+		average_train_accuracy = total_train_accuracy / sequence_end_index
+		average_train_loss = total_train_loss / sequence_end_index
 		logging.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss,
 			average_train_accuracy * 100))
