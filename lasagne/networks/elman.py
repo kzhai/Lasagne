@@ -261,7 +261,7 @@ class DynamicElmanNetwork(RecurrentNetwork):
 
 		neural_network = self._input_layer
 
-		print_output_dimension("after input merge", neural_network, sequence_length, window_size)
+		# print_output_dimension("after input merge", neural_network, sequence_length, window_size)
 
 		# batch_size, input_sequence_length, input_window_size = layers.get_output_shape(neural_network)
 		# assert sequence_length > 0 and sequence_length == input_sequence_length
@@ -272,11 +272,11 @@ class DynamicElmanNetwork(RecurrentNetwork):
 		                                              output_size=embedding_dimension,
 		                                              W=init.GlorotNormal())
 		neural_network = self._embedding_layer
-		print_output_dimension("after embedding layer", neural_network, sequence_length, window_size)
+		# print_output_dimension("after embedding layer", neural_network, sequence_length, window_size)
 
 		neural_network = layers.ReshapeLayer(neural_network,
 		                                     (-1, self._sequence_length, self._window_size * embedding_dimension))
-		print_output_dimension("after window merge", neural_network, sequence_length, window_size)
+		# print_output_dimension("after window merge", neural_network, sequence_length, window_size)
 
 		#
 		#
@@ -445,7 +445,7 @@ class DynamicElmanNetwork(RecurrentNetwork):
 			                                                              learning_rate)
 		minibatch_running_time = timeit.default_timer() - minibatch_running_time
 
-		#print(self._debug_function(minibatch_x, minibatch_y, minibatch_m, learning_rate))
+		# print(self._debug_function(minibatch_x, minibatch_y, minibatch_m, learning_rate))
 
 		self._normalize_embedding_function()
 

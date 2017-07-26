@@ -195,7 +195,7 @@ def regularize_network_params(layer, penalty,
 #
 #
 
-from .layers import get_output, get_output_shape, DenseLayer, LinearDropoutLayer, AdaptiveDropoutLayer
+from .layers import get_output, get_output_shape, EmbeddingLayer, DenseLayer, LinearDropoutLayer, AdaptiveDropoutLayer
 
 
 def regularize_layer_weighted(layers, penalty, tags={'regularizable': True}, **kwargs):
@@ -240,10 +240,18 @@ def __find_layer_before_dropout(network, axis=None):
 		if isinstance(layer_2, LinearDropoutLayer) or isinstance(layer_2, AdaptiveDropoutLayer):
 			return layer_1
 
+def __find_input_layer(network):
+	for layer in network.get_network_layers():
+		if isinstance(layer, EmbeddingLayer):
+			return layer
+	return network._input_layer
+
 
 def rademacher_p_2_q_2(network, **kwargs):
-	input_shape = get_output_shape(network._input_layer)
-	input_value = get_output(network._input_layer)
+	input_layer = __find_input_layer(network);
+
+	input_shape = get_output_shape(input_layer)
+	input_value = get_output(input_layer)
 	# n = input_shape[0]
 	n = network._input_variable.shape[0]
 	d = T.prod(input_shape[1:])
@@ -279,8 +287,10 @@ rademacher = rademacher_p_2_q_2  # shortcut
 
 
 def rademacher_p_inf_q_1(network, **kwargs):
-	input_shape = get_output_shape(network._input_layer)
-	input_value = get_output(network._input_layer)
+	input_layer = __find_input_layer(network);
+
+	input_shape = get_output_shape(input_layer)
+	input_value = get_output(input_layer)
 	# n = input_shape[0]
 	n = network._input_variable.shape[0]
 	d = T.prod(input_shape[1:])
@@ -308,8 +318,10 @@ def rademacher_p_inf_q_1(network, **kwargs):
 
 
 def rademacher_p_1_q_inf(network, **kwargs):
-	input_shape = get_output_shape(network._input_layer)
-	input_value = get_output(network._input_layer)
+	input_layer = __find_input_layer(network);
+
+	input_shape = get_output_shape(input_layer)
+	input_value = get_output(input_layer)
 	# n = input_shape[0]
 	n = network._input_variable.shape[0]
 	d = T.prod(input_shape[1:])
