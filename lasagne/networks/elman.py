@@ -426,7 +426,6 @@ class DynamicElmanNetwork(RecurrentNetwork):
 			updates=adaptable_params_updates
 		)
 
-		'''
 		from debugger import debug_rademacher
 		self._debug_function = theano.function(
 			inputs=[self._input_variable, self._output_variable, self._input_mask_variable,
@@ -435,7 +434,6 @@ class DynamicElmanNetwork(RecurrentNetwork):
 			# outputs=[self.get_objectives(self._output_variable, determininistic=True), self.get_loss(self._output_variable, deterministic=True)],
 			on_unused_input='ignore'
 		)
-		'''
 
 	def train_minibatch(self, minibatch_x, minibatch_y, minibatch_m, learning_rate):
 		minibatch_running_time = timeit.default_timer()
