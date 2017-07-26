@@ -62,7 +62,7 @@ class LeNet(FeedForwardNetwork):
 		                            validation_interval)
 
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
-		#self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
 		# self._input_layer = layers.InputLayer(shape=input_shape)
 		# self._input_variable = self._input_layer.input_var
@@ -120,7 +120,7 @@ class LeNet(FeedForwardNetwork):
 				filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
 				if numpy.any(filter_size_for_pooling < pool_kernel_size):
 					print("warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (
-					layers.get_output_shape(neural_network), pool_kernel_size))
+						layers.get_output_shape(neural_network), pool_kernel_size))
 					continue
 				neural_network = layers.Pool2DLayer(neural_network,
 				                                    pool_size=pool_kernel_size,
@@ -361,7 +361,7 @@ class DynamicLeNet(FeedForwardNetwork):
 		self._dropout_rate_update_interval = dropout_rate_update_interval
 
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
-		#self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
 		# self._input_layer = layers.InputLayer(shape=input_shape)
 		# self._input_variable = self._input_layer.input_var
@@ -427,14 +427,14 @@ class DynamicLeNet(FeedForwardNetwork):
 				filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
 				if numpy.any(filter_size_for_pooling < pool_size):
 					print("warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (
-					layers.get_output_shape(neural_network), pool_size))
+						layers.get_output_shape(neural_network), pool_size))
 					continue
 				neural_network = layers.Pool2DLayer(neural_network,
 				                                    pool_size=pool_size,
 				                                    stride=pool_stride,
 				                                    mode=pool_mode,
 				                                    )
-				# print "after maxpooling", layers.get_output_shape(neural_network)
+			# print "after maxpooling", layers.get_output_shape(neural_network)
 
 		assert len(dense_dimensions) == len(dense_nonlinearities)
 		for dense_layer_index in range(len(dense_dimensions)):
@@ -465,7 +465,7 @@ class DynamicLeNet(FeedForwardNetwork):
 			                                   # W=init.HeNormal('relu'),
 			                                   nonlinearity=layer_nonlinearity)
 
-			# print "after dense", layers.get_output_shape(neural_network)
+		# print "after dense", layers.get_output_shape(neural_network)
 
 		self._neural_network = neural_network
 
@@ -509,8 +509,8 @@ class DynamicLeNet(FeedForwardNetwork):
 
 		if self._dropout_rate_update_interval > 0 and self.minibatch_index % self._dropout_rate_update_interval == 0:
 			train_dropout_function_outputs = self._train_dropout_function(minibatch_x, minibatch_y, learning_rate)
-			# minibatch_average_train_dropout_loss = train_dropout_function_outputs[0]
-			# minibatch_average_train_dropout_accuracy = train_dropout_function_outputs[1]
+		# minibatch_average_train_dropout_loss = train_dropout_function_outputs[0]
+		# minibatch_average_train_dropout_accuracy = train_dropout_function_outputs[1]
 		minibatch_running_time = timeit.default_timer() - minibatch_running_time
 
 		# print self._debug_function(minibatch_x, minibatch_y, learning_rate)

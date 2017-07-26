@@ -13,10 +13,10 @@ from .. import objectives, regularization, updates, utils
 
 __all__ = [
 	"decay_learning_rate",
+	"Network",
 	"FeedForwardNetwork",
 	"RecurrentNetwork",
 	"GenerativeNetwork",
-	"Network",
 ]
 
 
@@ -499,8 +499,8 @@ class FeedForwardNetwork(Network):
 		# average_test_loss, average_test_accuracy, test_running_time = self.network.test(test_dataset)
 		logging.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, test_running_time, average_test_loss, average_test_accuracy * 100))
-		print(('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
-			self.epoch_index, self.minibatch_index, test_running_time, average_test_loss, average_test_accuracy * 100)))
+		print('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+			self.epoch_index, self.minibatch_index, test_running_time, average_test_loss, average_test_accuracy * 100))
 
 	def validate(self, validate_dataset, test_dataset=None, best_model_file_path=None):
 		# average_validate_loss, average_validate_accuracy, validate_running_time = self.test(validate_dataset)
@@ -513,9 +513,9 @@ class FeedForwardNetwork(Network):
 		logging.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, validate_running_time, average_validate_loss,
 			average_validate_accuracy * 100))
-		print(('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		print('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, validate_running_time, average_validate_loss,
-			average_validate_accuracy * 100)))
+			average_validate_accuracy * 100))
 
 		# if we got the best validation score until now
 		if average_validate_accuracy > self.best_validate_accuracy:
@@ -643,19 +643,134 @@ class FeedForwardNetwork(Network):
 		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
 
 
+def parse_sequence(dataset, window_size, sequence_length, position_offset=-1):
+	if dataset == None:
+		return None;
+
+	sequence_set_x, sequence_set_y = dataset
+	# Parse data into sequences
+	sequence_x = -numpy.ones((0, sequence_length, window_size), dtype=numpy.int32)
+	sequence_m = numpy.zeros((0, sequence_length), dtype=numpy.int8)
+	sequence_y = numpy.zeros(0, dtype=numpy.int32)
+
+	sequence_indices_by_instance = [0]
+	for instance_x, instance_y in zip(sequence_set_x, sequence_set_y):
+		# context_windows = get_context_windows(train_sequence_x, window_size)
+		# train_minibatch, train_minibatch_masks = get_mini_batches(context_windows, backprop_step)
+		instance_sequence_x, instance_sequence_m = get_context_sequences(instance_x, sequence_length, window_size,
+		                                                                 position_offset)
+		assert len(instance_sequence_x) == len(instance_sequence_m)
+		assert len(instance_sequence_x) == len(instance_y)
+
+		sequence_x = numpy.concatenate((sequence_x, instance_sequence_x), axis=0)
+		sequence_m = numpy.concatenate((sequence_m, instance_sequence_m), axis=0)
+		sequence_y = numpy.concatenate((sequence_y, instance_y), axis=0)
+
+		sequence_indices_by_instance.append(len(sequence_y))
+
+	return sequence_x, sequence_y, sequence_m, sequence_indices_by_instance
+
+
+def get_context_sequences(instance, sequence_length, window_size, position_offset=-1):
+	'''
+	context_windows :: list of word idxs
+	return a list of minibatches of indexes
+	which size is equal to backprop_step
+	border cases are treated as follow:
+	eg: [0,1,2,3] and backprop_step = 3
+	will output:
+	[[0],[0,1],[0,1,2],[1,2,3]]
+	'''
+
+	context_windows = get_context(instance, window_size, position_offset)
+	sequences_x, sequences_m = get_sequences(context_windows, sequence_length)
+	return sequences_x, sequences_m
+
+
+def get_context(instance, window_size, position_offset=-1, vocab_size=None):
+	'''
+	window_size :: int corresponding to the size of the window
+	given a list of indexes composing a sentence
+	it will return a list of list of indexes corresponding
+	to context windows surrounding each word in the sentence
+	'''
+
+	assert window_size >= 1
+	if position_offset < 0:
+		assert window_size % 2 == 1
+		position_offset = window_size / 2
+	assert position_offset < window_size
+
+	instance = list(instance)
+
+	if vocab_size == None:
+		context_windows = -numpy.ones((len(instance), window_size), dtype=numpy.int32)
+		# padded_sequence = window_size / 2 * [-1] + instance + window_size / 2 * [-1]
+		padded_sequence = position_offset * [-1] + instance + (window_size - position_offset) * [-1]
+		for i in xrange(len(instance)):
+			context_windows[i, :] = padded_sequence[i:i + window_size]
+	else:
+		context_windows = numpy.zeros((len(instance), vocab_size), dtype=numpy.int32)
+		# padded_sequence = window_size / 2 * [-1] + instance + window_size / 2 * [-1]
+		padded_sequence = position_offset * [-1] + instance + (window_size - position_offset) * [-1]
+		for i in xrange(len(instance)):
+			for j in padded_sequence[i:i + window_size]:
+				context_windows[i, j] += 1
+
+	# assert len(context_windows) == len(sequence)
+	return context_windows
+
+
+def get_sequences(context_windows, sequence_length):
+	'''
+	context_windows :: list of word idxs
+	return a list of minibatches of indexes
+	which size is equal to backprop_step
+	border cases are treated as follow:
+	eg: [0,1,2,3] and backprop_step = 3
+	will output:
+	[[0],[0,1],[0,1,2],[1,2,3]]
+	'''
+
+	number_of_tokens, window_size = context_windows.shape
+	sequences_x = -numpy.ones((number_of_tokens, sequence_length, window_size), dtype=numpy.int32)
+	sequences_m = numpy.zeros((number_of_tokens, sequence_length), dtype=numpy.int32)
+	for i in xrange(min(number_of_tokens, sequence_length)):
+		sequences_x[i, 0:i + 1, :] = context_windows[0:i + 1, :]
+		sequences_m[i, 0:i + 1] = 1
+	for i in xrange(min(number_of_tokens, sequence_length), number_of_tokens):
+		sequences_x[i, :, :] = context_windows[i - sequence_length + 1:i + 1, :]
+		sequences_m[i, :] = 1
+	return sequences_x, sequences_m
+
+
 class RecurrentNetwork(FeedForwardNetwork):
 	def __init__(self,
-	             incoming,
-	             incoming_mask,
+	             # incoming,
+	             # incoming_mask,
+
+	             window_size,
+	             sequence_length,
+	             position_offset,
+
 	             objective_functions,
 	             update_function,
 	             learning_rate=1e-3,
 	             learning_rate_decay=None,
 	             max_norm_constraint=0,
+
 	             # learning_rate_decay_style=None,
 	             # learning_rate_decay_parameter=0,
 	             validation_interval=-1,
 	             ):
+
+		self._window_size = window_size
+		self._position_offset = position_offset
+		self._sequence_length = sequence_length
+
+		incoming = (None, sequence_length, window_size)
+		incoming_mask = (None, sequence_length)
+
 		if isinstance(incoming, tuple):
 			incoming = layers.InputLayer(shape=incoming, input_var=theano.tensor.itensor3())
 
@@ -680,25 +795,10 @@ class RecurrentNetwork(FeedForwardNetwork):
 
 		self._input_mask_variable = self._input_mask_layer.input_var
 
-	'''
-	def get_objectives(self, label, objective_functions=None, **kwargs):
-		output = self.get_output(**kwargs)
-		if objective_functions == None:
-			# objective = theano.tensor.mean(self._objective_functions(output, label), dtype=theano.config.floatX)
-			objective = 0
-			for objective_function, weight in list(self._objective_functions.items()):
-				objective += weight * theano.tensor.mean(objective_function(output, label),
-				                                         dtype=theano.config.floatX)
-		else:
-			# TODO: expand to multiple objective functions
-			temp_objective_function = getattr(objectives, objective_functions)
-			objective = theano.tensor.mean(temp_objective_function(output, label), dtype=theano.config.floatX)
-		return objective
-
-	def get_loss(self, label, **kwargs):
-		loss = self.get_objectives(label, **kwargs) + self.get_regularizers()
-		return loss
-	'''
+	def parse_sequence(self, dataset):
+		if dataset == None:
+			return None;
+		return parse_sequence(dataset, self._window_size, self._sequence_length, self._position_offset)
 
 	def build_functions(self):
 		# Create a train_loss expression for training, i.e., a scalar objective we want to minimize (for our multi-class problem, it is the cross-entropy train_loss):
@@ -806,9 +906,9 @@ class RecurrentNetwork(FeedForwardNetwork):
 		logging.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, test_running_time, average_test_loss,
 			average_test_accuracy * 100))
-		print(('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		print('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, test_running_time, average_test_loss,
-			average_test_accuracy * 100)))
+			average_test_accuracy * 100))
 
 	def validate(self, validate_dataset, test_dataset=None, best_model_file_path=None):
 		# average_validate_loss, average_validate_accuracy, validate_running_time = self.test(validate_dataset)
@@ -821,9 +921,9 @@ class RecurrentNetwork(FeedForwardNetwork):
 		logging.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, validate_running_time, average_validate_loss,
 			average_validate_accuracy * 100))
-		print(('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		print('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, validate_running_time, average_validate_loss,
-			average_validate_accuracy * 100)))
+			average_validate_accuracy * 100))
 
 		# if we got the best validation score until now
 		if average_validate_accuracy > self.best_validate_accuracy:

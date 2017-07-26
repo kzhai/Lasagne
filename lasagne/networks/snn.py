@@ -47,7 +47,7 @@ class StandoutNeuralNetworkTypeA(FeedForwardNetwork):
 		                                                 # learning_rate_decay_parameter,
 		                                                 validation_interval)
 
-		#self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
 		assert len(dense_dimensions) == len(dense_nonlinearities)
 		# assert len(layer_dimensions) == len(layer_activation_parameters)
@@ -258,7 +258,7 @@ class StandoutNeuralNetworkTypeB(FeedForwardNetwork):
 		                                                 # learning_rate_decay_parameter,
 		                                                 validation_interval)
 
-		#self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
 		assert len(dense_dimensions) == len(dense_nonlinearities)
 		# assert len(layer_dimensions) == len(layer_activation_parameters)

@@ -44,7 +44,7 @@ class FastDropoutNetwork(FeedForwardNetwork):
 		                                         )
 
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
-		#self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
 		# self._input_layer = layers.InputLayer(shape=input_shape)
 		# self._input_variable = self._input_layer.input_var

@@ -244,6 +244,7 @@ def linf_norm(X, axis=None):
     return T.max(abs(X), axis=axis);
 
 def __find_layer_before_dropout(network, axis=None):
+    print(network.get_network_layers())
     for layer_1, layer_2 in zip(network.get_network_layers()[1:], network.get_network_layers()[:-1]):
         if isinstance(layer_2, LinearDropoutLayer) or isinstance(layer_2, AdaptiveDropoutLayer):
             return layer_1
