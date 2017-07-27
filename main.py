@@ -44,7 +44,9 @@ def main():
 	elif arguments.model=="elman":
 		from lasagne.experiments.elman import train_elman
 		train_elman()
-
+	elif arguments.model == "delman":
+		from lasagne.experiments.elmand import train_delman
+		train_delman()
 
 if __name__ == '__main__':
 	main();
