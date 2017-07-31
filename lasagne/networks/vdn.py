@@ -9,6 +9,8 @@ from . import FeedForwardNetwork
 from .. import init, nonlinearities, objectives, updates, regularization
 from .. import layers
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
 	"VariationalDropoutTypeANetwork",
 	"VariationalDropoutTypeBNetwork",
@@ -169,7 +171,7 @@ class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 						assert type(layer_weight_mappings)==float
 					_regularizer_functions[regularizer_function] = layer_weight_mappings
 			else:
-				logging.error('unrecognized regularizer functions: %s' % (regularizer_functions))
+				logger.error('unrecognized regularizer functions: %s' % (regularizer_functions))
 		self._regularizer_functions = _regularizer_functions
 		self.regularizer_functions_change_stack.append((self.epoch_index, self._regularizer_functions))
 	'''
@@ -381,7 +383,7 @@ def main():
 	end_train = timeit.default_timer()
 
 	print("Optimization complete...")
-	logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
+	logger.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
 		network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index))
 	print('The code finishes in %.2fm' % ((end_train - start_train) / 60.))
 

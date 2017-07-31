@@ -8,6 +8,8 @@ from . import FeedForwardNetwork, decay_learning_rate
 from .. import init, nonlinearities, objectives, updates
 from .. import layers
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
 	"StandoutNeuralNetworkTypeA",
 	"StandoutNeuralNetworkTypeB",
@@ -183,14 +185,14 @@ class StandoutNeuralNetworkTypeA(FeedForwardNetwork):
 
 			# average_train_accuracy = total_train_accuracy / number_of_data
 			# average_train_loss = total_train_loss / number_of_data
-			# logging.debug('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+			# logger.debug('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 			# self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 			# And a full pass over the validation data:
 			if validate_dataset != None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
 				average_train_accuracy = total_train_accuracy / number_of_data
 				average_train_loss = total_train_loss / number_of_data
-				logging.info('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+				logger.info('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 				output_file = None
@@ -213,7 +215,7 @@ class StandoutNeuralNetworkTypeA(FeedForwardNetwork):
 
 		average_train_accuracy = total_train_accuracy / number_of_data
 		average_train_loss = total_train_loss / number_of_data
-		logging.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		logger.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss,
 			average_train_accuracy * 100))
 		print('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
@@ -342,7 +344,7 @@ def main():
 	end_train = timeit.default_timer()
 
 	print("Optimization complete...")
-	logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
+	logger.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
 		network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index))
 	print('The code finishes in %.2fm' % ((end_train - start_train) / 60.))
 

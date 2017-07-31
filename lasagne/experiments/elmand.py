@@ -6,6 +6,8 @@ import numpy
 from .. import layers
 from .. import networks
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
 	"train_delman",
 ]
@@ -90,7 +92,7 @@ def snapshot_retain_rates(network, output_directory):
 			continue
 
 		layer_retain_probability = network_layer.activation_probability.eval()
-		logging.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
+		logger.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
 			network.epoch_index,
 			layer_retain_probability.shape,
 			numpy.mean(layer_retain_probability),

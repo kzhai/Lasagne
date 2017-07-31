@@ -1,4 +1,8 @@
+import logging
+
 from .. import networks
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
 	"train_alexnet",
@@ -64,7 +68,8 @@ def construct_alexnet_parser():
 
 
 def validate_alexnet_arguments(arguments):
-	from . import validate_discriminative_arguments, validate_convpool_arguments, validate_dense_arguments, validate_dropout_arguments
+	from . import validate_discriminative_arguments, validate_convpool_arguments, validate_dense_arguments, \
+		validate_dropout_arguments
 
 	arguments = validate_discriminative_arguments(arguments)
 

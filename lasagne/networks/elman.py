@@ -11,6 +11,8 @@ from .. import init, nonlinearities, objectives, updates
 from .. import layers
 from ..layers import noise
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
 	"ElmanNetwork",
 	"DynamicElmanNetwork"
@@ -195,7 +197,7 @@ class ElmanNetwork(RecurrentNetwork):
 					                                  )
 				# print_output_dimension("after recurrent layer %i" % layer_index, neural_network, sequence_length, window_size)
 			else:
-				logging.error("Unrecognized layer specifications...")
+				logger.error("Unrecognized layer specifications...")
 				sys.stderr.write("Unrecognized layer specifications...\n")
 				sys.exit()
 
@@ -397,7 +399,7 @@ class DynamicElmanNetwork(RecurrentNetwork):
 					                                  )
 				# print_output_dimension("after recurrent layer %i" % layer_index, neural_network, sequence_length, window_size)
 			else:
-				logging.error("Unrecognized layer specifications...")
+				logger.error("Unrecognized layer specifications...")
 				sys.stderr.write("Unrecognized layer specifications...\n")
 				sys.exit()
 
@@ -532,7 +534,7 @@ def main():
 	end_train = timeit.default_timer()
 
 	print("Optimization complete...")
-	logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
+	logger.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
 		network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index))
 	print('The code finishes in %.2fm' % ((end_train - start_train) / 60.))
 

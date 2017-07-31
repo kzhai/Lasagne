@@ -1,6 +1,9 @@
+import logging
 import os
 
 from .. import layers, networks, nonlinearities
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
 	"train_elman",
@@ -33,8 +36,8 @@ def construct_elman_parser():
 	model_parser.add_argument("--embedding_dimension", dest="embedding_dimension", action='store', default=-1, type=int,
 	                          help="dimension of word embedding layer [-1]")
 	# model argument set 4
-	#model_parser.add_argument("--recurrent_style", dest="recurrent_style", action='store', default='elman',
-	                          #help="recurrent network style [default=elman, bi-elman]")
+	# model_parser.add_argument("--recurrent_style", dest="recurrent_style", action='store', default='elman',
+	# help="recurrent network style [default=elman, bi-elman]")
 	model_parser.add_argument("--recurrent_type", dest="recurrent_type", action='store', default='LSTMLayer',
 	                          help="recurrent layer type [default=RecurrentLayer, LSTMLayer]")
 
@@ -130,7 +133,7 @@ def validate_elman_arguments(arguments):
 	assert arguments.embedding_dimension > 0
 
 	# model argument set 4
-	#assert arguments.recurrent_style in ["elman", "bi-elman"]
+	# assert arguments.recurrent_style in ["elman", "bi-elman"]
 	arguments.recurrent_type = getattr(layers.recurrent, arguments.recurrent_type)
 
 	vocabulary_dimension = 0

@@ -1,12 +1,12 @@
 import logging
 
 import numpy
-import theano
-import theano.tensor
 
 from . import FeedForwardNetwork
 from .. import init, nonlinearities, objectives, updates
 from .. import layers
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
 	"FastDropoutNetwork",
@@ -162,6 +162,6 @@ def main():
 	end_train = timeit.default_timer()
 
 	print("Optimization complete...")
-	logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
+	logger.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
 		network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index))
 	print('The code finishes in %.2fm' % ((end_train - start_train) / 60.))

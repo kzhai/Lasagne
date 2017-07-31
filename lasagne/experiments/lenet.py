@@ -1,4 +1,8 @@
+import logging
+
 from .. import networks, nonlinearities
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
 	"add_convpool_options",

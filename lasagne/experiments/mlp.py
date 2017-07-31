@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 from .. import networks, nonlinearities
 
 __all__ = [

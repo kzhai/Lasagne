@@ -6,6 +6,8 @@ import numpy
 from .. import layers
 from .. import networks
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
 	"train_dmlp",
 ]
@@ -110,7 +112,7 @@ def train_dmlp():
 	end_train = timeit.default_timer()
 
 	print "Optimization complete..."
-	logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
+	logger.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
 		network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index))
 	print >> sys.stderr, ('The code for file %s ran for %.2fm' % (os.path.split(__file__)[1], (end_train - start_train) / 60.))
 	'''
@@ -123,7 +125,7 @@ def snapshot_retain_rates(network, output_directory):
 			continue
 
 		layer_retain_probability = network_layer.activation_probability.eval()
-		logging.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
+		logger.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
 			network.epoch_index,
 			layer_retain_probability.shape,
 			numpy.mean(layer_retain_probability),

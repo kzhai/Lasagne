@@ -1,3 +1,4 @@
+import logging
 import timeit
 
 import numpy
@@ -8,6 +9,8 @@ from . import FeedForwardNetwork
 from .. import init, objectives, updates
 from .. import layers
 from ..layers import noise, local, normalization
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
 	"AlexNet",

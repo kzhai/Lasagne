@@ -10,6 +10,8 @@ from .. import init, nonlinearities, objectives, updates
 from .. import layers
 from ..layers import noise
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
 	"MultiLayerPerceptron",
 	"DynamicMultiLayerPerceptron",
@@ -368,11 +370,11 @@ class DynamicMultiLayerPerceptron(FeedForwardNetwork):
 			for pretrain_epoch_index in range(number_of_epochs):
 				layer_epoch_pretrain_time = denoising_auto_encoder.train(pretrain_data, minibatch_size)
 				layer_pretrain_time += layer_epoch_pretrain_time
-			logging.info('pretrain layer %i with denoising auto-encoder finishes in %fs' % (dae_index + 1, layer_pretrain_time))
+			logger.info('pretrain layer %i with denoising auto-encoder finishes in %fs' % (dae_index + 1, layer_pretrain_time))
 			print 'pretrain layer %i with denoising auto-encoder finishes in %fs' % (dae_index + 1, layer_pretrain_time)
 
 		pretrain_time = timeit.default_timer() - pretrain_time
-		logging.info('pretrain network denoising auto-encoder finishes in %fs' % pretrain_time)
+		logger.info('pretrain network denoising auto-encoder finishes in %fs' % pretrain_time)
 		print 'pretrain network denoising auto-encoder finishes in %fs' % pretrain_time
 	'''
 
@@ -445,7 +447,7 @@ def main():
 	end_train = timeit.default_timer()
 
 	print("Optimization complete...")
-	logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
+	logger.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
 		network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index))
 	print('The code finishes in %.2fm' % ((end_train - start_train) / 60.))
 

@@ -11,6 +11,8 @@ import numpy
 
 from .. import objectives, updates, regularization
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
 	"construct_discriminative_parser",
 	"validate_discriminative_arguments",
@@ -113,7 +115,7 @@ def validate_generic_arguments(arguments):
 				weight = [float(token) for token in tokens]
 			regularizers[regularizer_function] = weight
 		else:
-			logging.error("unrecognized regularizer function setting %s..." % (regularizer_weight_mapping))
+			logger.error("unrecognized regularizer function setting %s..." % (regularizer_weight_mapping))
 	arguments.regularizer = regularizers
 
 	# generic argument set 1
@@ -163,7 +165,7 @@ def load_data(input_directory, dataset="test"):
 	data_set_x = numpy.load(os.path.join(input_directory, "%s.feature.npy" % dataset))
 	data_set_y = numpy.load(os.path.join(input_directory, "%s.label.npy" % dataset))
 	assert len(data_set_x) == len(data_set_y)
-	logging.info("successfully load data %s with %d to %s..." % (input_directory, len(data_set_x), dataset))
+	logger.info("successfully load data %s with %d to %s..." % (input_directory, len(data_set_x), dataset))
 	return (data_set_x, data_set_y)
 
 
@@ -181,14 +183,14 @@ def load_and_split_data(input_directory, number_of_validate_data=0):
 	train_set_y = data_y[train_indices]
 	train_dataset = (train_set_x, train_set_y)
 	# numpy.save(os.path.join(output_directory, "train.index.npy"), train_indices)
-	logging.info("successfully load data %s with %d to train..." % (input_directory, len(train_set_x)))
+	logger.info("successfully load data %s with %d to train..." % (input_directory, len(train_set_x)))
 
 	if len(validate_indices) > 0:
 		validate_set_x = data_x[validate_indices]
 		validate_set_y = data_y[validate_indices]
 		validate_dataset = (validate_set_x, validate_set_y)
 		# numpy.save(os.path.join(output_directory, "validate.index.npy"), validate_indices)
-		logging.info("successfully load data %s with %d to validate..." % (input_directory, len(validate_set_x)))
+		logger.info("successfully load data %s with %d to validate..." % (input_directory, len(validate_set_x)))
 	else:
 		validate_dataset = None
 
@@ -208,7 +210,7 @@ def split_train_data_to_cross_validate(input_directory, number_of_folds=5, outpu
 	elif len(split_indices) == number_of_folds:
 		split_indices.append(number_of_data)
 	else:
-		logging.error("something went wrong...")
+		logger.error("something went wrong...")
 		sys.exit()
 	assert len(split_indices) == number_of_folds + 1
 	indices = list(range(len(data_y)))
@@ -240,9 +242,9 @@ def split_train_data_to_cross_validate(input_directory, number_of_folds=5, outpu
 		numpy.save(os.path.join(fold_output_directory, "test.label.npy"), test_set_y)
 		numpy.save(os.path.join(fold_output_directory, "test.index.npy"), test_indices)
 
-		logging.info(
+		logger.info(
 			"successfully split data to %d for train and %d for test..." % (len(train_indices), len(test_indices)))
-		logging.info("successfully generate fold %d to %s..." % (fold_index, fold_output_directory))
+		logger.info("successfully generate fold %d to %s..." % (fold_index, fold_output_directory))
 
 		print("successfully split data to %d for train and %d for test..." % (len(train_indices), len(test_indices)))
 		print("successfully generate fold %d to %s..." % (fold_index, fold_output_directory))
@@ -305,7 +307,7 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	# input_shape.insert(0, None)
 	# input_shape = tuple(input_shape)
 
-	#train_dataset = (train_dataset[0][:100], train_dataset[1][:100])
+	# train_dataset = (train_dataset[0][:100], train_dataset[1][:100])
 
 	'''
 	test_x, test_y = test_dataset
@@ -320,7 +322,7 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 		validate_dataset = dataset_preprocessing_function(validate_dataset)
 		test_dataset = dataset_preprocessing_function(test_dataset)
 
-	logging.basicConfig(filename=os.path.join(output_directory, "model.log"), level=logging.DEBUG,
+	logging.basicConfig(filename=os.path.join(settings.output_directory, "model.log"), level=logging.DEBUG,
 	                    format='%(asctime)s | %(name)s | %(levelname)s | %(message)s')
 
 	print("========== ==========", "parameters", "========== ==========")
@@ -328,10 +330,10 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 		print("%s=%s" % (key, value))
 	print("========== ==========", "parameters", "========== ==========")
 
-	logging.info("========== ==========" + "parameters" + "========== ==========")
+	logger.info("========== ==========" + "parameters" + "========== ==========")
 	for key, value in list(vars(settings).items()):
-		logging.info("%s=%s" % (key, value))
-	logging.info("========== ==========" + "parameters" + "========== ==========")
+		logger.info("%s=%s" % (key, value))
+	logger.info("========== ==========" + "parameters" + "========== ==========")
 
 	pickle.dump(settings, open(os.path.join(output_directory, "settings.pkl"), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -361,7 +363,7 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	end_train = timeit.default_timer()
 
 	print("Optimization complete...")
-	logging.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
+	logger.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
 		network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index))
 	print('The code for file %s ran for %.2fm' % (os.path.split(__file__)[1], (end_train - start_train) / 60.))
 

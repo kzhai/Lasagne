@@ -11,6 +11,8 @@ import theano.tensor
 from .. import layers
 from .. import objectives, regularization, updates, utils
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
 	"decay_learning_rate",
 	"Network",
@@ -175,10 +177,10 @@ class Network(object):
 					regularizer += lambdas * regularization.regularize_network_params(self._neural_network,
 					                                                                  regularizer_function, **kwargs)
 				else:
-					logging.error(
+					logger.error(
 						"unrecognized regularizer function settings: %s, %s" % (regularizer_function, lambdas))
 			else:
-				logging.error("unrecognized regularizer function: %s" % (regularizer_function))
+				logger.error("unrecognized regularizer function: %s" % (regularizer_function))
 
 		return regularizer
 
@@ -248,7 +250,7 @@ class Network(object):
 		elif type(objective_functions) is list:
 			self._objective_functions = {objective_function: 1.0 for objective_function in objective_functions}
 		else:
-			logging.error('unrecognized objective functions: %s' % (objective_functions))
+			logger.error('unrecognized objective functions: %s' % (objective_functions))
 		self.objective_functions_change_stack.append((self.epoch_index, self._objective_functions))
 
 	def set_objectives(self, objectives):
@@ -272,7 +274,7 @@ class Network(object):
 						assert type(lambdas) == float
 					_regularizer_functions[regularizer_function] = lambdas
 			else:
-				logging.error('unrecognized regularizer functions: %s' % (regularizer_functions))
+				logger.error('unrecognized regularizer functions: %s' % (regularizer_functions))
 		self._regularizer_functions = _regularizer_functions
 		self.regularizer_functions_change_stack.append((self.epoch_index, self._regularizer_functions))
 
@@ -497,7 +499,7 @@ class FeedForwardNetwork(Network):
 		average_test_accuracy = test_function_outputs[1]
 		test_running_time = timeit.default_timer() - test_running_time
 		# average_test_loss, average_test_accuracy, test_running_time = self.network.test(test_dataset)
-		logging.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		logger.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, test_running_time, average_test_loss, average_test_accuracy * 100))
 		print('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, test_running_time, average_test_loss, average_test_accuracy * 100))
@@ -510,7 +512,7 @@ class FeedForwardNetwork(Network):
 		average_validate_loss = validate_function_outputs[0]
 		average_validate_accuracy = validate_function_outputs[1]
 		validate_running_time = timeit.default_timer() - validate_running_time
-		logging.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		logger.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, validate_running_time, average_validate_loss,
 			average_validate_accuracy * 100))
 		print('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
@@ -527,7 +529,7 @@ class FeedForwardNetwork(Network):
 			if best_model_file_path != None:
 				# save the best model
 				# cPickle.dump(self, open(best_model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
-				logging.info('\tbest model found: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+				logger.info('\tbest model found: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_validate_loss, average_validate_accuracy * 100))
 
 		if test_dataset != None:
@@ -537,7 +539,7 @@ class FeedForwardNetwork(Network):
 			test_dataset_x, test_dataset_y = test_dataset
 			average_test_loss, average_test_accuracy = self._test_function(test_dataset_x, test_dataset_y)
 			test_running_time = timeit.default_timer() - test_running_time
-			logging.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+			logger.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 				self.epoch_index, self.minibatch_index, test_running_time, average_test_loss,
 				average_test_accuracy * 100))
 			'''
@@ -588,14 +590,14 @@ class FeedForwardNetwork(Network):
 
 			# average_train_accuracy = total_train_accuracy / number_of_data
 			# average_train_loss = total_train_loss / number_of_data
-			# logging.debug('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+			# logger.debug('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 			# self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 			# And a full pass over the validation data:
 			if validate_dataset != None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
 				average_train_accuracy = total_train_accuracy / number_of_data
 				average_train_loss = total_train_loss / number_of_data
-				logging.info('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+				logger.info('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 				output_file = None
@@ -618,7 +620,7 @@ class FeedForwardNetwork(Network):
 
 		average_train_accuracy = total_train_accuracy / number_of_data
 		average_train_loss = total_train_loss / number_of_data
-		logging.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		logger.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss,
 			average_train_accuracy * 100))
 		print('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
@@ -903,7 +905,7 @@ class RecurrentNetwork(FeedForwardNetwork):
 		average_test_loss = test_function_outputs[0]
 		average_test_accuracy = test_function_outputs[1]
 		test_running_time = timeit.default_timer() - test_running_time
-		logging.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		logger.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, test_running_time, average_test_loss,
 			average_test_accuracy * 100))
 		print('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
@@ -918,7 +920,7 @@ class RecurrentNetwork(FeedForwardNetwork):
 		average_validate_loss = validate_function_outputs[0]
 		average_validate_accuracy = validate_function_outputs[1]
 		validate_running_time = timeit.default_timer() - validate_running_time
-		logging.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		logger.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, validate_running_time, average_validate_loss,
 			average_validate_accuracy * 100))
 		print('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
@@ -935,7 +937,7 @@ class RecurrentNetwork(FeedForwardNetwork):
 			if best_model_file_path != None:
 				# save the best model
 				# cPickle.dump(self, open(best_model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
-				logging.info('\tbest model found: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+				logger.info('\tbest model found: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_validate_loss, average_validate_accuracy * 100))
 
 		if test_dataset != None:
@@ -945,7 +947,7 @@ class RecurrentNetwork(FeedForwardNetwork):
 			test_dataset_x, test_dataset_y = test_dataset
 			average_test_loss, average_test_accuracy = self._test_function(test_dataset_x, test_dataset_y)
 			test_running_time = timeit.default_timer() - test_running_time
-			logging.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+			logger.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 				self.epoch_index, self.minibatch_index, test_running_time, average_test_loss,
 				average_test_accuracy * 100))
 			'''
@@ -1018,14 +1020,14 @@ class RecurrentNetwork(FeedForwardNetwork):
 
 			# average_train_accuracy = total_train_accuracy / number_of_data
 			# average_train_loss = total_train_loss / number_of_data
-			# logging.debug('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+			# logger.debug('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 			# self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 			# And a full pass over the validation data:
 			if validate_dataset != None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
 				average_train_accuracy = total_train_accuracy / sequence_end_index
 				average_train_loss = total_train_loss / sequence_end_index
-				logging.info('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+				logger.info('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 				output_file = None
@@ -1048,7 +1050,7 @@ class RecurrentNetwork(FeedForwardNetwork):
 
 		average_train_accuracy = total_train_accuracy / sequence_end_index
 		average_train_loss = total_train_loss / sequence_end_index
-		logging.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		logger.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss,
 			average_train_accuracy * 100))
 		print('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
@@ -1155,7 +1157,7 @@ class GenerativeNetwork(Network):
 		average_test_loss, average_test_accuracy = self._test_function(test_dataset_x, test_dataset_y)
 		test_running_time = timeit.default_timer() - test_running_time
 		# average_test_loss, average_test_accuracy, test_running_time = self.network.test(test_dataset)
-		logging.info('\t\ttest: epoch %i, minibatch %i, duration %f, loss %f, accuracy %f%%' % (
+		logger.info('\t\ttest: epoch %i, minibatch %i, duration %f, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, test_running_time, average_test_loss, average_test_accuracy * 100))
 	'''
 
@@ -1166,7 +1168,7 @@ class GenerativeNetwork(Network):
 		validate_dataset_x, validate_dataset_y = validate_dataset
 		average_validate_loss, average_validate_accuracy = self._test_function(validate_dataset_x, validate_dataset_y)
 		validate_running_time = timeit.default_timer() - validate_running_time
-		logging.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		logger.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, validate_running_time, average_validate_loss,
 			average_validate_accuracy * 100))
 
@@ -1180,7 +1182,7 @@ class GenerativeNetwork(Network):
 			if best_model_file_path != None:
 				# save the best model
 				cPickle.dump(self, open(best_model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
-				logging.info('\tbest model found: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+				logger.info('\tbest model found: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_validate_loss, average_validate_accuracy * 100))
 
 		if test_dataset != None:
@@ -1188,7 +1190,7 @@ class GenerativeNetwork(Network):
 			test_dataset_x, test_dataset_y = test_dataset
 			average_test_loss, average_test_accuracy = self._test_function(test_dataset_x, test_dataset_y)
 			test_running_time = timeit.default_timer() - test_running_time
-			logging.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+			logger.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 				self.epoch_index, self.minibatch_index, test_running_time, average_test_loss,
 				average_test_accuracy * 100))
 	'''
@@ -1225,14 +1227,14 @@ class GenerativeNetwork(Network):
 
 			# average_train_accuracy = total_train_accuracy / number_of_data
 			# average_train_loss = total_train_loss / number_of_data
-			# logging.debug('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+			# logger.debug('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 			# self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 			self.minibatch_index += 1
 
 		# average_train_accuracy = total_train_accuracy / number_of_data
 		average_train_loss = total_train_loss / number_of_data
-		logging.info('train: epoch %i, minibatch %i, duration %fs, loss %f' % (
+		logger.info('train: epoch %i, minibatch %i, duration %fs, loss %f' % (
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss))
 
 		# print 'train: epoch %i, minibatch %i, duration %fs, loss %f' % (
