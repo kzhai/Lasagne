@@ -1,235 +1,239 @@
 import theano
 import theano.tensor as T
+from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 from .base import Layer
 from ..random import get_rng
 
-from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
-
-
 __all__ = [
-    "DropoutLayer",
-    "dropout",
-    "dropout_channels",
-    "spatial_dropout",
-    "dropout_locations",
-    "GaussianNoiseLayer",
-    #
-    #
-    #
-    #
-    #
-    "sample_activation_probability",
-    #
-    "LinearDropoutLayer",
-    "GaussianDropoutLayer",
-    "FastDropoutLayer",
-    "VariationalDropoutLayer",
-    "VariationalDropoutTypeALayer",
-    "VariationalDropoutTypeBLayer",
-    #
-    "StandoutLayer",
-    "AdaptiveDropoutLayer",
-    #
-    #"GenericDropoutLayer",
-    #"BetaBernoulliDropoutLayer",
+	"DropoutLayer",
+	"dropout",
+	"dropout_channels",
+	"spatial_dropout",
+	"dropout_locations",
+	"GaussianNoiseLayer",
+	#
+	#
+	#
+	#
+	#
+	"sample_activation_probability",
+	#
+	"LinearDropoutLayer",
+	"GaussianDropoutLayer",
+	"FastDropoutLayer",
+	"VariationalDropoutLayer",
+	"VariationalDropoutTypeALayer",
+	"VariationalDropoutTypeBLayer",
+	#
+	"StandoutLayer",
+	"AdaptiveDropoutLayer",
+	"AdaptiveDynamicDropoutLayer",
+	#
+	# "GenericDropoutLayer",
+	# "BetaBernoulliDropoutLayer",
 ]
 
 
 class DropoutLayer(Layer):
-    """Dropout layer
+	"""Dropout layer
 
-    Sets values to zero with probability p. See notes for disabling dropout
-    during testing.
+	Sets values to zero with probability p. See notes for disabling dropout
+	during testing.
 
-    Parameters
-    ----------
-    incoming : a :class:`Layer` instance or a tuple
-        the layer feeding into this layer, or the expected input shape
-    p : float or scalar tensor
-        The probability of setting a value to zero
-    rescale : bool
-        If ``True`` (the default), scale the input by ``1 / (1 - p)`` when
-        dropout is enabled, to keep the expected output mean the same.
-    shared_axes : tuple of int
-        Axes to share the dropout mask over. By default, each value can be
-        dropped individually. ``shared_axes=(0,)`` uses the same mask across
-        the batch. ``shared_axes=(2, 3)`` uses the same mask across the
-        spatial dimensions of 2D feature maps.
+	Parameters
+	----------
+	incoming : a :class:`Layer` instance or a tuple
+		the layer feeding into this layer, or the expected input shape
+	p : float or scalar tensor
+		The probability of setting a value to zero
+	rescale : bool
+		If ``True`` (the default), scale the input by ``1 / (1 - p)`` when
+		dropout is enabled, to keep the expected output mean the same.
+	shared_axes : tuple of int
+		Axes to share the dropout mask over. By default, each value can be
+		dropped individually. ``shared_axes=(0,)`` uses the same mask across
+		the batch. ``shared_axes=(2, 3)`` uses the same mask across the
+		spatial dimensions of 2D feature maps.
 
-    Notes
-    -----
-    The dropout layer is a regularizer that randomly sets input values to
-    zero; see [1]_, [2]_ for why this might improve generalization.
+	Notes
+	-----
+	The dropout layer is a regularizer that randomly sets input values to
+	zero; see [1]_, [2]_ for why this might improve generalization.
 
-    The behaviour of the layer depends on the ``deterministic`` keyword
-    argument passed to :func:`lasagne.layers.get_output`. If ``True``, the
-    layer behaves deterministically, and passes on the input unchanged. If
-    ``False`` or not specified, dropout (and possibly scaling) is enabled.
-    Usually, you would use ``deterministic=False`` at train time and
-    ``deterministic=True`` at test time.
+	The behaviour of the layer depends on the ``deterministic`` keyword
+	argument passed to :func:`lasagne.layers.get_output`. If ``True``, the
+	layer behaves deterministically, and passes on the input unchanged. If
+	``False`` or not specified, dropout (and possibly scaling) is enabled.
+	Usually, you would use ``deterministic=False`` at train time and
+	``deterministic=True`` at test time.
 
-    See also
-    --------
-    dropout_channels : Drops full channels of feature maps
-    spatial_dropout : Alias for :func:`dropout_channels`
-    dropout_locations : Drops full pixels or voxels of feature maps
+	See also
+	--------
+	dropout_channels : Drops full channels of feature maps
+	spatial_dropout : Alias for :func:`dropout_channels`
+	dropout_locations : Drops full pixels or voxels of feature maps
 
-    References
-    ----------
-    .. [1] Hinton, G., Srivastava, N., Krizhevsky, A., Sutskever, I.,
-           Salakhutdinov, R. R. (2012):
-           Improving neural networks by preventing co-adaptation of feature
-           detectors. arXiv preprint arXiv:1207.0580.
+	References
+	----------
+	.. [1] Hinton, G., Srivastava, N., Krizhevsky, A., Sutskever, I.,
+		   Salakhutdinov, R. R. (2012):
+		   Improving neural networks by preventing co-adaptation of feature
+		   detectors. arXiv preprint arXiv:1207.0580.
 
-    .. [2] Srivastava Nitish, Hinton, G., Krizhevsky, A., Sutskever,
-           I., & Salakhutdinov, R. R. (2014):
-           Dropout: A Simple Way to Prevent Neural Networks from Overfitting.
-           Journal of Machine Learning Research, 5(Jun)(2), 1929-1958.
-    """
-    def __init__(self, incoming, p=0.5, rescale=True, shared_axes=(),
-                 **kwargs):
-        super(DropoutLayer, self).__init__(incoming, **kwargs)
-        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
-        self.p = p
-        self.rescale = rescale
-        self.shared_axes = tuple(shared_axes)
+	.. [2] Srivastava Nitish, Hinton, G., Krizhevsky, A., Sutskever,
+		   I., & Salakhutdinov, R. R. (2014):
+		   Dropout: A Simple Way to Prevent Neural Networks from Overfitting.
+		   Journal of Machine Learning Research, 5(Jun)(2), 1929-1958.
+	"""
 
-    def get_output_for(self, input, deterministic=False, **kwargs):
-        if deterministic or self.p == 0:
-            return input
-        else:
-            # Using theano constant to prevent upcasting
-            one = T.constant(1)
+	def __init__(self, incoming, p=0.5, rescale=True, shared_axes=(),
+	             **kwargs):
+		super(DropoutLayer, self).__init__(incoming, **kwargs)
+		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+		self.p = p
+		self.rescale = rescale
+		self.shared_axes = tuple(shared_axes)
 
-            retain_prob = one - self.p
-            if self.rescale:
-                input /= retain_prob
+	def get_output_for(self, input, deterministic=False, **kwargs):
+		if deterministic or self.p == 0:
+			return input
+		else:
+			# Using theano constant to prevent upcasting
+			one = T.constant(1)
 
-            # use nonsymbolic shape for dropout mask if possible
-            mask_shape = self.input_shape
-            if any(s is None for s in mask_shape):
-                mask_shape = input.shape
+			retain_prob = one - self.p
+			if self.rescale:
+				input /= retain_prob
 
-            # apply dropout, respecting shared axes
-            if self.shared_axes:
-                shared_axes = tuple(a if a >= 0 else a + input.ndim
-                                    for a in self.shared_axes)
-                mask_shape = tuple(1 if a in shared_axes else s
-                                   for a, s in enumerate(mask_shape))
-            mask = self._srng.binomial(mask_shape, p=retain_prob,
-                                       dtype=input.dtype)
-            if self.shared_axes:
-                bcast = tuple(bool(s == 1) for s in mask_shape)
-                mask = T.patternbroadcast(mask, bcast)
-            return input * mask
+			# use nonsymbolic shape for dropout mask if possible
+			mask_shape = self.input_shape
+			if any(s is None for s in mask_shape):
+				mask_shape = input.shape
+
+			# apply dropout, respecting shared axes
+			if self.shared_axes:
+				shared_axes = tuple(a if a >= 0 else a + input.ndim
+				                    for a in self.shared_axes)
+				mask_shape = tuple(1 if a in shared_axes else s
+				                   for a, s in enumerate(mask_shape))
+			mask = self._srng.binomial(mask_shape, p=retain_prob,
+			                           dtype=input.dtype)
+			if self.shared_axes:
+				bcast = tuple(bool(s == 1) for s in mask_shape)
+				mask = T.patternbroadcast(mask, bcast)
+			return input * mask
+
 
 dropout = DropoutLayer  # shortcut
 
 
 def dropout_channels(incoming, *args, **kwargs):
-    """
-    Convenience function to drop full channels of feature maps.
+	"""
+	Convenience function to drop full channels of feature maps.
 
-    Adds a :class:`DropoutLayer` that sets feature map channels to zero, across
-    all locations, with probability p. For convolutional neural networks, this
-    may give better results than independent dropout [1]_.
+	Adds a :class:`DropoutLayer` that sets feature map channels to zero, across
+	all locations, with probability p. For convolutional neural networks, this
+	may give better results than independent dropout [1]_.
 
-    Parameters
-    ----------
-    incoming : a :class:`Layer` instance or a tuple
-        the layer feeding into this layer, or the expected input shape
-    *args, **kwargs
-        Any additional arguments and keyword arguments are passed on to the
-        :class:`DropoutLayer` constructor, except for `shared_axes`.
+	Parameters
+	----------
+	incoming : a :class:`Layer` instance or a tuple
+		the layer feeding into this layer, or the expected input shape
+	*args, **kwargs
+		Any additional arguments and keyword arguments are passed on to the
+		:class:`DropoutLayer` constructor, except for `shared_axes`.
 
-    Returns
-    -------
-    layer : :class:`DropoutLayer` instance
-        The dropout layer with `shared_axes` set to drop channels.
+	Returns
+	-------
+	layer : :class:`DropoutLayer` instance
+		The dropout layer with `shared_axes` set to drop channels.
 
-    References
-    ----------
-    .. [1] J. Tompson, R. Goroshin, A. Jain, Y. LeCun, C. Bregler (2014):
-           Efficient Object Localization Using Convolutional Networks.
-           https://arxiv.org/abs/1411.4280
-    """
-    ndim = len(getattr(incoming, 'output_shape', incoming))
-    kwargs['shared_axes'] = tuple(range(2, ndim))
-    return DropoutLayer(incoming, *args, **kwargs)
+	References
+	----------
+	.. [1] J. Tompson, R. Goroshin, A. Jain, Y. LeCun, C. Bregler (2014):
+		   Efficient Object Localization Using Convolutional Networks.
+		   https://arxiv.org/abs/1411.4280
+	"""
+	ndim = len(getattr(incoming, 'output_shape', incoming))
+	kwargs['shared_axes'] = tuple(range(2, ndim))
+	return DropoutLayer(incoming, *args, **kwargs)
+
 
 spatial_dropout = dropout_channels  # alias
 
 
 def dropout_locations(incoming, *args, **kwargs):
-    """
-    Convenience function to drop full locations of feature maps.
+	"""
+	Convenience function to drop full locations of feature maps.
 
-    Adds a :class:`DropoutLayer` that sets feature map locations (i.e., pixels
-    or voxels) to zero, across all channels, with probability p.
+	Adds a :class:`DropoutLayer` that sets feature map locations (i.e., pixels
+	or voxels) to zero, across all channels, with probability p.
 
-    Parameters
-    ----------
-    incoming : a :class:`Layer` instance or a tuple
-        the layer feeding into this layer, or the expected input shape
-    *args, **kwargs
-        Any additional arguments and keyword arguments are passed on to the
-        :class:`DropoutLayer` constructor, except for `shared_axes`.
+	Parameters
+	----------
+	incoming : a :class:`Layer` instance or a tuple
+		the layer feeding into this layer, or the expected input shape
+	*args, **kwargs
+		Any additional arguments and keyword arguments are passed on to the
+		:class:`DropoutLayer` constructor, except for `shared_axes`.
 
-    Returns
-    -------
-    layer : :class:`DropoutLayer` instance
-        The dropout layer with `shared_axes` set to drop locations.
-    """
-    kwargs['shared_axes'] = (1,)
-    return DropoutLayer(incoming, *args, **kwargs)
+	Returns
+	-------
+	layer : :class:`DropoutLayer` instance
+		The dropout layer with `shared_axes` set to drop locations.
+	"""
+	kwargs['shared_axes'] = (1,)
+	return DropoutLayer(incoming, *args, **kwargs)
 
 
 class GaussianNoiseLayer(Layer):
-    """Gaussian noise layer.
+	"""Gaussian noise layer.
 
-    Add zero-mean Gaussian noise of given standard deviation to the input [1]_.
+	Add zero-mean Gaussian noise of given standard deviation to the input [1]_.
 
-    Parameters
-    ----------
-    incoming : a :class:`Layer` instance or a tuple
-            the layer feeding into this layer, or the expected input shape
-    sigma : float or tensor scalar
-            Standard deviation of added Gaussian noise
+	Parameters
+	----------
+	incoming : a :class:`Layer` instance or a tuple
+			the layer feeding into this layer, or the expected input shape
+	sigma : float or tensor scalar
+			Standard deviation of added Gaussian noise
 
-    Notes
-    -----
-    The Gaussian noise layer is a regularizer. During training you should set
-    deterministic to false and during testing you should set deterministic to
-    true.
+	Notes
+	-----
+	The Gaussian noise layer is a regularizer. During training you should set
+	deterministic to false and during testing you should set deterministic to
+	true.
 
-    References
-    ----------
-    .. [1] K.-C. Jim, C. Giles, and B. Horne (1996):
-           An analysis of noise in recurrent neural networks: convergence and
-           generalization.
-           IEEE Transactions on Neural Networks, 7(6):1424-1438.
-    """
-    def __init__(self, incoming, sigma=0.1, **kwargs):
-        super(GaussianNoiseLayer, self).__init__(incoming, **kwargs)
-        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
-        self.sigma = sigma
+	References
+	----------
+	.. [1] K.-C. Jim, C. Giles, and B. Horne (1996):
+		   An analysis of noise in recurrent neural networks: convergence and
+		   generalization.
+		   IEEE Transactions on Neural Networks, 7(6):1424-1438.
+	"""
 
-    def get_output_for(self, input, deterministic=False, **kwargs):
-        """
-        Parameters
-        ----------
-        input : tensor
-            output from the previous layer
-        deterministic : bool
-            If true noise is disabled, see notes
-        """
-        if deterministic or self.sigma == 0:
-            return input
-        else:
-            return input + self._srng.normal(input.shape,
-                                             avg=0.0,
-                                             std=self.sigma)
+	def __init__(self, incoming, sigma=0.1, **kwargs):
+		super(GaussianNoiseLayer, self).__init__(incoming, **kwargs)
+		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+		self.sigma = sigma
+
+	def get_output_for(self, input, deterministic=False, **kwargs):
+		"""
+		Parameters
+		----------
+		input : tensor
+			output from the previous layer
+		deterministic : bool
+			If true noise is disabled, see notes
+		"""
+		if deterministic or self.sigma == 0:
+			return input
+		else:
+			return input + self._srng.normal(input.shape,
+			                                 avg=0.0,
+			                                 std=self.sigma)
+
 
 #
 #
@@ -244,7 +248,7 @@ from .. import init, nonlinearities
 
 import warnings
 
-from . import Layer, MergeLayer, DenseLayer
+from . import Layer, MergeLayer
 from . import get_all_layers
 
 '''
@@ -267,806 +271,849 @@ def validate_activation_probability(activation_probability):
 
 
 def sample_activation_probability(input_dimensions, activation_style, activation_parameter):
-    if activation_style == "uniform":
-        activation_probability = numpy.random.random(size=input_dimensions)
-    elif activation_style == "bernoulli":
-        activation_probability = numpy.zeros(input_dimensions) + activation_parameter
-    elif activation_style == "beta_bernoulli":
-        shape_alpha, shape_beta = activation_parameter
-        activation_probability = numpy.random.beta(shape_alpha, shape_beta, size=input_dimensions)
-    elif activation_style == "reciprocal_beta_bernoulli":
-        shape_alpha, shape_beta = activation_parameter
-        input_number_of_neurons = numpy.prod(input_dimensions)
-        activation_probability = numpy.zeros(input_number_of_neurons)
-        ranked_shape_alpha = shape_alpha / numpy.arange(1, input_number_of_neurons + 1)
-        for index in range(input_number_of_neurons):
-            activation_probability[index] = numpy.random.beta(ranked_shape_alpha[index], shape_beta)
-        activation_probability = numpy.reshape(activation_probability, input_dimensions)
-    elif activation_style == "reverse_reciprocal_beta_bernoulli":
-        shape_alpha, shape_beta = activation_parameter
-        ranked_shape_alpha = shape_alpha / numpy.arange(1, input_dimensions + 1)[::-1]
-        input_number_of_neurons = numpy.prod(input_dimensions)
-        activation_probability = numpy.zeros(input_number_of_neurons)
-        for index in range(input_number_of_neurons):
-            activation_probability[index] = numpy.random.beta(ranked_shape_alpha[index], shape_beta)
-        activation_probability = numpy.reshape(activation_probability, input_dimensions)
-    elif activation_style == "mixed_beta_bernoulli":
-        beta_mean, shape_beta = activation_parameter
-        scale = beta_mean / (1. - beta_mean)
-        input_number_of_neurons = numpy.prod(input_dimensions)
-        activation_probability = numpy.zeros(input_number_of_neurons)
-        for index in range(input_number_of_neurons):
-            rank = index + 1
-            activation_probability[index] = numpy.random.beta(rank * scale / shape_beta, rank / shape_beta)
-        activation_probability = numpy.reshape(activation_probability, input_dimensions)
-    elif activation_style == "geometric":
-        input_number_of_neurons = numpy.prod(input_dimensions)
-        activation_probability = numpy.zeros(input_number_of_neurons)
-        for index in range(input_number_of_neurons):
-            rank = index + 1
-            activation_probability[index] = (activation_parameter - 1) / numpy.log(activation_parameter) * (
-                activation_parameter ** rank)
-        activation_probability = numpy.clip(activation_probability, 0., 1.)
-        activation_probability = numpy.reshape(activation_probability, input_dimensions)
-    elif activation_style == "reciprocal":
-        activation_probability = activation_parameter / numpy.arange(1, input_dimensions + 1)
-        activation_probability = numpy.clip(activation_probability, 0., 1.)
-    elif activation_style == "exponential":
-        activation_probability = activation_parameter / numpy.arange(1, input_dimensions + 1)
-        activation_probability = numpy.clip(activation_probability, 0., 1.)
-    else:
-        sys.stderr.write("error: unrecognized configuration...\n")
-        sys.exit()
+	if activation_style == "uniform":
+		activation_probability = numpy.random.random(size=input_dimensions)
+	elif activation_style == "bernoulli":
+		activation_probability = numpy.zeros(input_dimensions) + activation_parameter
+	elif activation_style == "beta_bernoulli":
+		shape_alpha, shape_beta = activation_parameter
+		activation_probability = numpy.random.beta(shape_alpha, shape_beta, size=input_dimensions)
+	elif activation_style == "reciprocal_beta_bernoulli":
+		shape_alpha, shape_beta = activation_parameter
+		input_number_of_neurons = numpy.prod(input_dimensions)
+		activation_probability = numpy.zeros(input_number_of_neurons)
+		ranked_shape_alpha = shape_alpha / numpy.arange(1, input_number_of_neurons + 1)
+		for index in range(input_number_of_neurons):
+			activation_probability[index] = numpy.random.beta(ranked_shape_alpha[index], shape_beta)
+		activation_probability = numpy.reshape(activation_probability, input_dimensions)
+	elif activation_style == "reverse_reciprocal_beta_bernoulli":
+		shape_alpha, shape_beta = activation_parameter
+		ranked_shape_alpha = shape_alpha / numpy.arange(1, input_dimensions + 1)[::-1]
+		input_number_of_neurons = numpy.prod(input_dimensions)
+		activation_probability = numpy.zeros(input_number_of_neurons)
+		for index in range(input_number_of_neurons):
+			activation_probability[index] = numpy.random.beta(ranked_shape_alpha[index], shape_beta)
+		activation_probability = numpy.reshape(activation_probability, input_dimensions)
+	elif activation_style == "mixed_beta_bernoulli":
+		beta_mean, shape_beta = activation_parameter
+		scale = beta_mean / (1. - beta_mean)
+		input_number_of_neurons = numpy.prod(input_dimensions)
+		activation_probability = numpy.zeros(input_number_of_neurons)
+		for index in range(input_number_of_neurons):
+			rank = index + 1
+			activation_probability[index] = numpy.random.beta(rank * scale / shape_beta, rank / shape_beta)
+		activation_probability = numpy.reshape(activation_probability, input_dimensions)
+	elif activation_style == "geometric":
+		input_number_of_neurons = numpy.prod(input_dimensions)
+		activation_probability = numpy.zeros(input_number_of_neurons)
+		for index in range(input_number_of_neurons):
+			rank = index + 1
+			activation_probability[index] = (activation_parameter - 1) / numpy.log(activation_parameter) * (
+				activation_parameter ** rank)
+		activation_probability = numpy.clip(activation_probability, 0., 1.)
+		activation_probability = numpy.reshape(activation_probability, input_dimensions)
+	elif activation_style == "reciprocal":
+		activation_probability = activation_parameter / numpy.arange(1, input_dimensions + 1)
+		activation_probability = numpy.clip(activation_probability, 0., 1.)
+	elif activation_style == "exponential":
+		activation_probability = activation_parameter / numpy.arange(1, input_dimensions + 1)
+		activation_probability = numpy.clip(activation_probability, 0., 1.)
+	else:
+		sys.stderr.write("error: unrecognized configuration...\n")
+		sys.exit()
 
-    return activation_probability.astype(theano.config.floatX)
+	return activation_probability.astype(theano.config.floatX)
 
 
 def get_filter(input_shape, retain_probability, rng=RandomStreams()):
-    filter = rng.binomial(size=input_shape, n=1, p=retain_probability, dtype=theano.config.floatX)
+	filter = rng.binomial(size=input_shape, n=1, p=retain_probability, dtype=theano.config.floatX)
 
-    #mask = rng.binomial(mask_shape, p=retain_prob, dtype=input.dtype)
+	# mask = rng.binomial(mask_shape, p=retain_prob, dtype=input.dtype)
 
-    '''
-    if isinstance(input_shape, tuple):
-        filter = numpy.zeros(input_shape);
-        for dim in range(len(retain_probability)):
-            filter[:, dim] = self._srng.binomial(size=len(input_shape[0]), n=1, p=retain_probability[dim], dtype=theano.config.floatX)
-    else:
-        if isinstance(input_shape, T.Variable) and input_shape.ndim == 1:
-            #filter = rng.binomial(size=input_shape, n=1, p=0.5, dtype=theano.config.floatX);
-            filter = self._srng.normal(size=input_shape, avg=0.0, std=1.0, dtype=theano.config.floatX);
-    '''
+	'''
+	if isinstance(input_shape, tuple):
+		filter = numpy.zeros(input_shape);
+		for dim in range(len(retain_probability)):
+			filter[:, dim] = self._srng.binomial(size=len(input_shape[0]), n=1, p=retain_probability[dim], dtype=theano.config.floatX)
+	else:
+		if isinstance(input_shape, T.Variable) and input_shape.ndim == 1:
+			#filter = rng.binomial(size=input_shape, n=1, p=0.5, dtype=theano.config.floatX);
+			filter = self._srng.normal(size=input_shape, avg=0.0, std=1.0, dtype=theano.config.floatX);
+	'''
 
-    return filter
+	return filter
 
 
 class LinearDropoutLayer(Layer):
-    """Dropout layer
+	"""Dropout layer
 
-    Sets values to zero with probability p. See notes for disabling dropout
-    during testing.
+	Sets values to zero with probability p. See notes for disabling dropout
+	during testing.
 
-    Parameters
-    ----------
-    incoming : a :class:`Layer` instance or a tuple
-        the layer feeding into this layer, or the expected input shape
-    p : float or scalar tensor
-        The probability of setting a value to zero
-    rescale : bool
-        If ``True`` (the default), scale the input by ``1 / (1 - p)`` when
-        dropout is enabled, to keep the expected output mean the same.
-    shared_axes : tuple of int
-        Axes to share the dropout mask over. By default, each value can be
-        dropped individually. ``shared_axes=(0,)`` uses the same mask across
-        the batch. ``shared_axes=(2, 3)`` uses the same mask across the
-        spatial dimensions of 2D feature maps.
+	Parameters
+	----------
+	incoming : a :class:`Layer` instance or a tuple
+		the layer feeding into this layer, or the expected input shape
+	p : float or scalar tensor
+		The probability of setting a value to zero
+	rescale : bool
+		If ``True`` (the default), scale the input by ``1 / (1 - p)`` when
+		dropout is enabled, to keep the expected output mean the same.
+	shared_axes : tuple of int
+		Axes to share the dropout mask over. By default, each value can be
+		dropped individually. ``shared_axes=(0,)`` uses the same mask across
+		the batch. ``shared_axes=(2, 3)`` uses the same mask across the
+		spatial dimensions of 2D feature maps.
 
-    Notes
-    -----
-    The dropout layer is a regularizer that randomly sets input values to
-    zero; see [1]_, [2]_ for why this might improve generalization.
+	Notes
+	-----
+	The dropout layer is a regularizer that randomly sets input values to
+	zero; see [1]_, [2]_ for why this might improve generalization.
 
-    The behaviour of the layer depends on the ``deterministic`` keyword
-    argument passed to :func:`lasagne.layers.get_output`. If ``True``, the
-    layer behaves deterministically, and passes on the input unchanged. If
-    ``False`` or not specified, dropout (and possibly scaling) is enabled.
-    Usually, you would use ``deterministic=False`` at train time and
-    ``deterministic=True`` at test time.
+	The behaviour of the layer depends on the ``deterministic`` keyword
+	argument passed to :func:`lasagne.layers.get_output`. If ``True``, the
+	layer behaves deterministically, and passes on the input unchanged. If
+	``False`` or not specified, dropout (and possibly scaling) is enabled.
+	Usually, you would use ``deterministic=False`` at train time and
+	``deterministic=True`` at test time.
 
-    See also
-    --------
-    dropout_channels : Drops full channels of feature maps
-    spatial_dropout : Alias for :func:`dropout_channels`
-    dropout_locations : Drops full pixels or voxels of feature maps
+	See also
+	--------
+	dropout_channels : Drops full channels of feature maps
+	spatial_dropout : Alias for :func:`dropout_channels`
+	dropout_locations : Drops full pixels or voxels of feature maps
 
-    References
-    ----------
-    .. [1] Hinton, G., Srivastava, N., Krizhevsky, A., Sutskever, I.,
-           Salakhutdinov, R. R. (2012):
-           Improving neural networks by preventing co-adaptation of feature
-           detectors. arXiv preprint arXiv:1207.0580.
+	References
+	----------
+	.. [1] Hinton, G., Srivastava, N., Krizhevsky, A., Sutskever, I.,
+		   Salakhutdinov, R. R. (2012):
+		   Improving neural networks by preventing co-adaptation of feature
+		   detectors. arXiv preprint arXiv:1207.0580.
 
-    .. [2] Srivastava Nitish, Hinton, G., Krizhevsky, A., Sutskever,
-           I., & Salakhutdinov, R. R. (2014):
-           Dropout: A Simple Way to Prevent Neural Networks from Overfitting.
-           Journal of Machine Learning Research, 5(Jun)(2), 1929-1958.
-    """
-    def __init__(self, incoming, activation_probability=0.5, rescale=True, shared_axes=(),
-                 num_leading_axes=1, **kwargs):
-        #super(LinearDropoutLayer, self).__init__(incoming, activation_probability, **kwargs);
-        super(LinearDropoutLayer, self).__init__(incoming, **kwargs)
-        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
-        #self.activation_probability = activation_probability
+	.. [2] Srivastava Nitish, Hinton, G., Krizhevsky, A., Sutskever,
+		   I., & Salakhutdinov, R. R. (2014):
+		   Dropout: A Simple Way to Prevent Neural Networks from Overfitting.
+		   Journal of Machine Learning Research, 5(Jun)(2), 1929-1958.
+	"""
 
-        '''
-        num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
-        if isinstance(activation_probability, numpy.floatX):
-            assert activation_probability.shape == (num_inputs,);
-        '''
+	def __init__(self, incoming, activation_probability=0.5, rescale=True, shared_axes=(),
+	             num_leading_axes=1, **kwargs):
+		# super(LinearDropoutLayer, self).__init__(incoming, activation_probability, **kwargs);
+		super(LinearDropoutLayer, self).__init__(incoming, **kwargs)
+		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+		# self.activation_probability = activation_probability
 
-        self.activation_probability = self.add_param(activation_probability, self.input_shape[num_leading_axes:],
-                                                     name="p", trainable=False, regularizable=False)
+		'''
+		num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
+		if isinstance(activation_probability, numpy.floatX):
+			assert activation_probability.shape == (num_inputs,);
+		'''
 
-        self.rescale = rescale
-        self.shared_axes = tuple(shared_axes)
+		self.activation_probability = self.add_param(activation_probability, self.input_shape[num_leading_axes:],
+		                                             name="p", trainable=False, regularizable=False)
 
-    def get_output_for(self, input, deterministic=False, **kwargs):
-        retain_prob = self.activation_probability.eval()
-        if deterministic or numpy.all(retain_prob == 1):
-            return input
-        else:
-            # Using theano constant to prevent upcasting
+		self.rescale = rescale
+		self.shared_axes = tuple(shared_axes)
 
-            if self.rescale:
-                T.true_div(input, self.activation_probability)
-                #input /= retain_prob
+	def get_output_for(self, input, deterministic=False, **kwargs):
+		retain_prob = self.activation_probability.eval()
+		if deterministic or numpy.all(retain_prob == 1):
+			return input
+		else:
+			# Using theano constant to prevent upcasting
 
-            # use nonsymbolic shape for dropout mask if possible
-            mask_shape = self.input_shape
-            if any(s is None for s in mask_shape):
-                mask_shape = input.shape
+			if self.rescale:
+				T.true_div(input, self.activation_probability)
+			# input /= retain_prob
 
-            # apply dropout, respecting shared axes
-            if self.shared_axes:
-                shared_axes = tuple(a if a >= 0 else a + input.ndim
-                                    for a in self.shared_axes)
-                mask_shape = tuple(1 if a in shared_axes else s
-                                   for a, s in enumerate(mask_shape))
-            mask = self._srng.binomial(mask_shape, p=retain_prob,
-                                       dtype=input.dtype)
-            if self.shared_axes:
-                bcast = tuple(bool(s == 1) for s in mask_shape)
-                mask = T.patternbroadcast(mask, bcast)
-            return input * mask
+			# use nonsymbolic shape for dropout mask if possible
+			mask_shape = self.input_shape
+			if any(s is None for s in mask_shape):
+				mask_shape = input.shape
+
+			# apply dropout, respecting shared axes
+			if self.shared_axes:
+				shared_axes = tuple(a if a >= 0 else a + input.ndim
+				                    for a in self.shared_axes)
+				mask_shape = tuple(1 if a in shared_axes else s
+				                   for a, s in enumerate(mask_shape))
+			mask = self._srng.binomial(mask_shape, p=retain_prob,
+			                           dtype=input.dtype)
+			if self.shared_axes:
+				bcast = tuple(bool(s == 1) for s in mask_shape)
+				mask = T.patternbroadcast(mask, bcast)
+			return input * mask
 
 
 class GaussianDropoutLayer(Layer):
-    """
-    Replication of the Gaussian dropout of Srivastava et al. 2014 (section
-    10). Applies noise to the activations prior to the weight matrix
-    according to equation 11 in the Variational Dropout paper; to match the
-    adaptive dropout implementation.
+	"""
+	Replication of the Gaussian dropout of Srivastava et al. 2014 (section
+	10). Applies noise to the activations prior to the weight matrix
+	according to equation 11 in the Variational Dropout paper; to match the
+	adaptive dropout implementation.
 
-    Uses some of the code and comments from the Lasagne GaussianNoiseLayer:
-    Parameters
-    ----------
-    incoming : a :class:`Layer` instance or a tuple
-        the layer feeding into this layer, or the expected input shape
-    p : float or tensor scalar, effective dropout probability
-    """
+	Uses some of the code and comments from the Lasagne GaussianNoiseLayer:
+	Parameters
+	----------
+	incoming : a :class:`Layer` instance or a tuple
+		the layer feeding into this layer, or the expected input shape
+	p : float or tensor scalar, effective dropout probability
+	"""
 
-    def __init__(self, incoming, activation_probability=0.5, shared_axes=(), num_leading_axes=1, **kwargs):
-        super(GaussianDropoutLayer, self).__init__(incoming, **kwargs)
-        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+	def __init__(self, incoming, activation_probability=0.5, shared_axes=(), num_leading_axes=1, **kwargs):
+		super(GaussianDropoutLayer, self).__init__(incoming, **kwargs)
+		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
 
-        #num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
-        #if isinstance(activation_probability, numpy.ndarray):
-            #assert activation_probability.shape == (num_inputs,);
-        #self.activation_probability = self.add_param(activation_probability, (num_inputs,), name="p",
-        # trainable=False, regularizable=False, adaptable=True);
+		# num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
+		# if isinstance(activation_probability, numpy.ndarray):
+		# assert activation_probability.shape == (num_inputs,);
+		# self.activation_probability = self.add_param(activation_probability, (num_inputs,), name="p",
+		# trainable=False, regularizable=False, adaptable=True);
 
-        self.shared_axes = tuple(shared_axes)
+		self.shared_axes = tuple(shared_axes)
 
-        activation_probability = _validate_activation_probability_for_logit_parameterization(activation_probability)
-        #self.logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability))
-        logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability))
-        self.logit_sigma = self.add_param(logit_sigma, (), name="logit_sigma", trainable=False, regularizable=False)
+		activation_probability = _validate_activation_probability_for_logit_parameterization(activation_probability)
+		# self.logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability))
+		logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability))
+		self.logit_sigma = self.add_param(logit_sigma, (), name="logit_sigma", trainable=False, regularizable=False)
 
-    '''
-    def old__init__(self, incoming, p=0.5, **kwargs):
-        super(GaussianDropoutLayer, self).__init__(incoming, **kwargs)
-        p = check_p_backup(p)
-        self.logitalpha = theano.shared(
-                value=numpy.array(_logit(numpy.sqrt(p/(1.-p)))).astype(theano.config.floatX),
-                name='logitalpha'
-                )
-    '''
+	'''
+	def old__init__(self, incoming, p=0.5, **kwargs):
+		super(GaussianDropoutLayer, self).__init__(incoming, **kwargs)
+		p = check_p_backup(p)
+		self.logitalpha = theano.shared(
+				value=numpy.array(_logit(numpy.sqrt(p/(1.-p)))).astype(theano.config.floatX),
+				name='logitalpha'
+				)
+	'''
 
-    def get_output_for(self, input, deterministic=False, **kwargs):
-        """
-        Parameters
-        ----------
-        input : tensor
-        output from the previous layer
-        deterministic : bool
-        If true noise is disabled, see notes
-        """
-        self.sigma = T.nnet.sigmoid(self.logit_sigma)
-        if deterministic or numpy.all(self.sigma.eval() == 0):
-            return input
-        else:
-            # use nonsymbolic shape for dropout mask if possible
-            perturbation_shape = self.input_shape
-            if any(s is None for s in perturbation_shape):
-                perturbation_shape = input.shape
+	def get_output_for(self, input, deterministic=False, **kwargs):
+		"""
+		Parameters
+		----------
+		input : tensor
+		output from the previous layer
+		deterministic : bool
+		If true noise is disabled, see notes
+		"""
+		self.sigma = T.nnet.sigmoid(self.logit_sigma)
+		if deterministic or numpy.all(self.sigma.eval() == 0):
+			return input
+		else:
+			# use nonsymbolic shape for dropout mask if possible
+			perturbation_shape = self.input_shape
+			if any(s is None for s in perturbation_shape):
+				perturbation_shape = input.shape
 
-            # apply dropout, respecting shared axes
-            if self.shared_axes:
-                shared_axes = tuple(a if a >= 0 else a + input.ndim
-                                    for a in self.shared_axes)
-                perturbation_shape = tuple(1 if a in shared_axes else s
-                                   for a, s in enumerate(perturbation_shape))
-            perturbation = 1 + self.sigma * self._srng.normal(input.shape, avg=0.0, std=1.)
+			# apply dropout, respecting shared axes
+			if self.shared_axes:
+				shared_axes = tuple(a if a >= 0 else a + input.ndim
+				                    for a in self.shared_axes)
+				perturbation_shape = tuple(1 if a in shared_axes else s
+				                           for a, s in enumerate(perturbation_shape))
+			perturbation = 1 + self.sigma * self._srng.normal(input.shape, avg=0.0, std=1.)
 
-            if self.shared_axes:
-                bcast = tuple(bool(s == 1) for s in perturbation_shape)
-                perturbation = T.patternbroadcast(perturbation, bcast)
-            return input * perturbation
+			if self.shared_axes:
+				bcast = tuple(bool(s == 1) for s in perturbation_shape)
+				perturbation = T.patternbroadcast(perturbation, bcast)
+			return input * perturbation
 
 
 class FastDropoutLayer(MergeLayer):
-    """
-    Replication of the Gaussian dropout of Wang and Manning 2012.
-    This layer will only work after a dense layer, but can probably be extended
-    to work with convolutional layers. Internally, this pulls out the weights
-    from the previous dense layer and applies them again itself, throwing away
-    the expression passed from the dense layer. This is necessary because we
-    need the expression before the nonlinearity is applied and because we need
-    to calculate the sigma. This idiosyncratic method was chosen because it
-    keeps the dropout architecture descriptions easy to read.
+	"""
+	Replication of the Gaussian dropout of Wang and Manning 2012.
+	This layer will only work after a dense layer, but can probably be extended
+	to work with convolutional layers. Internally, this pulls out the weights
+	from the previous dense layer and applies them again itself, throwing away
+	the expression passed from the dense layer. This is necessary because we
+	need the expression before the nonlinearity is applied and because we need
+	to calculate the sigma. This idiosyncratic method was chosen because it
+	keeps the dropout architecture descriptions easy to read.
 
-    Uses some of the code and comments from the Lasagne GaussianNoiseLayer:
-    Parameters
-    ----------
-    incoming : a :class:`Layer` instance or a tuple
-        the layer feeding into this layer, or the expected input shape
-    p : float or tensor scalar, effective dropout probability
-    nonlinearity : a nonlinearity to apply after the noising process
-    """
-    def __init__(self, incoming, activation_probability=0.5, **kwargs):
-        incoming_input = get_all_layers(incoming)[-2]
-        MergeLayer.__init__(self, [incoming, incoming_input], **kwargs)
+	Uses some of the code and comments from the Lasagne GaussianNoiseLayer:
+	Parameters
+	----------
+	incoming : a :class:`Layer` instance or a tuple
+		the layer feeding into this layer, or the expected input shape
+	p : float or tensor scalar, effective dropout probability
+	nonlinearity : a nonlinearity to apply after the noising process
+	"""
 
-        activation_probability = _validate_activation_probability_for_logit_parameterization(activation_probability)
-        logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability))
-        self.logit_sigma = self.add_param(logit_sigma, (), name="logit_sigma", trainable=False, regularizable=False)
+	def __init__(self, incoming, activation_probability=0.5, **kwargs):
+		incoming_input = get_all_layers(incoming)[-2]
+		MergeLayer.__init__(self, [incoming, incoming_input], **kwargs)
 
-        #self.logitalpha = theano.shared(
-            #value=np.array(_logit(np.sqrt(p / (1. - p)))).astype(theano.config.floatX),
-            #name='logitalpha'
-        #)
-        #activation_probability = validate_activation_probability(activation_probability)
-        #self.alpha = numpy.sqrt((1 - activation_probability) / activation_probability);
-        #self.alpha = (1 - activation_probability) / activation_probability;
+		activation_probability = _validate_activation_probability_for_logit_parameterization(activation_probability)
+		logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability))
+		self.logit_sigma = self.add_param(logit_sigma, (), name="logit_sigma", trainable=False, regularizable=False)
 
-        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+		# self.logitalpha = theano.shared(
+		# value=np.array(_logit(np.sqrt(p / (1. - p)))).astype(theano.config.floatX),
+		# name='logitalpha'
+		# )
+		# activation_probability = validate_activation_probability(activation_probability)
+		# self.alpha = numpy.sqrt((1 - activation_probability) / activation_probability);
+		# self.alpha = (1 - activation_probability) / activation_probability;
 
-        # and store the parameters of the previous layer
-        self.num_units = incoming.num_units
-        self.theta = incoming.W
-        self.b = incoming.b
-        self.nonlinearity = incoming.nonlinearity
+		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
 
-    def get_output_shape_for(self, input_shapes):
-        """
-        Output shape will always be equal the shape coming out of the dense
-        layer previous.
-        """
-        return (input_shapes[1][0], self.num_units)
+		# and store the parameters of the previous layer
+		self.num_units = incoming.num_units
+		self.theta = incoming.W
+		self.b = incoming.b
+		self.nonlinearity = incoming.nonlinearity
 
-    def get_output_for(self, inputs, deterministic=False, **kwargs):
-        """
-        Parameters
-        ----------
-        input : tensor
-        output from the previous layer
-        deterministic : bool
-        If true noise is disabled, see notes
-        """
-        # repeat check from DenseLayer
-        if inputs[1].ndim > 2:
-            # flatten if we have more than 2 dims
-            inputs[1].ndim = inputs[1].flatten(2)
-        self.sigma = T.nnet.sigmoid(self.logit_sigma)
-        mu_z = T.dot(inputs[1], self.theta) + self.b.dimshuffle('x', 0)
-        if deterministic or numpy.all(self.sigma.eval() == 0):
-            return self.nonlinearity(mu_z)
-        else:
-            # sample from the Gaussian that dropout would produce
-            sigma_z = T.sqrt(T.dot(T.square(inputs[1]),
-                                   self.sigma*T.square(self.theta)))
-            randn = self._srng.normal(size=inputs[0].shape, avg=0.0, std=1.)
-            return self.nonlinearity(mu_z + sigma_z*randn)
+	def get_output_shape_for(self, input_shapes):
+		"""
+		Output shape will always be equal the shape coming out of the dense
+		layer previous.
+		"""
+		return (input_shapes[1][0], self.num_units)
 
-    '''
-    def old_get_output_for(self, inputs, deterministic=False, **kwargs):
-        """
-        Parameters
-        ----------
-        input : tensor
-        output from the previous layer
-        deterministic : bool
-        If true noise is disabled, see notes
-        """
-        # repeat check from DenseLayer
-        if inputs[1].ndim > 2:
-            # flatten if we have more than 2 dims
-            inputs[1].ndim = inputs[1].flatten(2)
-        self.alpha = T.nnet.sigmoid(self.logitalpha)
-        mu_z = T.dot(inputs[1], self.theta) + self.b.dimshuffle('x', 0)
-        if deterministic or T.mean(self.alpha).eval() == 0:
-            return self.nonlinearity(mu_z)
-        else:
-            # sample from the Gaussian that dropout would produce
-            sigma_z = T.sqrt(T.dot(T.square(inputs[1]),
-                                   self.alpha * T.square(self.theta)))
-            randn = self._srng.normal(size=inputs[0].shape, avg=0.0, std=1.)
-            return self.nonlinearity(mu_z + sigma_z * randn)
-    '''
+	def get_output_for(self, inputs, deterministic=False, **kwargs):
+		"""
+		Parameters
+		----------
+		input : tensor
+		output from the previous layer
+		deterministic : bool
+		If true noise is disabled, see notes
+		"""
+		# repeat check from DenseLayer
+		if inputs[1].ndim > 2:
+			# flatten if we have more than 2 dims
+			inputs[1].ndim = inputs[1].flatten(2)
+		self.sigma = T.nnet.sigmoid(self.logit_sigma)
+		mu_z = T.dot(inputs[1], self.theta) + self.b.dimshuffle('x', 0)
+		if deterministic or numpy.all(self.sigma.eval() == 0):
+			return self.nonlinearity(mu_z)
+		else:
+			# sample from the Gaussian that dropout would produce
+			sigma_z = T.sqrt(T.dot(T.square(inputs[1]),
+			                       self.sigma * T.square(self.theta)))
+			randn = self._srng.normal(size=inputs[0].shape, avg=0.0, std=1.)
+			return self.nonlinearity(mu_z + sigma_z * randn)
+
+	'''
+	def old_get_output_for(self, inputs, deterministic=False, **kwargs):
+		"""
+		Parameters
+		----------
+		input : tensor
+		output from the previous layer
+		deterministic : bool
+		If true noise is disabled, see notes
+		"""
+		# repeat check from DenseLayer
+		if inputs[1].ndim > 2:
+			# flatten if we have more than 2 dims
+			inputs[1].ndim = inputs[1].flatten(2)
+		self.alpha = T.nnet.sigmoid(self.logitalpha)
+		mu_z = T.dot(inputs[1], self.theta) + self.b.dimshuffle('x', 0)
+		if deterministic or T.mean(self.alpha).eval() == 0:
+			return self.nonlinearity(mu_z)
+		else:
+			# sample from the Gaussian that dropout would produce
+			sigma_z = T.sqrt(T.dot(T.square(inputs[1]),
+								   self.alpha * T.square(self.theta)))
+			randn = self._srng.normal(size=inputs[0].shape, avg=0.0, std=1.)
+			return self.nonlinearity(mu_z + sigma_z * randn)
+	'''
 
 
 class VariationalDropoutLayer(Layer):
-    """
-    Base class for variational dropout layers, because the noise sampling
-    and initialisation can be shared between type A and B.
-    Inits:
-        * p - initialisation of the parameters sampled for the noise
-    distribution.
-        * adaptive - one of:
-            * None - will not allow updates to the dropout rate
-            * "layerwise" - allow updates to a single parameter controlling the
-            updates
-            * "elementwise" - allow updates to a parameter for each hidden layer
-            * "weightwise" - allow updates to a parameter for each weight (don't
-            think this is actually necessary to replicate)
-    """
-    def __init__(self, incoming, activation_probability=0.5, adaptive="layerwise", nonlinearity=None, **kwargs):
-        super(VariationalDropoutLayer, self).__init__(incoming, **kwargs)
+	"""
+	Base class for variational dropout layers, because the noise sampling
+	and initialisation can be shared between type A and B.
+	Inits:
+		* p - initialisation of the parameters sampled for the noise
+	distribution.
+		* adaptive - one of:
+			* None - will not allow updates to the dropout rate
+			* "layerwise" - allow updates to a single parameter controlling the
+			updates
+			* "elementwise" - allow updates to a parameter for each hidden layer
+			* "weightwise" - allow updates to a parameter for each weight (don't
+			think this is actually necessary to replicate)
+	"""
 
-        '''
-        num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
-        if isinstance(activation_probability, numpy.ndarray):
-            assert activation_probability.shape == (num_inputs,);
-        '''
+	def __init__(self, incoming, activation_probability=0.5, adaptive="layerwise", nonlinearity=None, **kwargs):
+		super(VariationalDropoutLayer, self).__init__(incoming, **kwargs)
 
-        self.init_adaptive(activation_probability, adaptive)
+		'''
+		num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
+		if isinstance(activation_probability, numpy.ndarray):
+			assert activation_probability.shape == (num_inputs,);
+		'''
 
-    def init_adaptive(self, activation_probability, adaptive):
-        """
-        Initialises adaptive parameters.
-        """
-        if not hasattr(self, 'input_shape'):
-            self.input_shape = self.input_shapes[0]
+		self.init_adaptive(activation_probability, adaptive)
 
-        self.adaptive = adaptive
-        activation_probability = _validate_activation_probability_for_logit_parameterization(activation_probability)
-        # init based on adaptive options:
-        '''
-        if self.adaptive == None:
-            # initialise scalar param, but don't register it
-            logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability));
-            self.logit_sigma = self.add_param(logit_sigma, (), name="variational.dropout.logit_sigma",
-                                              trainable=False, regularizable=False);
-        '''
-        if self.adaptive == "layerwise":
-            # initialise scalar param, allow updates
-            logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability))
-            self.logit_sigma = self.add_param(logit_sigma, (), name="variational.dropout.logit_sigma",
-                                              trainable=True, regularizable=False)
-        elif self.adaptive == "elementwise":
-            # initialise param for each activation passed
-            logit_sigma = _logit(numpy.ones(self.input_shape[1:]) * numpy.sqrt((1 - activation_probability) /
-                                                                               activation_probability))
-            self.logit_sigma = self.add_param(logit_sigma, self.input_shape[1:],
-                                              name="variational.dropout.logit_sigma", trainable=True,
-                                              regularizable=False)
-        elif self.adaptive == "weightwise":
-            # this will only work in the case of dropout type B
-            thetashape = (self.input_shapes[1][1], self.input_shapes[0][1])
-            logit_sigma = _logit(numpy.ones(thetashape) * numpy.sqrt((1 - activation_probability) /
-                                                                     activation_probability))
-            self.logit_sigma = self.add_param(logit_sigma, thetashape, name="variational.dropout.logit_sigma",
-                                              trainable=True, regularizable=False)
-        else:
-            sys.stderr.write("error: unrecognized configuration...\n")
-            sys.exit()
+	def init_adaptive(self, activation_probability, adaptive):
+		"""
+		Initialises adaptive parameters.
+		"""
+		if not hasattr(self, 'input_shape'):
+			self.input_shape = self.input_shapes[0]
 
-    '''
-    def old_init_adaptive(self, adaptive, p):
-        if not hasattr(self, 'input_shape'):
-            self.input_shape = self.input_shapes[0]
-        self.adaptive = adaptive
-        p = check_p_backup(p)
-        # init based on adaptive options:
-        if self.adaptive == None:
-            # initialise scalar param, but don't register it
-            self.logitalpha = theano.shared(
-                value=numpy.array(_logit(numpy.sqrt(p / (1. - p)))).astype(theano.config.floatX),
-                name='logitalpha'
-            )
-        elif self.adaptive == "layerwise":
-            # initialise scalar param, allow updates
-            self.logitalpha = theano.shared(
-                value=numpy.array(_logit(numpy.sqrt(p / (1. - p)))).astype(theano.config.floatX),
-                name='logitalpha'
-            )
-            self.add_param(self.logitalpha, ())
-        elif self.adaptive == "elementwise":
-            # initialise param for each activation passed
-            self.logitalpha = theano.shared(
-                value=numpy.array(
-                    numpy.ones(self.input_shape[1:]) * _logit(numpy.sqrt(p / (1. - p)))
-                ).astype(theano.config.floatX),
-                name='logitalpha'
-            )
-            self.add_param(self.logitalpha, self.input_shape[1:])
-        elif self.adaptive == "weightwise":
-            # this will only work in the case of dropout type B
-            thetashape = (self.input_shapes[1][1], self.input_shapes[0][1])
-            self.logitalpha = theano.shared(
-                value=numpy.array(
-                    numpy.ones(thetashape) * _logit(numpy.sqrt(p / (1. - p)))
-                ).astype(theano.config.floatX),
-                name='logitalpha'
-            )
-            self.add_param(self.logitalpha, thetashape)
-    '''
+		self.adaptive = adaptive
+		activation_probability = _validate_activation_probability_for_logit_parameterization(activation_probability)
+		# init based on adaptive options:
+		'''
+		if self.adaptive == None:
+			# initialise scalar param, but don't register it
+			logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability));
+			self.logit_sigma = self.add_param(logit_sigma, (), name="variational.dropout.logit_sigma",
+											  trainable=False, regularizable=False);
+		'''
+		if self.adaptive == "layerwise":
+			# initialise scalar param, allow updates
+			logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability))
+			self.logit_sigma = self.add_param(logit_sigma, (), name="variational.dropout.logit_sigma",
+			                                  trainable=True, regularizable=False)
+		elif self.adaptive == "elementwise":
+			# initialise param for each activation passed
+			logit_sigma = _logit(numpy.ones(self.input_shape[1:]) * numpy.sqrt((1 - activation_probability) /
+			                                                                   activation_probability))
+			self.logit_sigma = self.add_param(logit_sigma, self.input_shape[1:],
+			                                  name="variational.dropout.logit_sigma", trainable=True,
+			                                  regularizable=False)
+		elif self.adaptive == "weightwise":
+			# this will only work in the case of dropout type B
+			thetashape = (self.input_shapes[1][1], self.input_shapes[0][1])
+			logit_sigma = _logit(numpy.ones(thetashape) * numpy.sqrt((1 - activation_probability) /
+			                                                         activation_probability))
+			self.logit_sigma = self.add_param(logit_sigma, thetashape, name="variational.dropout.logit_sigma",
+			                                  trainable=True, regularizable=False)
+		else:
+			sys.stderr.write("error: unrecognized configuration...\n")
+			sys.exit()
+
+	'''
+	def old_init_adaptive(self, adaptive, p):
+		if not hasattr(self, 'input_shape'):
+			self.input_shape = self.input_shapes[0]
+		self.adaptive = adaptive
+		p = check_p_backup(p)
+		# init based on adaptive options:
+		if self.adaptive == None:
+			# initialise scalar param, but don't register it
+			self.logitalpha = theano.shared(
+				value=numpy.array(_logit(numpy.sqrt(p / (1. - p)))).astype(theano.config.floatX),
+				name='logitalpha'
+			)
+		elif self.adaptive == "layerwise":
+			# initialise scalar param, allow updates
+			self.logitalpha = theano.shared(
+				value=numpy.array(_logit(numpy.sqrt(p / (1. - p)))).astype(theano.config.floatX),
+				name='logitalpha'
+			)
+			self.add_param(self.logitalpha, ())
+		elif self.adaptive == "elementwise":
+			# initialise param for each activation passed
+			self.logitalpha = theano.shared(
+				value=numpy.array(
+					numpy.ones(self.input_shape[1:]) * _logit(numpy.sqrt(p / (1. - p)))
+				).astype(theano.config.floatX),
+				name='logitalpha'
+			)
+			self.add_param(self.logitalpha, self.input_shape[1:])
+		elif self.adaptive == "weightwise":
+			# this will only work in the case of dropout type B
+			thetashape = (self.input_shapes[1][1], self.input_shapes[0][1])
+			self.logitalpha = theano.shared(
+				value=numpy.array(
+					numpy.ones(thetashape) * _logit(numpy.sqrt(p / (1. - p)))
+				).astype(theano.config.floatX),
+				name='logitalpha'
+			)
+			self.add_param(self.logitalpha, thetashape)
+	'''
 
 
 class VariationalDropoutTypeALayer(VariationalDropoutLayer, GaussianDropoutLayer):
-    """
-    Variational dropout layer, implementing correlated weight noise over the
-    output of a layer. Adaptive version of Srivastava's Gaussian dropout.
+	"""
+	Variational dropout layer, implementing correlated weight noise over the
+	output of a layer. Adaptive version of Srivastava's Gaussian dropout.
 
-    Inits:
-        * p - initialisation of the parameters sampled for the noise
-    distribution.
-        * adaptive - one of:
-            * None - will not allow updates to the dropout rate
-            * "layerwise" - allow updates to a single parameter controlling the
-            updates
-            * "elementwise" - allow updates to a parameter for each hidden layer
-            * "weightwise" - allow updates to a parameter for each weight (don't
-            think this is actually necessary to replicate)
-    """
-    def __init__(self, incoming, activation_probability=0.5, adaptive="elementwise", nonlinearity=None,
-                 **kwargs):
-        VariationalDropoutLayer.__init__(self, incoming, activation_probability=activation_probability,
-                                         adaptive=adaptive, nonlinearity=nonlinearity, **kwargs)
+	Inits:
+		* p - initialisation of the parameters sampled for the noise
+	distribution.
+		* adaptive - one of:
+			* None - will not allow updates to the dropout rate
+			* "layerwise" - allow updates to a single parameter controlling the
+			updates
+			* "elementwise" - allow updates to a parameter for each hidden layer
+			* "weightwise" - allow updates to a parameter for each weight (don't
+			think this is actually necessary to replicate)
+	"""
+
+	def __init__(self, incoming, activation_probability=0.5, adaptive="elementwise", nonlinearity=None,
+	             **kwargs):
+		VariationalDropoutLayer.__init__(self, incoming, activation_probability=activation_probability,
+		                                 adaptive=adaptive, nonlinearity=nonlinearity, **kwargs)
 
 
 class VariationalDropoutTypeBLayer(FastDropoutLayer, VariationalDropoutLayer):
-    """
-    Variational dropout layer, implementing independent weight noise. Adaptive
-    version of Wang's Gaussian dropout.
+	"""
+	Variational dropout layer, implementing independent weight noise. Adaptive
+	version of Wang's Gaussian dropout.
 
-    Inits:
-        * p - initialisation of the parameters sampled for the noise
-    distribution.
-        * adaptive - one of:
-            * None - will not allow updates to the dropout rate
-            * "layerwise" - allow updates to a single parameter controlling the
-            updates
-            * "elementwise" - allow updates to a parameter for each hidden layer
-            * "weightwise" - allow updates to a parameter for each weight (don't
-            think this is actually necessary to replicate)
-    """
-    def __init__(self, incoming, activation_probability=0.5, adaptive="weightwise", **kwargs):
-        FastDropoutLayer.__init__(self, incoming, activation_probability, **kwargs)
-        self.init_adaptive(activation_probability, adaptive)
+	Inits:
+		* p - initialisation of the parameters sampled for the noise
+	distribution.
+		* adaptive - one of:
+			* None - will not allow updates to the dropout rate
+			* "layerwise" - allow updates to a single parameter controlling the
+			updates
+			* "elementwise" - allow updates to a parameter for each hidden layer
+			* "weightwise" - allow updates to a parameter for each weight (don't
+			think this is actually necessary to replicate)
+	"""
+
+	def __init__(self, incoming, activation_probability=0.5, adaptive="weightwise", **kwargs):
+		FastDropoutLayer.__init__(self, incoming, activation_probability, **kwargs)
+		self.init_adaptive(activation_probability, adaptive)
 
 
 class AdaptiveDropoutLayer(Layer):
-    """Adaptive Dropout layer
-    """
+	"""Adaptive Dropout layer
+	"""
 
-    def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)),
-                 num_leading_axes=1, shared_axes=(), **kwargs):
-        # super(TrainableDropoutLayer, self).__init__(incoming, activation_probability, **kwargs)
-        super(AdaptiveDropoutLayer, self).__init__(incoming, **kwargs)
-        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
-        #num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
-        self.activation_probability = self.add_param(activation_probability, self.input_shape[num_leading_axes:],
-                                                     name="r", trainable=False, regularizable=False, adaptable=True)
-        # self.activation_probability = theano.shared(value=activation_probability, );
-        self.shared_axes = tuple(shared_axes)
+	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)),
+	             num_leading_axes=1, shared_axes=(), **kwargs):
+		super(AdaptiveDropoutLayer, self).__init__(incoming, **kwargs)
 
-        '''
-        if b is None:
-            self.b = None
-        else:
-            self.b = self.add_param(b, (num_units,), name="b", regularizable=False)
-        '''
+		if num_leading_axes >= len(self.input_shape):
+			raise ValueError(
+				"Got num_leading_axes=%d for a %d-dimensional input, "
+				"leaving no trailing axes for the dot product." %
+				(num_leading_axes, len(self.input_shape)))
+		elif num_leading_axes < -len(self.input_shape):
+			raise ValueError(
+				"Got num_leading_axes=%d for a %d-dimensional input, "
+				"requesting more trailing axes than there are input "
+				"dimensions." % (num_leading_axes, len(self.input_shape)))
+		self.num_leading_axes = num_leading_axes
 
-    def get_output_for(self, input, deterministic=False, **kwargs):
-        if deterministic:
-            return T.mul(input, self.activation_probability)
-        else:
-            retain_prob = self.activation_probability.eval()
-            retain_prob = numpy.clip(retain_prob, 0, 1)
+		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+		# num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
+		self.activation_probability = self.add_param(activation_probability, self.input_shape[self.num_leading_axes:],
+		                                             name="r", trainable=False, regularizable=False, adaptable=True)
+		# self.activation_probability = theano.shared(value=activation_probability, );
+		self.shared_axes = tuple(shared_axes)
 
-            # use nonsymbolic shape for dropout mask if possible
-            mask_shape = self.input_shape
-            if any(s is None for s in mask_shape):
-                mask_shape = input.shape
+		'''
+		if b is None:
+			self.b = None
+		else:
+			self.b = self.add_param(b, (num_units,), name="b", regularizable=False)
+		'''
 
-            # apply dropout, respecting shared axes
-            if self.shared_axes:
-                shared_axes = tuple(a if a >= 0 else a + input.ndim
-                                    for a in self.shared_axes)
-                mask_shape = tuple(1 if a in shared_axes else s
-                                   for a, s in enumerate(mask_shape))
-            mask = self._srng.binomial(mask_shape, p=retain_prob,
-                                       dtype=input.dtype)
-            if self.shared_axes:
-                bcast = tuple(bool(s == 1) for s in mask_shape)
-                mask = T.patternbroadcast(mask, bcast)
-            return input * mask
+	def get_output_for(self, input, deterministic=False, **kwargs):
+		if deterministic:
+			return T.mul(input, self.activation_probability)
+		else:
+			retain_prob = self.activation_probability.eval()
+			retain_prob = numpy.clip(retain_prob, 0, 1)
+
+			# use nonsymbolic shape for dropout mask if possible
+			mask_shape = self.input_shape
+			if any(s is None for s in mask_shape):
+				mask_shape = input.shape
+
+			# apply dropout, respecting shared axes
+			if self.shared_axes:
+				shared_axes = tuple(a if a >= 0 else a + input.ndim
+				                    for a in self.shared_axes)
+				mask_shape = tuple(1 if a in shared_axes else s
+				                   for a, s in enumerate(mask_shape))
+			mask = self._srng.binomial(mask_shape, p=retain_prob,
+			                           dtype=input.dtype)
+			if self.shared_axes:
+				bcast = tuple(bool(s == 1) for s in mask_shape)
+				mask = T.patternbroadcast(mask, bcast)
+			return input * mask
+
+
+class AdaptiveDynamicDropoutLayer(AdaptiveDropoutLayer):
+	"""Adaptive Dropout layer
+	"""
+
+	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)),
+	             num_leading_axes=1, shared_axes=(), **kwargs):
+		super(AdaptiveDynamicDropoutLayer, self).__init__(incoming, activation_probability, num_leading_axes,
+		                                                  shared_axes, **kwargs)
+
+	def set_input(self, incoming, activation_probability=init.Uniform(range=(0, 1))):
+		if isinstance(incoming, tuple):
+			self.input_shape = incoming
+			self.input_layer = None
+		else:
+			self.input_shape = incoming.output_shape
+			self.input_layer = incoming
+
+		old_r = self.activation_probability.eval()
+		self.params.pop(self.activation_probability);
+
+		self.activation_probability = self.add_param(activation_probability, self.input_shape[self.num_leading_axes:],
+		                                             name="r", trainable=False, regularizable=False, adaptable=True)
+
+		return old_r
 
 
 class StandoutLayer(Layer):
-    def __init__(self,
-                 incoming,
-                 num_units,
-                 W=init.GlorotUniform(gain=init.GlorotUniformGain[nonlinearities.sigmoid]),
-                 b=init.Constant(0.),
-                 alpha=1,
-                 beta=0,
-                 rescale=True,
-                 **kwargs):
-        super(StandoutLayer, self).__init__(incoming, **kwargs)
-        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+	def __init__(self,
+	             incoming,
+	             num_units,
+	             W=init.GlorotUniform(gain=init.GlorotUniformGain[nonlinearities.sigmoid]),
+	             b=init.Constant(0.),
+	             alpha=1,
+	             beta=0,
+	             rescale=True,
+	             **kwargs):
+		super(StandoutLayer, self).__init__(incoming, **kwargs)
+		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
 
-        self.num_units = num_units
-        num_inputs = int(numpy.prod(self.input_shape[1:]))
+		self.num_units = num_units
+		num_inputs = int(numpy.prod(self.input_shape[1:]))
 
-        self.alpha = alpha
-        self.beta = beta
+		self.alpha = alpha
+		self.beta = beta
 
-        self.W = self.add_param(W, (num_inputs, num_units), name="W", trainable=False, regularizable=True)
-        self.b = self.add_param(b, (num_units,), name="b", trainable=False, regularizable=False)
-        # self.W = self.add_param(W, (num_inputs, num_units), name="W")
-        # self.b = self.add_param(b, (num_units,), name="b", regularizable=False);
+		self.W = self.add_param(W, (num_inputs, num_units), name="W", trainable=False, regularizable=True)
+		self.b = self.add_param(b, (num_units,), name="b", trainable=False, regularizable=False)
+		# self.W = self.add_param(W, (num_inputs, num_units), name="W")
+		# self.b = self.add_param(b, (num_units,), name="b", regularizable=False);
 
-        self.rescale = rescale
+		self.rescale = rescale
 
-    def get_output_shape_for(self, input_shape):
-        return input_shape[0], self.num_units
+	def get_output_shape_for(self, input_shape):
+		return input_shape[0], self.num_units
 
-    def get_output_for(self, input, deterministic=False, **kwargs):
-        """
-        Parameters
-        ----------
-        input : tensor
-            output from the previous layer
-        """
-        if deterministic:
-            return get_filter((input.shape[0], self.num_units), 1.0, rng=RandomStreams())
+	def get_output_for(self, input, deterministic=False, **kwargs):
+		"""
+		Parameters
+		----------
+		input : tensor
+			output from the previous layer
+		"""
+		if deterministic:
+			return get_filter((input.shape[0], self.num_units), 1.0, rng=RandomStreams())
 
-        # layer_signal = T.mul(self.alpha, T.dot(input, self.W)) + self.beta
-        layer_signal = T.dot(input, self.W)
-        if self.b is not None:
-            layer_signal = layer_signal + self.b.dimshuffle('x', 0)
-        layer_signal = T.mul(self.alpha, layer_signal) + self.beta
-        activation_probability = nonlinearities.sigmoid(layer_signal)
+		# layer_signal = T.mul(self.alpha, T.dot(input, self.W)) + self.beta
+		layer_signal = T.dot(input, self.W)
+		if self.b is not None:
+			layer_signal = layer_signal + self.b.dimshuffle('x', 0)
+		layer_signal = T.mul(self.alpha, layer_signal) + self.beta
+		activation_probability = nonlinearities.sigmoid(layer_signal)
 
-        activation_flag = get_filter((input.shape[0], self.num_units), activation_probability, rng=RandomStreams())
-        if self.rescale:
-            activation_flag = activation_flag / activation_probability
+		activation_flag = get_filter((input.shape[0], self.num_units), activation_probability, rng=RandomStreams())
+		if self.rescale:
+			activation_flag = activation_flag / activation_probability
 
-        return activation_flag
+		return activation_flag
 
 
 def _validate_activation_probability_for_logit_parameterization(activation_probability):
-    """
-    Thanks to our logit parameterisation we can't accept p of smaller or equal
-    to 0.5 nor greater or equal to 1. So we'll just warn the user and
-    scale it down slightly.
-    """
-    '''
-    if p == 0.5:
-        warnings.warn("Cannot set p to exactly 0.5, limits are: 0 < p < 0.5."
-                " Setting to 0.4999", RuntimeWarning)
-        return 0.4999
-    elif p > 0.5:
-        warnings.warn("Cannot set p to greater than 0.5, limits are: "
-                "0 < p < 0.5. Setting to 0.4999", RuntimeWarning)
-        return 0.4999
-    elif p <= 0.0:
-        warnings.warn("Cannot set p to less than or equal to 0.0, limits are: "
-                "0 < p < 0.5. Setting to 0.0001", RuntimeWarning)
-        return 0.0001
-    else:
-        return p
-    '''
+	"""
+	Thanks to our logit parameterisation we can't accept p of smaller or equal
+	to 0.5 nor greater or equal to 1. So we'll just warn the user and
+	scale it down slightly.
+	"""
+	'''
+	if p == 0.5:
+		warnings.warn("Cannot set p to exactly 0.5, limits are: 0 < p < 0.5."
+				" Setting to 0.4999", RuntimeWarning)
+		return 0.4999
+	elif p > 0.5:
+		warnings.warn("Cannot set p to greater than 0.5, limits are: "
+				"0 < p < 0.5. Setting to 0.4999", RuntimeWarning)
+		return 0.4999
+	elif p <= 0.0:
+		warnings.warn("Cannot set p to less than or equal to 0.0, limits are: "
+				"0 < p < 0.5. Setting to 0.0001", RuntimeWarning)
+		return 0.0001
+	else:
+		return p
+	'''
 
-    if numpy.any(activation_probability<=0.5 or activation_probability>=1.0):
-        warnings.warn("Clipping p to the interval of (0.5, 1.0).", RuntimeWarning)
-        return numpy.clip(activation_probability, 0.5 + 1e-6, 1 - 1e-6)
-    return activation_probability
+	if numpy.any(activation_probability <= 0.5 or activation_probability >= 1.0):
+		warnings.warn("Clipping p to the interval of (0.5, 1.0).", RuntimeWarning)
+		return numpy.clip(activation_probability, 0.5 + 1e-6, 1 - 1e-6)
+	return activation_probability
 
 
 def _logit(x):
-    """
-    Logit function in Numpy. Useful for parameterizing alpha.
-    """
-    return numpy.log(x/(1. - x))
+	"""
+	Logit function in Numpy. Useful for parameterizing alpha.
+	"""
+	return numpy.log(x / (1. - x))
 
 
 def _sigmoid(x):
-    """
-    Logit function in Numpy. Useful for parameterizing alpha.
-    """
-    return 1. / (1 + numpy.exp(-x))
+	"""
+	Logit function in Numpy. Useful for parameterizing alpha.
+	"""
+	return 1. / (1 + numpy.exp(-x))
 
 
 class GenericDropoutLayer(Layer):
-    """Generalized Dropout layer
+	"""Generalized Dropout layer
 
-    Sets values to zero with probability activation_probability. See notes for disabling dropout
-    during testing.
+	Sets values to zero with probability activation_probability. See notes for disabling dropout
+	during testing.
 
-    Parameters
-    ----------
-    incoming : a :class:`Layer` instance or a tuple
-        the layer feeding into this layer, or the expected input shape
-    activation_probability : float or scalar tensor
-        The probability of setting a value to 1
-    rescale : bool
-        If true the input is rescaled with input / activation_probability when deterministic
-        is False.
+	Parameters
+	----------
+	incoming : a :class:`Layer` instance or a tuple
+		the layer feeding into this layer, or the expected input shape
+	activation_probability : float or scalar tensor
+		The probability of setting a value to 1
+	rescale : bool
+		If true the input is rescaled with input / activation_probability when deterministic
+		is False.
 
-    Notes
-    -----
-    The dropout layer is a regularizer that randomly sets input values to
-    zero; see [1]_, [2]_ for why this might improve generalization.
-    During training you should set deterministic to false and during
-    testing you should set deterministic to true.
+	Notes
+	-----
+	The dropout layer is a regularizer that randomly sets input values to
+	zero; see [1]_, [2]_ for why this might improve generalization.
+	During training you should set deterministic to false and during
+	testing you should set deterministic to true.
 
-    If rescale is true the input is scaled with input / activation_probability when
-    deterministic is false, see references for further discussion. Note that
-    this implementation scales the input at training time.
+	If rescale is true the input is scaled with input / activation_probability when
+	deterministic is false, see references for further discussion. Note that
+	this implementation scales the input at training time.
 
-    References
-    ----------
-    .. [1] Hinton, G., Srivastava, N., Krizhevsky, A., Sutskever, I.,
-           Salakhutdinov, R. R. (2012):
-           Improving neural networks by preventing co-adaptation of feature
-           detectors. arXiv preprint arXiv:1207.0580.
+	References
+	----------
+	.. [1] Hinton, G., Srivastava, N., Krizhevsky, A., Sutskever, I.,
+		   Salakhutdinov, R. R. (2012):
+		   Improving neural networks by preventing co-adaptation of feature
+		   detectors. arXiv preprint arXiv:1207.0580.
 
-    .. [2] Srivastava Nitish, Hinton, G., Krizhevsky, A., Sutskever,
-           I., & Salakhutdinov, R. R. (2014):
-           Dropout: A Simple Way to Prevent Neural Networks from Overfitting.
-           Journal of Machine Learning Research, 5(Jun)(2), 1929-1958.
-    """
+	.. [2] Srivastava Nitish, Hinton, G., Krizhevsky, A., Sutskever,
+		   I., & Salakhutdinov, R. R. (2014):
+		   Dropout: A Simple Way to Prevent Neural Networks from Overfitting.
+		   Journal of Machine Learning Research, 5(Jun)(2), 1929-1958.
+	"""
 
-    def __init__(self, incoming, activation_probability, num_leading_axes=1, **kwargs):
-        super(GenericDropoutLayer, self).__init__(incoming, **kwargs)
-        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+	def __init__(self, incoming, activation_probability, num_leading_axes=1, **kwargs):
+		super(GenericDropoutLayer, self).__init__(incoming, **kwargs)
+		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
 
-        num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
-        if isinstance(activation_probability, numpy.ndarray):
-            assert activation_probability.shape == (num_inputs,)
-        self.activation_probability = self.add_param(activation_probability, (num_inputs,), name="p",
-                                                     trainable=False, regularizable=False, adaptable=True)
+		num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
+		if isinstance(activation_probability, numpy.ndarray):
+			assert activation_probability.shape == (num_inputs,)
+		self.activation_probability = self.add_param(activation_probability, (num_inputs,), name="p",
+		                                             trainable=False, regularizable=False, adaptable=True)
 
-    def get_output_for(self, input, deterministic=False, **kwargs):
-        """
-        Parameters
-        ----------
-        input : tensor
-            output from the previous layer
-        deterministic : bool
-            If true dropout and scaling is disabled, see notes
-        """
-        retain_prob = self.activation_probability.eval()
-        if deterministic or numpy.all(retain_prob == 1):
-            return input
-        else:
-            #retain_prob = self.activation_probability.eval();
-            #if self.rescale:
-                #input /= retain_prob
+	def get_output_for(self, input, deterministic=False, **kwargs):
+		"""
+		Parameters
+		----------
+		input : tensor
+			output from the previous layer
+		deterministic : bool
+			If true dropout and scaling is disabled, see notes
+		"""
+		retain_prob = self.activation_probability.eval()
+		if deterministic or numpy.all(retain_prob == 1):
+			return input
+		else:
+			# retain_prob = self.activation_probability.eval();
+			# if self.rescale:
+			# input /= retain_prob
 
-            # use nonsymbolic shape for dropout mask if possible
-            input_shape = self.input_shape
-            if any(s is None for s in input_shape):
-                input_shape = input.shape
+			# use nonsymbolic shape for dropout mask if possible
+			input_shape = self.input_shape
+			if any(s is None for s in input_shape):
+				input_shape = input.shape
 
-            return input * get_filter(input_shape, retain_prob, rng=RandomStreams())
+			return input * get_filter(input_shape, retain_prob, rng=RandomStreams())
 
 
 class BetaBernoulliDropoutLayer(Layer):
-    """Dropout layer with beta prior.
+	"""Dropout layer with beta prior.
 
-    Sets values to zero with probability activation_probability. See notes for disabling dropout
-    during testing.
+	Sets values to zero with probability activation_probability. See notes for disabling dropout
+	during testing.
 
-    Parameters
-    ----------
-    incoming : a :class:`Layer` instance or a tuple
-        the layer feeding into this layer, or the expected input shape
-    activation_probability : float or scalar tensor
-        The probability of setting a value to 1
-    rescale : bool
-        If true the input is rescaled with input / activation_probability when deterministic
-        is False.
+	Parameters
+	----------
+	incoming : a :class:`Layer` instance or a tuple
+		the layer feeding into this layer, or the expected input shape
+	activation_probability : float or scalar tensor
+		The probability of setting a value to 1
+	rescale : bool
+		If true the input is rescaled with input / activation_probability when deterministic
+		is False.
 
-    Notes
-    -----
-    The dropout layer is a regularizer that randomly sets input values to
-    zero; see [1]_, [2]_ for why this might improve generalization.
-    During training you should set deterministic to false and during
-    testing you should set deterministic to true.
+	Notes
+	-----
+	The dropout layer is a regularizer that randomly sets input values to
+	zero; see [1]_, [2]_ for why this might improve generalization.
+	During training you should set deterministic to false and during
+	testing you should set deterministic to true.
 
-    If rescale is true the input is scaled with input / activation_probability when
-    deterministic is false, see references for further discussion. Note that
-    this implementation scales the input at training time.
+	If rescale is true the input is scaled with input / activation_probability when
+	deterministic is false, see references for further discussion. Note that
+	this implementation scales the input at training time.
 
-    References
-    ----------
-    .. [1] Hinton, G., Srivastava, N., Krizhevsky, A., Sutskever, I.,
-           Salakhutdinov, R. R. (2012):
-           Improving neural networks by preventing co-adaptation of feature
-           detectors. arXiv preprint arXiv:1207.0580.
+	References
+	----------
+	.. [1] Hinton, G., Srivastava, N., Krizhevsky, A., Sutskever, I.,
+		   Salakhutdinov, R. R. (2012):
+		   Improving neural networks by preventing co-adaptation of feature
+		   detectors. arXiv preprint arXiv:1207.0580.
 
-    .. [2] Srivastava Nitish, Hinton, G., Krizhevsky, A., Sutskever,
-           I., & Salakhutdinov, R. R. (2014):
-           Dropout: A Simple Way to Prevent Neural Networks from Overfitting.
-           Journal of Machine Learning Research, 5(Jun)(2), 1929-1958.
-    """
+	.. [2] Srivastava Nitish, Hinton, G., Krizhevsky, A., Sutskever,
+		   I., & Salakhutdinov, R. R. (2014):
+		   Dropout: A Simple Way to Prevent Neural Networks from Overfitting.
+		   Journal of Machine Learning Research, 5(Jun)(2), 1929-1958.
+	"""
 
-    def __init__(self, incoming, beta_prior_alpha, beta_prior_beta, rescale=True, **kwargs):
-        super(BetaBernoulliDropoutLayer, self).__init__(incoming, **kwargs)
-        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+	def __init__(self, incoming, beta_prior_alpha, beta_prior_beta, rescale=True, **kwargs):
+		super(BetaBernoulliDropoutLayer, self).__init__(incoming, **kwargs)
+		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
 
-        self.beta_prior_alpha = beta_prior_alpha
-        self.beta_prior_beta = beta_prior_beta
-        #self.activation_probability = activation_probability;
+		self.beta_prior_alpha = beta_prior_alpha
+		self.beta_prior_beta = beta_prior_beta
+		# self.activation_probability = activation_probability;
 
-        self.rescale = rescale
+		self.rescale = rescale
 
-    def update_prior(self, positive_samples, negative_samples):
-        return
+	def update_prior(self, positive_samples, negative_samples):
+		return
 
-    def get_output_for(self, input, deterministic=False, **kwargs):
-        """
-        Parameters
-        ----------
-        input : tensor
-            output from the previous layer
-        deterministic : bool
-            If true dropout and scaling is disabled, see notes
-        """
-        retain_prob = numpy.random.beta(self.beta_prior_alpha, self.beta_prior_beta)
+	def get_output_for(self, input, deterministic=False, **kwargs):
+		"""
+		Parameters
+		----------
+		input : tensor
+			output from the previous layer
+		deterministic : bool
+			If true dropout and scaling is disabled, see notes
+		"""
+		retain_prob = numpy.random.beta(self.beta_prior_alpha, self.beta_prior_beta)
 
-        if deterministic or numpy.all(retain_prob == 1):
-            return input
-        else:
-            if self.rescale:
-                input /= retain_prob
+		if deterministic or numpy.all(retain_prob == 1):
+			return input
+		else:
+			if self.rescale:
+				input /= retain_prob
 
-            # use nonsymbolic shape for dropout mask if possible
-            input_shape = self.input_shape
-            if any(s is None for s in input_shape):
-                input_shape = input.shape
+			# use nonsymbolic shape for dropout mask if possible
+			input_shape = self.input_shape
+			if any(s is None for s in input_shape):
+				input_shape = input.shape
 
-            mask = get_filter(input_shape, retain_prob, rng=RandomStreams())
-            #mask = self.get_output(input_shape, retain_prob, rng=RandomStreams());
+			mask = get_filter(input_shape, retain_prob, rng=RandomStreams())
+			# mask = self.get_output(input_shape, retain_prob, rng=RandomStreams());
 
-            if kwargs.get("mask_only", False):
-                return mask
+			if kwargs.get("mask_only", False):
+				return mask
 
-            return input * mask
+			return input * mask
 
-    def get_output(self, input_shape, retain_prob, rng=RandomStreams()):
-        return get_filter(input_shape, retain_prob, rng)
+	def get_output(self, input_shape, retain_prob, rng=RandomStreams()):
+		return get_filter(input_shape, retain_prob, rng)

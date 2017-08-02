@@ -8,7 +8,6 @@ import theano.tensor
 from . import FeedForwardNetwork
 from .. import init, objectives, updates
 from .. import layers
-from ..layers import noise
 
 logger = logging.getLogger(__name__)
 
@@ -80,13 +79,13 @@ class LeNet(FeedForwardNetwork):
 		for conv_layer_index in range(len(convolution_filters)):
 			input_layer_shape = layers.get_output_shape(neural_network)[1:]
 			previous_layer_shape = numpy.prod(input_layer_shape)
-			activation_probability = noise.sample_activation_probability(previous_layer_shape,
-			                                                             layer_activation_styles[dropout_layer_index],
-			                                                             layer_activation_parameters[
-				                                                             dropout_layer_index])
+			activation_probability = layers.sample_activation_probability(previous_layer_shape,
+			                                                              layer_activation_styles[dropout_layer_index],
+			                                                              layer_activation_parameters[
+				                                                              dropout_layer_index])
 			activation_probability = numpy.reshape(activation_probability, input_layer_shape)
 			# print "before dropout", lasagne.layers.get_output_shape(neural_network)
-			neural_network = noise.LinearDropoutLayer(neural_network, activation_probability=activation_probability)
+			neural_network = layers.LinearDropoutLayer(neural_network, activation_probability=activation_probability)
 			dropout_layer_index += 1
 
 			conv_filter_number = convolution_filters[conv_layer_index]
@@ -135,14 +134,14 @@ class LeNet(FeedForwardNetwork):
 		for dense_layer_index in range(len(dense_dimensions)):
 			input_layer_shape = layers.get_output_shape(neural_network)[1:]
 			previous_layer_shape = numpy.prod(input_layer_shape)
-			activation_probability = noise.sample_activation_probability(previous_layer_shape,
-			                                                             layer_activation_styles[dropout_layer_index],
-			                                                             layer_activation_parameters[
-				                                                             dropout_layer_index])
+			activation_probability = layers.sample_activation_probability(previous_layer_shape,
+			                                                              layer_activation_styles[dropout_layer_index],
+			                                                              layer_activation_parameters[
+				                                                              dropout_layer_index])
 			activation_probability = numpy.reshape(activation_probability, input_layer_shape)
 			# print "before dropout", lasagne.layers.get_output_shape(neural_network)
-			neural_network = noise.LinearDropoutLayer(neural_network,
-			                                          activation_probability=activation_probability)
+			neural_network = layers.LinearDropoutLayer(neural_network,
+			                                           activation_probability=activation_probability)
 			dropout_layer_index += 1
 
 			layer_shape = dense_dimensions[dense_layer_index]
@@ -381,19 +380,19 @@ class DynamicLeNet(FeedForwardNetwork):
 		for conv_layer_index in range(len(convolution_filters)):
 			input_layer_shape = layers.get_output_shape(neural_network)[1:]
 			previous_layer_shape = numpy.prod(input_layer_shape)
-			activation_probability = noise.sample_activation_probability(previous_layer_shape,
-			                                                             layer_activation_styles[dropout_layer_index],
-			                                                             layer_activation_parameters[
-				                                                             dropout_layer_index])
+			activation_probability = layers.sample_activation_probability(previous_layer_shape,
+			                                                              layer_activation_styles[dropout_layer_index],
+			                                                              layer_activation_parameters[
+				                                                              dropout_layer_index])
 			activation_probability = activation_probability.astype(theano.config.floatX)
 			activation_probability = numpy.reshape(activation_probability, input_layer_shape)
 			# print "before dropout", lasagne.layers.get_output_shape(neural_network)
 			if update_hidden_layer_dropout_only:
-				neural_network = noise.LinearDropoutLayer(neural_network,
-				                                          activation_probability=activation_probability)
+				neural_network = layers.LinearDropoutLayer(neural_network,
+				                                           activation_probability=activation_probability)
 			else:
-				neural_network = noise.AdaptiveDropoutLayer(neural_network,
-				                                            activation_probability=activation_probability)
+				neural_network = layers.AdaptiveDropoutLayer(neural_network,
+				                                             activation_probability=activation_probability)
 			dropout_layer_index += 1
 
 			conv_filter_number = convolution_filters[conv_layer_index]
@@ -443,19 +442,18 @@ class DynamicLeNet(FeedForwardNetwork):
 		for dense_layer_index in range(len(dense_dimensions)):
 			input_layer_shape = layers.get_output_shape(neural_network)[1:]
 			previous_layer_shape = numpy.prod(input_layer_shape)
-			activation_probability = noise.sample_activation_probability(previous_layer_shape,
-			                                                             layer_activation_styles[dropout_layer_index],
-			                                                             layer_activation_parameters[
-				                                                             dropout_layer_index])
+			activation_probability = layers.sample_activation_probability(previous_layer_shape,
+			                                                              layer_activation_styles[dropout_layer_index],
+			                                                              layer_activation_parameters[
+				                                                              dropout_layer_index])
 			activation_probability = activation_probability.astype(theano.config.floatX)
 			activation_probability = numpy.reshape(activation_probability, input_layer_shape)
 			if update_hidden_layer_dropout_only and dense_layer_index == 0:
-				neural_network = noise.LinearDropoutLayer(neural_network,
-				                                          activation_probability=activation_probability)
+				neural_network = layers.LinearDropoutLayer(neural_network,
+				                                           activation_probability=activation_probability)
 			else:
-				# neural_network = noise.TrainableDropoutLayer(neural_network, activation_probability=init.Constant(layer_activation_parameters[layer_index]))
-				neural_network = noise.AdaptiveDropoutLayer(neural_network,
-				                                            activation_probability=activation_probability)
+				neural_network = layers.AdaptiveDropoutLayer(neural_network,
+				                                             activation_probability=activation_probability)
 			dropout_layer_index += 1
 
 			layer_shape = dense_dimensions[dense_layer_index]

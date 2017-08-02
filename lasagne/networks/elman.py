@@ -9,7 +9,6 @@ import theano.tensor
 from . import RecurrentNetwork
 from .. import init, nonlinearities, objectives, updates
 from .. import layers
-from ..layers import noise
 
 logger = logging.getLogger(__name__)
 
@@ -131,12 +130,13 @@ class ElmanNetwork(RecurrentNetwork):
 					# print_output_dimension("after reshape (for dense layer)", neural_network, sequence_length, window_size)
 
 				previous_layer_dimension = layers.get_output_shape(neural_network)
-				activation_probability = noise.sample_activation_probability(previous_layer_dimension[-1],
-				                                                             layer_activation_styles[
-					                                                             dropout_layer_index],
-				                                                             layer_activation_parameters[
-					                                                             dropout_layer_index])
-				neural_network = noise.LinearDropoutLayer(neural_network, activation_probability=activation_probability)
+				activation_probability = layers.sample_activation_probability(previous_layer_dimension[-1],
+				                                                              layer_activation_styles[
+					                                                              dropout_layer_index],
+				                                                              layer_activation_parameters[
+					                                                              dropout_layer_index])
+				neural_network = layers.LinearDropoutLayer(neural_network,
+				                                           activation_probability=activation_probability)
 				dropout_layer_index += 1
 
 				neural_network = layers.DenseLayer(neural_network,
@@ -324,19 +324,19 @@ class DynamicElmanNetwork(RecurrentNetwork):
 					# print_output_dimension("after reshape (for dense layer)", neural_network, sequence_length, window_size)
 
 				previous_layer_dimension = layers.get_output_shape(neural_network)
-				activation_probability = noise.sample_activation_probability(previous_layer_dimension[-1],
-				                                                             layer_activation_styles[
-					                                                             dropout_layer_index],
-				                                                             layer_activation_parameters[
-					                                                             dropout_layer_index])
+				activation_probability = layers.sample_activation_probability(previous_layer_dimension[-1],
+				                                                              layer_activation_styles[
+					                                                              dropout_layer_index],
+				                                                              layer_activation_parameters[
+					                                                              dropout_layer_index])
 
 				if update_hidden_layer_dropout_only and dropout_layer_index == 0:
-					neural_network = noise.LinearDropoutLayer(neural_network,
-					                                          activation_probability=activation_probability)
+					neural_network = layers.LinearDropoutLayer(neural_network,
+					                                           activation_probability=activation_probability)
 				else:
 					# neural_network = noise.TrainableDropoutLayer(neural_network, activation_probability=init.Constant(layer_activation_parameters[layer_index]))
-					neural_network = noise.AdaptiveDropoutLayer(neural_network,
-					                                            activation_probability=activation_probability)
+					neural_network = layers.AdaptiveDropoutLayer(neural_network,
+					                                             activation_probability=activation_probability)
 
 				dropout_layer_index += 1
 

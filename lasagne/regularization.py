@@ -248,7 +248,7 @@ def __find_input_layer(network):
 
 
 def rademacher_p_2_q_2(network, **kwargs):
-	input_layer = __find_input_layer(network);
+	input_layer = __find_input_layer(network)
 
 	input_shape = get_output_shape(input_layer)
 	input_value = get_output(input_layer)
@@ -287,7 +287,7 @@ rademacher = rademacher_p_2_q_2  # shortcut
 
 
 def rademacher_p_inf_q_1(network, **kwargs):
-	input_layer = __find_input_layer(network);
+	input_layer = __find_input_layer(network)
 
 	input_shape = get_output_shape(input_layer)
 	input_value = get_output(input_layer)
@@ -318,7 +318,7 @@ def rademacher_p_inf_q_1(network, **kwargs):
 
 
 def rademacher_p_1_q_inf(network, **kwargs):
-	input_layer = __find_input_layer(network);
+	input_layer = __find_input_layer(network)
 
 	input_shape = get_output_shape(input_layer)
 	input_value = get_output(input_layer)

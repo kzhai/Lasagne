@@ -8,7 +8,6 @@ import theano.tensor
 from . import FeedForwardNetwork
 from .. import init, objectives, updates
 from .. import layers
-from ..layers import noise, local, normalization
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +116,7 @@ class AlexNet(FeedForwardNetwork):
 			# print "convolution", numpy.mean(neural_network.W.eval()), numpy.max(neural_network.W.eval()), numpy.min(neural_network.W.eval())
 
 			if conv_layer_index < number_of_layers_to_LRN:
-				neural_network = normalization.LocalResponseNormalization2DLayer(neural_network)
+				neural_network = layers.LocalResponseNormalization2DLayer(neural_network)
 
 			pool_mode = pool_modes[conv_layer_index]
 			if pool_mode != None:
@@ -152,12 +151,12 @@ class AlexNet(FeedForwardNetwork):
 		for dense_layer_index in range(len(dense_dimensions)):
 			input_layer_shape = layers.get_output_shape(neural_network)[1:]
 			previous_layer_shape = numpy.prod(input_layer_shape)
-			activation_probability = noise.sample_activation_probability(previous_layer_shape,
-			                                                             layer_activation_styles[dropout_layer_index],
-			                                                             layer_activation_parameters[
-				                                                             dropout_layer_index])
+			activation_probability = layers.sample_activation_probability(previous_layer_shape,
+			                                                              layer_activation_styles[dropout_layer_index],
+			                                                              layer_activation_parameters[
+				                                                              dropout_layer_index])
 			activation_probability = numpy.reshape(activation_probability, input_layer_shape)
-			neural_network = noise.LinearDropoutLayer(neural_network, activation_probability=activation_probability)
+			neural_network = layers.LinearDropoutLayer(neural_network, activation_probability=activation_probability)
 			dropout_layer_index += 1
 
 			layer_shape = dense_dimensions[dense_layer_index]
@@ -288,7 +287,7 @@ class DynamicAlexNet(FeedForwardNetwork):
 			# print "after convolution", layers.get_output_shape(neural_network)
 
 			if conv_layer_index < number_of_layers_to_LRN:
-				neural_network = normalization.LocalResponseNormalization2DLayer(neural_network)
+				neural_network = layers.LocalResponseNormalization2DLayer(neural_network)
 
 			pool_mode = pool_modes[conv_layer_index]
 			if pool_mode != None:
@@ -309,31 +308,31 @@ class DynamicAlexNet(FeedForwardNetwork):
 
 		if locally_connected_filters != None and len(locally_connected_filters) > 0:
 			for local_layer_index in range(len(locally_connected_filters)):
-				neural_network = local.LocallyConnected2DLayer(neural_network,
-				                                               locally_connected_filters[local_layer_index],
-				                                               filter_size=local_convolution_filter_sizes,
-				                                               stride=local_convolution_strides,
-				                                               pad=local_convolution_pads,
-				                                               W=init.GlorotUniform(),
-				                                               b=init.Constant(0.),
-				                                               )
+				neural_network = layers.LocallyConnected2DLayer(neural_network,
+				                                                locally_connected_filters[local_layer_index],
+				                                                filter_size=local_convolution_filter_sizes,
+				                                                stride=local_convolution_strides,
+				                                                pad=local_convolution_pads,
+				                                                W=init.GlorotUniform(),
+				                                                b=init.Constant(0.),
+				                                                )
 
 		assert len(dense_dimensions) == len(dense_nonlinearities)
 		for dense_layer_index in range(len(dense_dimensions)):
 			input_layer_shape = layers.get_output_shape(neural_network)[1:]
 			previous_layer_shape = numpy.prod(input_layer_shape)
-			activation_probability = noise.sample_activation_probability(previous_layer_shape,
-			                                                             layer_activation_styles[dropout_layer_index],
-			                                                             layer_activation_parameters[
-				                                                             dropout_layer_index])
+			activation_probability = layers.sample_activation_probability(previous_layer_shape,
+			                                                              layer_activation_styles[dropout_layer_index],
+			                                                              layer_activation_parameters[
+				                                                              dropout_layer_index])
 			activation_probability = numpy.reshape(activation_probability, input_layer_shape)
 			if update_hidden_layer_dropout_only and dense_layer_index == 0:
-				neural_network = noise.LinearDropoutLayer(neural_network,
-				                                          activation_probability=activation_probability)
+				neural_network = layers.LinearDropoutLayer(neural_network,
+				                                           activation_probability=activation_probability)
 			else:
 				# neural_network = noise.TrainableDropoutLayer(neural_network, activation_probability=init.Constant(layer_activation_parameters[layer_index]))
-				neural_network = noise.AdaptiveDropoutLayer(neural_network,
-				                                            activation_probability=activation_probability)
+				neural_network = layers.AdaptiveDropoutLayer(neural_network,
+				                                             activation_probability=activation_probability)
 			dropout_layer_index += 1
 
 			layer_shape = dense_dimensions[dense_layer_index]
