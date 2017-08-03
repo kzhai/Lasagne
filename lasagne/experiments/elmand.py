@@ -1,9 +1,5 @@
 import logging
-import os
 
-import numpy
-
-from .. import layers
 from .. import networks
 
 logger = logging.getLogger(__name__)
@@ -83,26 +79,6 @@ def train_delman():
 
 	from . import train_model
 	train_model(network, settings, network.parse_sequence)
-
-
-def snapshot_retain_rates(network, output_directory):
-	dropout_layer_index = 0
-	for network_layer in network.get_network_layers():
-		if not isinstance(network_layer, layers.AdaptiveDropoutLayer):
-			continue
-
-		layer_retain_probability = network_layer.activation_probability.eval()
-		logger.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
-			network.epoch_index,
-			layer_retain_probability.shape,
-			numpy.mean(layer_retain_probability),
-			numpy.min(layer_retain_probability),
-			numpy.max(layer_retain_probability)))
-
-		retain_rate_file = os.path.join(output_directory,
-		                                "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
-		numpy.save(retain_rate_file, layer_retain_probability)
-		dropout_layer_index += 1
 
 
 if __name__ == '__main__':

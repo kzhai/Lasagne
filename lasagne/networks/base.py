@@ -363,6 +363,9 @@ class Network(object):
 		return average_train_loss, average_train_accuracy, train_running_time
 	'''
 
+	def debug(self, settings, **kwargs):
+		raise NotImplementedError("Not implemented in successor classes!")
+
 
 class FeedForwardNetwork(Network):
 	def __init__(self, incoming,

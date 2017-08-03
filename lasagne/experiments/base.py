@@ -341,21 +341,27 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	# START MODEL TRAINING #
 	########################
 
-	number_of_epochs = settings.number_of_epochs
-	minibatch_size = settings.minibatch_size
-	snapshot_interval = settings.snapshot_interval
+	if settings.debug:
+		try:
+			network.debug(settings)
+		except NotImplementedError:
+			settings.debug = False
+			print("Oops, debug mode is not available...")
 
 	start_train = timeit.default_timer()
 	# Finally, launch the training loop.
 	# We iterate over epochs:
-	for epoch_index in range(number_of_epochs):
-		network.train(train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory)
+	for epoch_index in range(settings.number_of_epochs):
+		network.train(train_dataset, settings.minibatch_size, validate_dataset, test_dataset, output_directory)
 
-		if snapshot_interval > 0 and network.epoch_index % snapshot_interval == 0:
+		if settings.snapshot_interval > 0 and network.epoch_index % settings.snapshot_interval == 0:
 			model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
 		# pickle.dump(network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
-		print("PROGRESS: %f%%" % (100. * epoch_index / number_of_epochs))
+		if settings.debug:
+			network.debug(settings)
+
+		print("PROGRESS: %f%%" % (100. * (epoch_index + 1) / settings.number_of_epochs))
 
 	model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
 	# pickle.dump(network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)

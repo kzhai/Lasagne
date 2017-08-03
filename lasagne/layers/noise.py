@@ -28,7 +28,7 @@ __all__ = [
 	#
 	"StandoutLayer",
 	"AdaptiveDropoutLayer",
-	"AdaptiveDynamicDropoutLayer",
+	"ElasticAdaptiveDropoutLayer",
 	#
 	# "GenericDropoutLayer",
 	# "BetaBernoulliDropoutLayer",
@@ -835,13 +835,13 @@ class AdaptiveDropoutLayer(Layer):
 			return input * mask
 
 
-class AdaptiveDynamicDropoutLayer(AdaptiveDropoutLayer):
+class ElasticAdaptiveDropoutLayer(AdaptiveDropoutLayer):
 	"""Adaptive Dropout layer
 	"""
 
 	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)),
 	             num_leading_axes=1, shared_axes=(), **kwargs):
-		super(AdaptiveDynamicDropoutLayer, self).__init__(incoming, activation_probability, num_leading_axes,
+		super(ElasticAdaptiveDropoutLayer, self).__init__(incoming, activation_probability, num_leading_axes,
 		                                                  shared_axes, **kwargs)
 
 	def set_input(self, incoming, activation_probability=init.Uniform(range=(0, 1))):

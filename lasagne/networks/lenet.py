@@ -1,4 +1,5 @@
 import logging
+import os
 import timeit
 
 import numpy
@@ -517,6 +518,26 @@ class DynamicLeNet(FeedForwardNetwork):
 		# print self._debug_function(minibatch_x, minibatch_y, learning_rate)
 
 		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
+
+	def debug(self, settings, **kwargs):
+		output_directory = settings.output_directory
+		dropout_layer_index = 0
+		for network_layer in self.get_network_layers():
+			if not isinstance(network_layer, layers.AdaptiveDropoutLayer):
+				continue
+
+			layer_retain_probability = network_layer.activation_probability.eval()
+			logger.info("retain rates: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
+				self.epoch_index,
+				layer_retain_probability.shape,
+				numpy.mean(layer_retain_probability),
+				numpy.min(layer_retain_probability),
+				numpy.max(layer_retain_probability)))
+
+			retain_rate_file = os.path.join(output_directory,
+			                                "layer.%d.epoch.%d.npy" % (dropout_layer_index, self.epoch_index))
+			numpy.save(retain_rate_file, layer_retain_probability)
+			dropout_layer_index += 1
 
 	"""
 	def dae_regularizer(self):

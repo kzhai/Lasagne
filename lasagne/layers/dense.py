@@ -13,7 +13,7 @@ __all__ = [
 	#
 	#
 	#
-	"DynamicDenseLayer",
+	"ElasticDenseLayer",
 ]
 
 
@@ -238,13 +238,13 @@ class NINLayer(Layer):
 #
 #
 
-class DynamicDenseLayer(DenseLayer):
+class ElasticDenseLayer(DenseLayer):
 	def __init__(self, incoming, num_units, W=init.GlorotUniform(),
 	             b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
 	             num_leading_axes=1, **kwargs):
-		super(DynamicDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes, **kwargs)
+		super(ElasticDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes, **kwargs)
 
-		#self.set_output(num_units, W=init.GlorotUniform(), b=init.Constant(0.), nonlinearity=nonlinearities.rectify)
+	# self.set_output(num_units, W=init.GlorotUniform(), b=init.Constant(0.), nonlinearity=nonlinearities.rectify)
 
 	def set_input(self, incoming, W=init.GlorotUniform(), num_leading_axes=1):
 		if isinstance(incoming, tuple):
@@ -300,6 +300,7 @@ class DynamicDenseLayer(DenseLayer):
 			self.b = self.add_param(b, (self.num_units,), name="b", regularizable=False)
 		return old_b
 
+	'''
 	def del_param(self, spec, shape, name=None, **tags):
 		# prefix the param name with the layer name if it exists
 		if name is not None:
@@ -313,3 +314,4 @@ class DynamicDenseLayer(DenseLayer):
 		self.params[param] = set(tag for tag, value in tags.items() if value)
 
 		return param
+	'''

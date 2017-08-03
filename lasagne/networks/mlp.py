@@ -1,4 +1,5 @@
 import logging
+import os
 import timeit
 
 import numpy
@@ -240,6 +241,26 @@ class DynamicMultiLayerPerceptron(FeedForwardNetwork):
 
 		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
 
+	def debug(self, settings, **kwargs):
+		output_directory = settings.output_directory
+		dropout_layer_index = 0
+		for network_layer in self.get_network_layers():
+			if not isinstance(network_layer, layers.AdaptiveDropoutLayer):
+				continue
+
+			layer_retain_probability = network_layer.activation_probability.eval()
+			logger.info("retain rates: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
+				self.epoch_index,
+				layer_retain_probability.shape,
+				numpy.mean(layer_retain_probability),
+				numpy.min(layer_retain_probability),
+				numpy.max(layer_retain_probability)))
+
+			retain_rate_file = os.path.join(output_directory,
+			                                "layer.%d.epoch.%d.npy" % (dropout_layer_index, self.epoch_index))
+			numpy.save(retain_rate_file, layer_retain_probability)
+			dropout_layer_index += 1
+
 	#
 	#
 	#
@@ -375,6 +396,136 @@ class DynamicMultiLayerPerceptron(FeedForwardNetwork):
 		logger.info('pretrain network denoising auto-encoder finishes in %fs' % pretrain_time)
 		print 'pretrain network denoising auto-encoder finishes in %fs' % pretrain_time
 	'''
+
+
+class ElasticDynamicMultiLayerPerceptron(FeedForwardNetwork):
+	def __init__(self,
+	             incoming,
+
+	             dense_dimensions,
+	             dense_nonlinearities,
+
+	             layer_activation_parameters=None,
+	             layer_activation_styles=None,
+
+	             objective_functions=objectives.categorical_crossentropy,
+	             update_function=updates.nesterov_momentum,
+	             learning_rate=1e-3,
+	             learning_rate_decay=None,
+	             max_norm_constraint=0,
+	             # learning_rate_decay_style=None,
+	             # learning_rate_decay_parameter=0,
+
+	             validation_interval=-1,
+	             ):
+		super(ElasticDynamicMultiLayerPerceptron, self).__init__(incoming,
+		                                                         objective_functions,
+		                                                         update_function,
+		                                                         learning_rate,
+		                                                         learning_rate_decay,
+		                                                         max_norm_constraint,
+		                                                         # learning_rate_decay_style,
+		                                                         # learning_rate_decay_parameter,
+		                                                         validation_interval,
+		                                                         )
+
+		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
+		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+
+		# self._input_layer = layers.InputLayer(shape=input_shape)
+		# self._input_variable = self._input_layer.input_var
+
+		assert len(dense_dimensions) == len(dense_nonlinearities)
+		assert len(dense_dimensions) == len(layer_activation_parameters)
+		assert len(dense_dimensions) == len(layer_activation_styles)
+
+		'''
+		pretrained_network_layers = None
+		if pretrained_model != None:
+			pretrained_network_layers = lasagne.layers.get_all_layers(pretrained_model._neural_network)
+		'''
+
+		# neural_network = input_network
+		neural_network = self._input_layer
+		for layer_index in range(len(dense_dimensions)):
+			previous_layer_dimension = layers.get_output_shape(neural_network)[1:]
+			activation_probability = layers.sample_activation_probability(previous_layer_dimension,
+			                                                              layer_activation_styles[layer_index],
+			                                                              layer_activation_parameters[layer_index])
+
+			neural_network = layers.ElasticAdaptiveDropoutLayer(neural_network,
+			                                                    activation_probability=activation_probability)
+
+			layer_dimension = dense_dimensions[layer_index]
+			layer_nonlinearity = dense_nonlinearities[layer_index]
+
+			neural_network = layers.ElasticDenseLayer(neural_network, layer_dimension, W=init.GlorotUniform(
+				gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
+
+			'''
+			if pretrained_network_layers == None or len(pretrained_network_layers) <= layer_index:
+				_neural_network = lasagne.layers.DenseLayer(_neural_network, layer_dimension, nonlinearity=layer_nonlinearity)
+			else:
+				pretrained_layer = pretrained_network_layers[layer_index]
+				assert isinstance(pretrained_layer, lasagne.layers.DenseLayer)
+				assert pretrained_layer.nonlinearity == layer_nonlinearity, (pretrained_layer.nonlinearity, layer_nonlinearity)
+				assert pretrained_layer.num_units == layer_dimension
+
+				_neural_network = lasagne.layers.DenseLayer(_neural_network,
+													layer_dimension,
+													W=pretrained_layer.W,
+													b=pretrained_layer.b,
+													nonlinearity=layer_nonlinearity)
+			'''
+
+		self._neural_network = neural_network
+
+		self.build_functions()
+
+	def alter_network(self):
+		print(self.get_network_params())
+		for layer in self.get_network_layers():
+			print("----------")
+			print(layer, layer.get_params())
+
+		for layer_1, layer_2, layer_3 in zip(self.get_network_layers()[:-2], self.get_network_layers()[1:-1],
+		                                     self.get_network_layers()[2:]):
+			if isinstance(layer_1, layers.ElasticDenseLayer):
+				break;
+
+		layer_1.set_output(100)
+		# previous_layer_dimension = layers.get_output_shape(layer_1)[1:]
+		# activation_probability = layers.sample_activation_probability(previous_layer_dimension, "Bernoulli", 0.5)
+		layer_2.set_input(layer_1)
+		layer_3.set_input(layer_2);
+
+		print(self.get_network_params())
+		for layer in self.get_network_layers():
+			print("----------")
+			print(layer, layer.get_params())
+
+		'''
+		neural_network = layer_1
+
+		for layer_index in range(len(dense_dimensions)):
+			previous_layer_dimension = layers.get_output_shape(neural_network)[1:]
+			activation_probability = noise.sample_activation_probability(previous_layer_dimension,
+			                                                             layer_activation_styles[layer_index],
+			                                                             layer_activation_parameters[layer_index])
+
+			neural_network = noise.LinearDropoutLayer(neural_network,
+			                                          activation_probability=activation_probability)
+
+			layer_dimension = dense_dimensions[layer_index]
+			layer_nonlinearity = dense_nonlinearities[layer_index]
+
+			neural_network = layers.DenseLayer(neural_network, layer_dimension, W=init.GlorotUniform(
+				gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
+
+		self._neural_network = neural_network
+		'''
+
+		self.build_functions()
 
 
 def main():
