@@ -53,7 +53,7 @@ def validate_elman_arguments(arguments):
 	number_of_recurrent_layers = 0
 	number_of_dense_layers = 0
 
-	assert arguments.layer_dimensions != None
+	assert arguments.layer_dimensions is not None
 	options_layer_dimensions = arguments.layer_dimensions + ","
 	layer_dimensions = []
 	recurrent_mode = False
@@ -79,7 +79,7 @@ def validate_elman_arguments(arguments):
 			start_index = end_index + 1
 	arguments.layer_dimensions = layer_dimensions
 
-	assert arguments.layer_nonlinearities != None
+	assert arguments.layer_nonlinearities is not None
 	options_layer_nonlinearities = arguments.layer_nonlinearities + ","
 	layer_nonlinearities = []
 	recurrent_mode = False

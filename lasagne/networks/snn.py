@@ -189,25 +189,25 @@ class StandoutNeuralNetworkTypeA(FeedForwardNetwork):
 			# self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 			# And a full pass over the validation data:
-			if validate_dataset != None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
+			if validate_dataset is not None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
 				average_train_accuracy = total_train_accuracy / number_of_data
 				average_train_loss = total_train_loss / number_of_data
 				logger.info('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 				output_file = None
-				if output_directory != None:
+				if output_directory is not None:
 					output_file = os.path.join(output_directory, 'model.pkl')
 				self.validate(validate_dataset, test_dataset, output_file)
 
 			self.minibatch_index += 1
 
-		if validate_dataset != None:
+		if validate_dataset is not None:
 			output_file = None
-			if output_directory != None:
+			if output_directory is not None:
 				output_file = os.path.join(output_directory, 'model.pkl')
 			self.validate(validate_dataset, test_dataset, output_file)
-		elif test_dataset != None:
+		elif test_dataset is not None:
 			# if output_directory != None:
 			# output_file = os.path.join(output_directory, 'model-%d.pkl' % self.epoch_index)
 			# cPickle.dump(self, open(output_file, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)

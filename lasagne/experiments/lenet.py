@@ -27,18 +27,18 @@ def add_convpool_options(model_parser):
 
 def validate_convpool_arguments(arguments):
 	# model argument set 1
-	assert arguments.convolution_filters != None
+	assert arguments.convolution_filters is not None
 	conv_filters = arguments.convolution_filters.split(",")
 	arguments.convolution_filters = [int(conv_filter) for conv_filter in conv_filters]
 
-	assert arguments.convolution_nonlinearities != None
+	assert arguments.convolution_nonlinearities is not None
 	conv_nonlinearities = arguments.convolution_nonlinearities.split(",")
 	arguments.convolution_nonlinearities = [getattr(nonlinearities, conv_nonlinearity) for conv_nonlinearity in
 	                                        conv_nonlinearities]
 
 	assert len(conv_filters) == len(conv_nonlinearities)
 
-	assert arguments.pool_modes != None
+	assert arguments.pool_modes is not None
 	pool_modes = arguments.pool_modes.split(",")
 	if len(pool_modes) == 1:
 		pool_modes *= len(arguments.convolution_filters)

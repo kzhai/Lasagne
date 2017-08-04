@@ -84,7 +84,7 @@ def validate_alexnet_arguments(arguments):
 	# model argument set 1
 	assert arguments.number_of_lrn_layers <= number_of_convolution_layers
 
-	if arguments.locally_connected_filters == None:
+	if arguments.locally_connected_filters is None:
 		arguments.locally_connected_filters = []
 	else:
 		arguments.locally_connected_filters = [int(locally_connected_filter) for locally_connected_filter in

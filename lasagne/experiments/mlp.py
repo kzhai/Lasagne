@@ -26,11 +26,11 @@ def add_dense_options(model_parser):
 
 def validate_dense_arguments(arguments):
 	# model argument set 1
-	assert arguments.dense_dimensions != None
+	assert arguments.dense_dimensions is not None
 	dense_dimensions = arguments.dense_dimensions.split(",")
 	arguments.dense_dimensions = [int(dimensionality) for dimensionality in dense_dimensions]
 
-	assert arguments.dense_nonlinearities != None
+	assert arguments.dense_nonlinearities is not None
 	dense_nonlinearities = arguments.dense_nonlinearities.split(",")
 	arguments.dense_nonlinearities = [getattr(nonlinearities, dense_nonlinearity) for dense_nonlinearity in
 	                                  dense_nonlinearities]

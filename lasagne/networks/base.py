@@ -244,7 +244,7 @@ class Network(object):
 	#
 
 	def __set_objective_functions(self, objective_functions):
-		assert objective_functions != None
+		assert objective_functions is not None
 		if type(objective_functions) is types.FunctionType:
 			self._objective_functions = {objective_functions: 1.0}
 		elif type(objective_functions) is list:
@@ -259,7 +259,7 @@ class Network(object):
 
 	def __set_regularizer_functions(self, regularizer_functions=None):
 		_regularizer_functions = {}
-		if regularizer_functions != None:
+		if regularizer_functions is not None:
 			assert hasattr(self, "_neural_network")
 			if type(regularizer_functions) is types.FunctionType:
 				_regularizer_functions[regularizer_functions] = 1.0
@@ -283,7 +283,7 @@ class Network(object):
 		self.build_functions()
 
 	def __set_update_function(self, update_function):
-		assert update_function != None
+		assert update_function is not None
 		self._update_function = update_function
 		self.update_function_change_stack.append((self.epoch_index, self._update_function))
 
@@ -406,7 +406,7 @@ class FeedForwardNetwork(Network):
 
 	def get_objectives(self, label, objective_functions=None, **kwargs):
 		output = self.get_output(**kwargs)
-		if objective_functions == None:
+		if objective_functions is None:
 			# objective = theano.tensor.mean(self._objective_functions(output, label), dtype=theano.config.floatX)
 			objective = 0
 			for objective_function, weight in list(self._objective_functions.items()):
@@ -529,13 +529,13 @@ class FeedForwardNetwork(Network):
 			self.best_validate_accuracy = average_validate_accuracy
 			# self.best_validate_model = copy.deepcopy(self)
 
-			if best_model_file_path != None:
+			if best_model_file_path is not None:
 				# save the best model
 				# cPickle.dump(self, open(best_model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 				logger.info('\tbest model found: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_validate_loss, average_validate_accuracy * 100))
 
-		if test_dataset != None:
+		if test_dataset is not None:
 			self.test(test_dataset)
 			'''
 			test_running_time = timeit.default_timer()
@@ -556,7 +556,9 @@ class FeedForwardNetwork(Network):
 		number_of_data = train_dataset_x.shape[0]
 		data_indices = numpy.random.permutation(number_of_data)
 		minibatch_start_index = 0
-		if self.learning_rate_decay[0] == "epoch":
+
+		learning_rate = self.learning_rate
+		if self.learning_rate_decay is not None and self.learning_rate_decay[0] == "epoch":
 			learning_rate = decay_learning_rate(self.learning_rate, self.epoch_index, self.learning_rate_decay)
 
 		total_train_loss = 0
@@ -569,7 +571,7 @@ class FeedForwardNetwork(Network):
 			minibatch_x = train_dataset_x[minibatch_indices, :]
 			minibatch_y = train_dataset_y[minibatch_indices]
 
-			if self.learning_rate_decay[0] == "iteration":
+			if self.learning_rate_decay is not None and self.learning_rate_decay[0] == "iteration":
 				learning_rate = decay_learning_rate(self.learning_rate, self.minibatch_index, self.learning_rate_decay)
 
 			minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy = self.train_minibatch(
@@ -597,25 +599,25 @@ class FeedForwardNetwork(Network):
 			# self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 			# And a full pass over the validation data:
-			if validate_dataset != None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
+			if validate_dataset is not None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
 				average_train_accuracy = total_train_accuracy / number_of_data
 				average_train_loss = total_train_loss / number_of_data
 				logger.info('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 				output_file = None
-				if output_directory != None:
+				if output_directory is not None:
 					output_file = os.path.join(output_directory, 'model.pkl')
 				self.validate(validate_dataset, test_dataset, output_file)
 
 			self.minibatch_index += 1
 
-		if validate_dataset != None:
+		if validate_dataset is not None:
 			output_file = None
-			if output_directory != None:
+			if output_directory is not None:
 				output_file = os.path.join(output_directory, 'model.pkl')
 			self.validate(validate_dataset, test_dataset, output_file)
-		elif test_dataset != None:
+		elif test_dataset is not None:
 			# if output_directory != None:
 			# output_file = os.path.join(output_directory, 'model-%d.pkl' % self.epoch_index)
 			# cPickle.dump(self, open(output_file, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
@@ -649,8 +651,8 @@ class FeedForwardNetwork(Network):
 
 
 def parse_sequence(dataset, window_size, sequence_length, position_offset=-1):
-	if dataset == None:
-		return None;
+	if dataset is None:
+		return None
 
 	sequence_set_x, sequence_set_y = dataset
 	# Parse data into sequences
@@ -708,7 +710,7 @@ def get_context(instance, window_size, position_offset=-1, vocab_size=None):
 
 	instance = list(instance)
 
-	if vocab_size == None:
+	if vocab_size is None:
 		context_windows = -numpy.ones((len(instance), window_size), dtype=numpy.int32)
 		# padded_sequence = window_size / 2 * [-1] + instance + window_size / 2 * [-1]
 		padded_sequence = position_offset * [-1] + instance + (window_size - position_offset) * [-1]
@@ -801,8 +803,8 @@ class RecurrentNetwork(FeedForwardNetwork):
 		self._input_mask_variable = self._input_mask_layer.input_var
 
 	def parse_sequence(self, dataset):
-		if dataset == None:
-			return None;
+		if dataset is None:
+			return None
 		return parse_sequence(dataset, self._window_size, self._sequence_length, self._position_offset)
 
 	def build_functions(self):
@@ -937,13 +939,13 @@ class RecurrentNetwork(FeedForwardNetwork):
 			self.best_validate_accuracy = average_validate_accuracy
 			# self.best_validate_model = copy.deepcopy(self)
 
-			if best_model_file_path != None:
+			if best_model_file_path is not None:
 				# save the best model
 				# cPickle.dump(self, open(best_model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 				logger.info('\tbest model found: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_validate_loss, average_validate_accuracy * 100))
 
-		if test_dataset != None:
+		if test_dataset is not None:
 			self.test(test_dataset)
 			'''
 			test_running_time = timeit.default_timer()
@@ -1027,25 +1029,25 @@ class RecurrentNetwork(FeedForwardNetwork):
 			# self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 			# And a full pass over the validation data:
-			if validate_dataset != None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
+			if validate_dataset is not None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
 				average_train_accuracy = total_train_accuracy / sequence_end_index
 				average_train_loss = total_train_loss / sequence_end_index
 				logger.info('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_train_loss, average_train_accuracy * 100))
 
 				output_file = None
-				if output_directory != None:
+				if output_directory is not None:
 					output_file = os.path.join(output_directory, 'model.pkl')
 				self.validate(validate_dataset, test_dataset, output_file)
 
 			self.minibatch_index += 1
 
-		if validate_dataset != None:
+		if validate_dataset is not None:
 			output_file = None
-			if output_directory != None:
+			if output_directory is not None:
 				output_file = os.path.join(output_directory, 'model.pkl')
 			self.validate(validate_dataset, test_dataset, output_file)
-		elif test_dataset != None:
+		elif test_dataset is not None:
 			# if output_directory != None:
 			# output_file = os.path.join(output_directory, 'model-%d.pkl' % self.epoch_index)
 			# cPickle.dump(self, open(output_file, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
@@ -1182,13 +1184,13 @@ class GenerativeNetwork(Network):
 			self.best_validate_accuracy = average_validate_accuracy
 			# self.best_validate_model = copy.deepcopy(self)
 
-			if best_model_file_path != None:
+			if best_model_file_path is not None:
 				# save the best model
 				cPickle.dump(self, open(best_model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 				logger.info('\tbest model found: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_validate_loss, average_validate_accuracy * 100))
 
-		if test_dataset != None:
+		if test_dataset is not None:
 			test_running_time = timeit.default_timer()
 			test_dataset_x, test_dataset_y = test_dataset
 			average_test_loss, average_test_accuracy = self._test_function(test_dataset_x, test_dataset_y)

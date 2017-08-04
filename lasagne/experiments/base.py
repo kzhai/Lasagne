@@ -82,7 +82,7 @@ def construct_generic_parser():
 def validate_generic_arguments(arguments):
 	# generic argument set 4
 	assert arguments.learning_rate > 0
-	if arguments.learning_rate_decay != None:
+	if arguments.learning_rate_decay is not None:
 		learning_rate_decay_tokens = arguments.learning_rate_decay.split(",")
 		assert len(learning_rate_decay_tokens) == 4
 		assert learning_rate_decay_tokens[0] in ["iteration", "epoch"]
@@ -123,7 +123,7 @@ def validate_generic_arguments(arguments):
 	assert os.path.exists(arguments.input_directory)
 
 	output_directory = arguments.output_directory
-	assert (output_directory != None)
+	assert (output_directory is not None)
 	if not os.path.exists(output_directory):
 		os.mkdir(os.path.abspath(output_directory))
 	# adjusting output directory
@@ -216,7 +216,7 @@ def split_train_data_to_cross_validate(input_directory, number_of_folds=5, outpu
 	indices = list(range(len(data_y)))
 	random.shuffle(indices)
 
-	if output_directory == None:
+	if output_directory is None:
 		output_directory = input_directory
 
 	fold_index = 0
@@ -317,7 +317,7 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	print test_x[0].dtype, test_y[0].dtype
 	'''
 
-	if dataset_preprocessing_function != None:
+	if dataset_preprocessing_function is not None:
 		train_dataset = dataset_preprocessing_function(train_dataset)
 		validate_dataset = dataset_preprocessing_function(validate_dataset)
 		test_dataset = dataset_preprocessing_function(test_dataset)

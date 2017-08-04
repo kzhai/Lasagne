@@ -50,7 +50,7 @@ def validate_vdn_arguments(arguments):
 	number_of_layers = len(arguments.dense_dimensions)
 
 	# model argument set 2
-	assert arguments.variational_dropout_style != None
+	assert arguments.variational_dropout_style is not None
 	arguments.variational_dropout_style = arguments.variational_dropout_style
 	assert arguments.variational_dropout_style in set(["TypeA", "TypeB"])
 
@@ -75,10 +75,10 @@ def validate_vdn_arguments(arguments):
 	arguments.adaptive_styles = adaptive_styles
 
 	if arguments.variational_dropout_style == "TypeB":
-		assert (adaptive_style == None or adaptive_style in set(["layerwise", "elementwise", "weightwise"]) for
+		assert (adaptive_style is None or adaptive_style in set(["layerwise", "elementwise", "weightwise"]) for
 		        adaptive_style in arguments.adaptive_styles)
 	elif arguments.variational_dropout_style == "TypeA":
-		assert (adaptive_style == None or adaptive_style in set(["layerwise", "elementwise"]) for adaptive_style in
+		assert (adaptive_style is None or adaptive_style in set(["layerwise", "elementwise"]) for adaptive_style in
 		        arguments.adaptive_styles)
 
 	variational_dropout_regularizer_lambdas = arguments.variational_dropout_regularizer_lambdas

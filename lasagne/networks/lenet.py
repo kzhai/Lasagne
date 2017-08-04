@@ -114,7 +114,7 @@ class LeNet(FeedForwardNetwork):
 			                                    )
 
 			pool_mode = pool_modes[conv_layer_index]
-			if pool_mode != None:
+			if pool_mode is not None:
 				pool_kernel_size = pooling_kernel_sizes
 				pool_stride = pooling_strides
 
@@ -422,7 +422,7 @@ class DynamicLeNet(FeedForwardNetwork):
 			# print "after convolution", layers.get_output_shape(neural_network)
 
 			pool_mode = pool_modes[conv_layer_index]
-			if pool_mode != None:
+			if pool_mode is not None:
 				pool_size = pooling_kernel_sizes
 				pool_stride = pooling_strides
 

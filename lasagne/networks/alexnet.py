@@ -119,7 +119,7 @@ class AlexNet(FeedForwardNetwork):
 				neural_network = layers.LocalResponseNormalization2DLayer(neural_network)
 
 			pool_mode = pool_modes[conv_layer_index]
-			if pool_mode != None:
+			if pool_mode is not None:
 				pool_size = pooling_kernel_sizes
 				pool_stride = pooling_strides
 
@@ -135,9 +135,9 @@ class AlexNet(FeedForwardNetwork):
 				                                    mode=pool_mode,
 				                                    )
 
-		if locally_connected_filters != None and len(locally_connected_filters) > 0:
+		if locally_connected_filters is not None and len(locally_connected_filters) > 0:
 			for local_layer_index in range(len(locally_connected_filters)):
-				neural_network = local.LocallyConnected2DLayer(neural_network,
+				neural_network = layers.LocallyConnected2DLayer(neural_network,
 				                                               locally_connected_filters[local_layer_index],
 				                                               filter_size=local_convolution_filter_sizes,
 				                                               stride=local_convolution_strides,
@@ -290,7 +290,7 @@ class DynamicAlexNet(FeedForwardNetwork):
 				neural_network = layers.LocalResponseNormalization2DLayer(neural_network)
 
 			pool_mode = pool_modes[conv_layer_index]
-			if pool_mode != None:
+			if pool_mode is not None:
 				pool_size = pooling_kernel_sizes
 				pool_stride = pooling_strides
 
@@ -306,7 +306,7 @@ class DynamicAlexNet(FeedForwardNetwork):
 				                                    mode=pool_mode,
 				                                    )
 
-		if locally_connected_filters != None and len(locally_connected_filters) > 0:
+		if locally_connected_filters is not None and len(locally_connected_filters) > 0:
 			for local_layer_index in range(len(locally_connected_filters)):
 				neural_network = layers.LocallyConnected2DLayer(neural_network,
 				                                                locally_connected_filters[local_layer_index],
