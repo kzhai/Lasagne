@@ -154,6 +154,7 @@ def parse_model(model_log_file):
 	return model_settings, train_logs, valid_logs, test_logs, best_model_logs
 
 
+
 def minibatch_pattern_match(pattern, line):
 	matcher = re.match(pattern, line)
 	if matcher is not None:
@@ -172,7 +173,7 @@ if __name__ == '__main__':
 	import argparse
 
 	argument_parser = argparse.ArgumentParser()
-	argument_parser.add_argument("--model_directory", dest="model_directory", action='store', default=None,
+	argument_parser.add_argument("--model_directories", dest="model_directories", action='store', default=None,
 	                             help="directory contains model outputs [None]")
 	argument_parser.add_argument("--select_settings", dest="select_settings", action='store', default="None",
 	                             help="select settings to display [None]")
@@ -186,7 +187,7 @@ if __name__ == '__main__':
 		print("%s=%s" % (key, value))
 	print("========== ========== ========== ========== ==========")
 
-	model_directory = arguments.model_directory
+	model_directory = arguments.model_directories
 	select_settings = arguments.select_settings
 
 	if select_settings.lower() == "none":
@@ -198,4 +199,3 @@ if __name__ == '__main__':
 	output_result_file = arguments.output_result_file
 
 	parse_models(model_directory, select_settings, output_result_file)
-# parse_model(model_directory)

@@ -52,6 +52,13 @@ def parse_sequence_data(input_directory, output_directory):
 	           output_test_label_file)
 	print("successfully parsed testing file...")
 
+	input_valid_file = os.path.join(input_directory, "validate.dat")
+	if os.path.exists(input_valid_file):
+		output_valid_feature_file = os.path.join(output_directory, "validate.feature.npy")
+		output_valid_label_file = os.path.join(output_directory, "validate.label.npy")
+		parse_data(label_information, type_information, input_valid_file, output_valid_feature_file,
+		           output_valid_label_file)
+		print("successfully parsed validating file...")
 
 def parse_data(label_information, type_information, input_file, output_feature_file, output_label_file):
 	(label_to_index, index_to_label, label_document_frequency, label_term_frequency) = label_information
