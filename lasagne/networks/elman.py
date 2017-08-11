@@ -23,20 +23,23 @@ class ElmanNetwork(RecurrentNetwork):
 	             # incoming,
 	             # incoming_mask,
 
-	             window_size,
 	             sequence_length,
 
 	             layer_dimensions,
 	             layer_nonlinearities,
 
-	             position_offset=-1,
+	             vocabulary_dimension,
+	             embedding_dimension,
+
+	             recurrent_type,
+	             gradient_clipping=0,
+
+	             window_size=1,
+	             position_offset=0,
+	             gradient_steps=-1,
 
 	             layer_activation_parameters=None,
 	             layer_activation_styles=None,
-
-	             vocabulary_dimension=None,
-	             embedding_dimension=None,
-	             recurrent_type=None,
 
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
@@ -51,10 +54,9 @@ class ElmanNetwork(RecurrentNetwork):
 		super(ElmanNetwork, self).__init__(
 			# input_shape,
 			# input_mask_shape,
-
-			window_size,
 			sequence_length,
-			position_offset,
+			#recurrent_type,
+			gradient_clipping,
 
 			objective_functions,
 			update_function,
@@ -62,6 +64,10 @@ class ElmanNetwork(RecurrentNetwork):
 			learning_rate_decay,
 			max_norm_constraint,
 			validation_interval,
+
+			window_size,
+			position_offset,
+			gradient_steps,
 		)
 
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
@@ -147,7 +153,6 @@ class ElmanNetwork(RecurrentNetwork):
 			# print_output_dimension("after dense layer %i" % layer_index, neural_network, sequence_length, window_size)
 
 			elif isinstance(layer_dimension, list):
-				# if not isinstance(layers.get_all_layers(neural_network)[-1], recurrent_type):
 				if not isinstance(neural_network, recurrent_type):
 					previous_layer_dimension = layers.get_output_shape(neural_network)
 					neural_network = layers.ReshapeLayer(neural_network,
@@ -168,8 +173,8 @@ class ElmanNetwork(RecurrentNetwork):
 					                                       hid_init=init.Constant(0.),
 					                                       backwards=False,
 					                                       learn_init=False,
-					                                       gradient_steps=-1,
-					                                       grad_clipping=0,
+					                                       gradient_steps=self._gradient_steps,
+					                                       grad_clipping=self._gradient_clipping,
 					                                       unroll_scan=False,
 					                                       precompute_input=True,
 					                                       mask_input=self._input_mask_layer,
@@ -188,8 +193,8 @@ class ElmanNetwork(RecurrentNetwork):
 					                                  backwards=False,
 					                                  learn_init=False,
 					                                  peepholes=True,
-					                                  gradient_steps=-1,
-					                                  grad_clipping=0,
+					                                  gradient_steps=self._gradient_steps,
+					                                  grad_clipping=self._gradient_clipping,
 					                                  unroll_scan=False,
 					                                  precompute_input=True,
 					                                  mask_input=self._input_mask_layer,
@@ -211,20 +216,23 @@ class DynamicElmanNetwork(RecurrentNetwork):
 	             # incoming,
 	             # incoming_mask,
 
-	             window_size,
 	             sequence_length,
 
 	             layer_dimensions,
 	             layer_nonlinearities,
 
-	             position_offset=-1,
+	             vocabulary_dimension,
+	             embedding_dimension,
+
+	             recurrent_type,
+	             gradient_clipping=0,
+
+	             window_size=1,
+	             position_offset=0,
+	             gradient_steps=-1,
 
 	             layer_activation_parameters=None,
 	             layer_activation_styles=None,
-
-	             vocabulary_dimension=None,
-	             embedding_dimension=None,
-	             recurrent_type=None,
 
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
@@ -243,10 +251,9 @@ class DynamicElmanNetwork(RecurrentNetwork):
 		super(DynamicElmanNetwork, self).__init__(
 			# input_shape,
 			# input_mask_shape,
-
-			window_size,
 			sequence_length,
-			position_offset,
+			# recurrent_type,
+			gradient_clipping,
 
 			objective_functions,
 			update_function,
@@ -254,6 +261,10 @@ class DynamicElmanNetwork(RecurrentNetwork):
 			learning_rate_decay,
 			max_norm_constraint,
 			validation_interval,
+
+			window_size,
+			position_offset,
+			gradient_steps,
 		)
 
 		self._dropout_rate_update_interval = dropout_rate_update_interval
@@ -262,8 +273,7 @@ class DynamicElmanNetwork(RecurrentNetwork):
 		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
 		neural_network = self._input_layer
-
-		# print_output_dimension("after input merge", neural_network, sequence_length, window_size)
+		#print_output_dimension("after input layer", neural_network, sequence_length, window_size)
 
 		# batch_size, input_sequence_length, input_window_size = layers.get_output_shape(neural_network)
 		# assert sequence_length > 0 and sequence_length == input_sequence_length
@@ -274,11 +284,11 @@ class DynamicElmanNetwork(RecurrentNetwork):
 		                                              output_size=embedding_dimension,
 		                                              W=init.GlorotNormal())
 		neural_network = self._embedding_layer
-		# print_output_dimension("after embedding layer", neural_network, sequence_length, window_size)
+		#print_output_dimension("after embedding layer", neural_network, sequence_length, window_size)
 
 		neural_network = layers.ReshapeLayer(neural_network,
 		                                     (-1, self._sequence_length, self._window_size * embedding_dimension))
-		# print_output_dimension("after window merge", neural_network, sequence_length, window_size)
+		#print_output_dimension("after window merge", neural_network, sequence_length, window_size)
 
 		#
 		#
@@ -321,7 +331,7 @@ class DynamicElmanNetwork(RecurrentNetwork):
 						neural_network = layers.ReshapeLayer(neural_network,
 						                                     (-1, previous_layer_dimension[-1]))
 
-					# print_output_dimension("after reshape (for dense layer)", neural_network, sequence_length, window_size)
+					#print_output_dimension("after reshape (for dense layer)", neural_network, sequence_length, window_size)
 
 				previous_layer_dimension = layers.get_output_shape(neural_network)
 				activation_probability = layers.sample_activation_probability(previous_layer_dimension[-1],
@@ -345,7 +355,7 @@ class DynamicElmanNetwork(RecurrentNetwork):
 				                                   W=init.GlorotUniform(
 					                                   gain=init.GlorotUniformGain[layer_nonlinearity]),
 				                                   nonlinearity=layer_nonlinearity)
-			# print_output_dimension("after dense layer %i" % layer_index, neural_network, sequence_length, window_size)
+				#print_output_dimension("after dense layer %i" % layer_index, neural_network, sequence_length, window_size)
 
 			elif isinstance(layer_dimension, list):
 				# if not isinstance(layers.get_all_layers(neural_network)[-1], recurrent_type):
@@ -353,7 +363,7 @@ class DynamicElmanNetwork(RecurrentNetwork):
 					previous_layer_dimension = layers.get_output_shape(neural_network)
 					neural_network = layers.ReshapeLayer(neural_network,
 					                                     (-1, self._sequence_length, previous_layer_dimension[-1]))
-				# print_output_dimension("after reshape (for recurrent layer)", neural_network, sequence_length, window_size)
+				#print_output_dimension("after reshape (for recurrent layer)", neural_network, sequence_length, window_size)
 
 				layer_dimension = layer_dimension[0]
 				layer_nonlinearity = layer_nonlinearity[0]
@@ -369,8 +379,8 @@ class DynamicElmanNetwork(RecurrentNetwork):
 					                                       hid_init=init.Constant(0.),
 					                                       backwards=False,
 					                                       learn_init=False,
-					                                       gradient_steps=-1,
-					                                       grad_clipping=0,
+					                                       gradient_steps=self._gradient_steps,
+					                                       grad_clipping=self._gradient_clipping,
 					                                       unroll_scan=False,
 					                                       precompute_input=True,
 					                                       mask_input=self._input_mask_layer,
@@ -390,14 +400,14 @@ class DynamicElmanNetwork(RecurrentNetwork):
 					                                  backwards=False,
 					                                  learn_init=False,
 					                                  peepholes=True,
-					                                  gradient_steps=-1,
-					                                  grad_clipping=0,
+					                                  gradient_steps=self._gradient_steps,
+					                                  grad_clipping=self._gradient_clipping,
 					                                  unroll_scan=False,
 					                                  precompute_input=True,
 					                                  mask_input=self._input_mask_layer,
 					                                  # only_return_final=True
 					                                  )
-				# print_output_dimension("after recurrent layer %i" % layer_index, neural_network, sequence_length, window_size)
+				#print_output_dimension("after recurrent layer %i" % layer_index, neural_network, sequence_length, window_size)
 			else:
 				logger.error("Unrecognized layer specifications...")
 				sys.stderr.write("Unrecognized layer specifications...\n")
@@ -412,6 +422,7 @@ class DynamicElmanNetwork(RecurrentNetwork):
 
 		# Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
 		dropout_loss = self.get_loss(self._output_variable, deterministic=True)
+		dropout_objective = self.get_objectives(self._output_variable, deterministic=True)
 		dropout_accuracy = self.get_objectives(self._output_variable,
 		                                       objective_functions="categorical_accuracy",
 		                                       deterministic=True)
@@ -424,7 +435,7 @@ class DynamicElmanNetwork(RecurrentNetwork):
 		self._train_dropout_function = theano.function(
 			inputs=[self._input_variable, self._output_variable, self._input_mask_variable,
 			        self._learning_rate_variable],
-			outputs=[dropout_loss, dropout_accuracy],
+			outputs=[dropout_objective, dropout_accuracy],
 			updates=adaptable_params_updates
 		)
 
@@ -433,15 +444,13 @@ class DynamicElmanNetwork(RecurrentNetwork):
 			inputs=[self._input_variable, self._output_variable, self._input_mask_variable,
 			        self._learning_rate_variable],
 			outputs=debug_rademacher(self, self._output_variable, deterministic=True),
-			# outputs=[self.get_objectives(self._output_variable, determininistic=True), self.get_loss(self._output_variable, deterministic=True)],
 			on_unused_input='ignore'
 		)
 
 	def train_minibatch(self, minibatch_x, minibatch_y, minibatch_m, learning_rate):
 		minibatch_running_time = timeit.default_timer()
 		train_function_outputs = self._train_function(minibatch_x, minibatch_y, minibatch_m, learning_rate)
-		minibatch_average_train_loss = train_function_outputs[0]
-		minibatch_average_train_accuracy = train_function_outputs[1]
+		minibatch_average_train_objective, minibatch_average_train_accuracy = train_function_outputs
 		if self._dropout_rate_update_interval > 0 and self.minibatch_index % self._dropout_rate_update_interval == 0:
 			train_dropout_function_outputs = self._train_dropout_function(minibatch_x, minibatch_y, minibatch_m,
 			                                                              learning_rate)
@@ -451,7 +460,7 @@ class DynamicElmanNetwork(RecurrentNetwork):
 
 		self._normalize_embedding_function()
 
-		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
+		return minibatch_running_time, minibatch_average_train_objective, minibatch_average_train_accuracy
 
 	'''
 	def get_output_from_sequence(self, input_sequence):

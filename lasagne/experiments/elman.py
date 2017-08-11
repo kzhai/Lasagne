@@ -14,6 +14,8 @@ def construct_elman_parser():
 	from . import construct_discriminative_parser, add_dropout_options
 
 	model_parser = construct_discriminative_parser()
+	model_parser.description = "elman net argument"
+
 	model_parser = add_dropout_options(model_parser)
 
 	# model argument set 1
@@ -24,7 +26,7 @@ def construct_elman_parser():
 
 	# model argument set 2
 	model_parser.add_argument("--window_size", dest="window_size", action='store', default=1, type=int,
-	                          help="window size [1]")
+	                          help="window size [1] for local aggregation or transformation")
 	model_parser.add_argument("--position_offset", dest="position_offset", action='store', default=-1, type=int,
 	                          help="position offset of current word in window [-1=window_size/2]")
 	model_parser.add_argument("--sequence_length", dest="sequence_length", action='store', default=100, type=int,
@@ -39,7 +41,15 @@ def construct_elman_parser():
 	# model_parser.add_argument("--recurrent_style", dest="recurrent_style", action='store', default='elman',
 	# help="recurrent network style [default=elman, bi-elman]")
 	model_parser.add_argument("--recurrent_type", dest="recurrent_type", action='store', default='LSTMLayer',
-	                          help="recurrent layer type [default=RecurrentLayer, LSTMLayer]")
+	                          help="recurrent layer type [default=LSTMLayer]")
+	'''
+	It is highly recomended that---in this implementation---to realize backward pass through the concept of input mask (hence to support different input sequence lenght).
+	The settings for gradient_steps should be less than the settings for sequence_length, and larger than -1.
+	'''
+	model_parser.add_argument("--gradient_steps", dest="gradient_steps", action='store', default=-1, type=int,
+	                          help="number of timesteps to include in the backpropagated gradient [-1 = backpropagate through the entire sequence]")
+	model_parser.add_argument("--gradient_clipping", dest="gradient_clipping", action='store', default=0, type=float,
+	                          help="if nonzero, the gradient messages are clipped to the given value during the backward pass [0]")
 
 	return model_parser
 
@@ -135,6 +145,8 @@ def validate_elman_arguments(arguments):
 	# model argument set 4
 	# assert arguments.recurrent_style in ["elman", "bi-elman"]
 	arguments.recurrent_type = getattr(layers.recurrent, arguments.recurrent_type)
+	assert arguments.gradient_steps >= -1 and arguments.gradient_steps < arguments.sequence_length
+	assert arguments.gradient_clipping >= 0
 
 	vocabulary_dimension = 0
 	for line in open(os.path.join(arguments.input_directory, "type.info"), 'r'):
@@ -147,7 +159,8 @@ def validate_elman_arguments(arguments):
 	for line in open(os.path.join(arguments.input_directory, "label.info"), 'r'):
 		label_dimension += 1
 	arguments.label_dimension = label_dimension
-	assert arguments.label_dimension == arguments.layer_dimensions[-1]
+	assert arguments.label_dimension == arguments.layer_dimensions[-1], (
+		arguments.label_dimension, arguments.layer_dimensions)
 
 	return arguments
 
@@ -172,23 +185,23 @@ def train_elman():
 	'''
 
 	network = networks.ElmanNetwork(
-		# incoming=settings.input_shape,
-		# incoming_mask=settings.input_mask_shape,
-
-		window_size=settings.window_size,
 		sequence_length=settings.sequence_length,
 
 		layer_dimensions=settings.layer_dimensions,
 		layer_nonlinearities=settings.layer_nonlinearities,
 
+		vocabulary_dimension=settings.vocabulary_dimension,
+		embedding_dimension=settings.embedding_dimension,
+
+		recurrent_type=settings.recurrent_type,
+		gradient_clipping=settings.gradient_clipping,
+
+		window_size=settings.window_size,
 		position_offset=settings.position_offset,
+		gradient_steps=settings.gradient_steps,
 
 		layer_activation_parameters=settings.layer_activation_parameters,
 		layer_activation_styles=settings.layer_activation_styles,
-
-		vocabulary_dimension=settings.vocabulary_dimension,
-		embedding_dimension=settings.embedding_dimension,
-		recurrent_type=settings.recurrent_type,
 
 		objective_functions=settings.objective,
 		update_function=settings.update,

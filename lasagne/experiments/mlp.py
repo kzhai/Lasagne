@@ -63,7 +63,7 @@ def validate_dropout_arguments(arguments, number_of_layers):
 	# [float(layer_activation_parameter) for layer_activation_parameter in layer_activation_parameter_tokens]
 	assert len(layer_activation_styles) == number_of_layers
 	assert (layer_activation_style in set(
-		["bernoulli", "beta_bernoulli", "reciprocal_beta_bernoulli", "reverse_reciprocal_beta_bernoulli",
+		["uniform", "bernoulli", "beta_bernoulli", "reciprocal_beta_bernoulli", "reverse_reciprocal_beta_bernoulli",
 		 "mixed_beta_bernoulli"]) for layer_activation_style in layer_activation_styles)
 	arguments.layer_activation_styles = layer_activation_styles
 
@@ -76,7 +76,11 @@ def validate_dropout_arguments(arguments, number_of_layers):
 	assert len(layer_activation_parameters) == number_of_layers
 
 	for layer_index in range(number_of_layers):
-		if layer_activation_styles[layer_index] == "bernoulli":
+		if layer_activation_styles[layer_index] == "uniform":
+			layer_activation_parameters[layer_index] = float(layer_activation_parameters[layer_index])
+			assert layer_activation_parameters[layer_index] <= 1
+			assert layer_activation_parameters[layer_index] > 0
+		elif layer_activation_styles[layer_index] == "bernoulli":
 			layer_activation_parameters[layer_index] = float(layer_activation_parameters[layer_index])
 			assert layer_activation_parameters[layer_index] <= 1
 			assert layer_activation_parameters[layer_index] > 0

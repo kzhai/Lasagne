@@ -1,7 +1,7 @@
-import os;
+import os
 
-import numpy;
-import numpy.random;
+import numpy
+import numpy.random
 
 
 def plot_accuracy_loss(model_directory, maximum_iteration=0):

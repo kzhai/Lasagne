@@ -353,6 +353,7 @@ class DynamicAlexNet(FeedForwardNetwork):
 
 		# Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
 		dropout_loss = self.get_loss(self._output_variable, deterministic=True)
+		dropout_objective= self.get_objectives(self._output_variable, deterministic=True)
 		dropout_accuracy = self.get_objectives(self._output_variable,
 		                                       objective_functions="categorical_accuracy",
 		                                       deterministic=True)
@@ -364,7 +365,7 @@ class DynamicAlexNet(FeedForwardNetwork):
 		# Compile a second function computing the validation train_loss and accuracy:
 		self._train_dropout_function = theano.function(
 			inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
-			outputs=[dropout_loss, dropout_accuracy],
+			outputs=[dropout_objective, dropout_accuracy],
 			updates=adaptable_params_updates
 		)
 
@@ -381,15 +382,13 @@ class DynamicAlexNet(FeedForwardNetwork):
 	def train_minibatch(self, minibatch_x, minibatch_y, learning_rate):
 		minibatch_running_time = timeit.default_timer()
 		train_function_outputs = self._train_function(minibatch_x, minibatch_y, learning_rate)
-		minibatch_average_train_loss = train_function_outputs[0]
+		minibatch_average_train_objective = train_function_outputs[0]
 		minibatch_average_train_accuracy = train_function_outputs[1]
 
 		if self._dropout_rate_update_interval > 0 and self.minibatch_index % self._dropout_rate_update_interval == 0:
 			train_dropout_function_outputs = self._train_dropout_function(minibatch_x, minibatch_y, learning_rate)
-		# minibatch_average_train_dropout_loss = train_dropout_function_outputs[0]
-		# minibatch_average_train_dropout_accuracy = train_dropout_function_outputs[1]
 		minibatch_running_time = timeit.default_timer() - minibatch_running_time
 
 		# print self._debug_function(minibatch_x, minibatch_y, learning_rate)
 
-		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
+		return minibatch_running_time, minibatch_average_train_objective, minibatch_average_train_accuracy

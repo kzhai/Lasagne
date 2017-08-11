@@ -21,12 +21,12 @@ model_setting_pattern = re.compile(
 	r'(?P<date>[\d-]+?) (?P<time>[\d:,]+?) \| (?P<name>[\w\.]+?) \| INFO \|\s+(?P<setting>[\w]+?)=(?P<value>.+)')
 
 
-def parse_models(dataset_directory, select_settings=None, output_file=None):
+def parse_models(model_directories, select_settings=None, output_file=None):
 	if output_file != None:
 		output_stream = open(output_file, 'w')
 
-	for model_name in os.listdir(dataset_directory):
-		model_directory = os.path.join(dataset_directory, model_name)
+	for model_name in os.listdir(model_directories):
+		model_directory = os.path.join(model_directories, model_name)
 		if os.path.isfile(model_directory):
 			continue
 
@@ -36,7 +36,7 @@ def parse_models(dataset_directory, select_settings=None, output_file=None):
 
 		model_settings, train_logs, valid_logs, test_logs, best_model_logs = parse_model(model_log_file)
 		if len(model_settings) == 0:
-			continue;
+			continue
 
 		'''
 		if test_logs.shape[0]==0:
@@ -154,7 +154,6 @@ def parse_model(model_log_file):
 	return model_settings, train_logs, valid_logs, test_logs, best_model_logs
 
 
-
 def minibatch_pattern_match(pattern, line):
 	matcher = re.match(pattern, line)
 	if matcher is not None:
@@ -187,7 +186,7 @@ if __name__ == '__main__':
 		print("%s=%s" % (key, value))
 	print("========== ========== ========== ========== ==========")
 
-	model_directory = arguments.model_directories
+	model_directories = arguments.model_directories
 	select_settings = arguments.select_settings
 
 	if select_settings.lower() == "none":
@@ -198,4 +197,4 @@ if __name__ == '__main__':
 		select_settings = select_settings.split(",")
 	output_result_file = arguments.output_result_file
 
-	parse_models(model_directory, select_settings, output_result_file)
+	parse_models(model_directories, select_settings, output_result_file)

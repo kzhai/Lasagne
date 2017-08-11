@@ -13,7 +13,7 @@ def construct_delman_parser():
 	from .elman import construct_elman_parser
 	model_parser = construct_elman_parser()
 
-	model_parser.description = "convolutional dynamic elman net argument"
+	model_parser.description = "dynamic elman net argument"
 
 	# model argument set
 	model_parser.add_argument("--dropout_rate_update_interval", dest="dropout_rate_update_interval", type=int,
@@ -46,20 +46,23 @@ def train_delman():
 	settings = config_model(construct_delman_parser, validate_delman_arguments)
 
 	network = networks.DynamicElmanNetwork(
-		window_size=settings.window_size,
 		sequence_length=settings.sequence_length,
 
 		layer_dimensions=settings.layer_dimensions,
 		layer_nonlinearities=settings.layer_nonlinearities,
 
+		vocabulary_dimension=settings.vocabulary_dimension,
+		embedding_dimension=settings.embedding_dimension,
+
+		recurrent_type=settings.recurrent_type,
+		gradient_clipping=settings.gradient_clipping,
+
+		window_size=settings.window_size,
 		position_offset=settings.position_offset,
+		gradient_steps=settings.gradient_steps,
 
 		layer_activation_parameters=settings.layer_activation_parameters,
 		layer_activation_styles=settings.layer_activation_styles,
-
-		vocabulary_dimension=settings.vocabulary_dimension,
-		embedding_dimension=settings.embedding_dimension,
-		recurrent_type=settings.recurrent_type,
 
 		objective_functions=settings.objective,
 		update_function=settings.update,
