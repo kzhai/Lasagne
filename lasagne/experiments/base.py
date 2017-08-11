@@ -307,8 +307,8 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	# input_shape.insert(0, None)
 	# input_shape = tuple(input_shape)
 
-	train_dataset = (train_dataset[0][:100], train_dataset[1][:100])
-	test_dataset = (test_dataset[0][:100], test_dataset[1][:100])
+	# train_dataset = (train_dataset[0][:100], train_dataset[1][:100])
+	# test_dataset = (test_dataset[0][:100], test_dataset[1][:100])
 
 	'''
 	test_x, test_y = test_dataset
