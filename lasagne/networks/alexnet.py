@@ -1,11 +1,8 @@
 import logging
-import timeit
 
 import numpy
-import theano
-import theano.tensor
 
-from . import FeedForwardNetwork
+from . import FeedForwardNetwork, DynamicFeedForwardNetwork
 from .. import init, objectives, updates
 from .. import layers
 
@@ -39,10 +36,8 @@ class AlexNet(FeedForwardNetwork):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 	             learning_rate=1e-3,
-	             learning_rate_decay=None,
+	             #learning_rate_decay=None,
 	             max_norm_constraint=0,
-	             # learning_rate_decay_style=None,
-	             # learning_rate_decay_parameter=0,
 
 	             validation_interval=-1,
 
@@ -61,7 +56,7 @@ class AlexNet(FeedForwardNetwork):
 		                              objective_functions,
 		                              update_function,
 		                              learning_rate,
-		                              learning_rate_decay,
+		                              #learning_rate_decay,
 		                              max_norm_constraint,
 		                              # learning_rate_decay_style,
 		                              # learning_rate_decay_parameter,
@@ -138,13 +133,13 @@ class AlexNet(FeedForwardNetwork):
 		if locally_connected_filters is not None and len(locally_connected_filters) > 0:
 			for local_layer_index in range(len(locally_connected_filters)):
 				neural_network = layers.LocallyConnected2DLayer(neural_network,
-				                                               locally_connected_filters[local_layer_index],
-				                                               filter_size=local_convolution_filter_sizes,
-				                                               stride=local_convolution_strides,
-				                                               pad=local_convolution_pads,
-				                                               W=init.GlorotUniform(),
-				                                               b=init.Constant(0.),
-				                                               )
+				                                                locally_connected_filters[local_layer_index],
+				                                                filter_size=local_convolution_filter_sizes,
+				                                                stride=local_convolution_strides,
+				                                                pad=local_convolution_pads,
+				                                                W=init.GlorotUniform(),
+				                                                b=init.Constant(0.),
+				                                                )
 			# print "locally-connected", numpy.mean(neural_network.W.eval()), numpy.max(neural_network.W.eval()), numpy.min(neural_network.W.eval())
 
 		assert len(dense_dimensions) == len(dense_nonlinearities)
@@ -174,7 +169,7 @@ class AlexNet(FeedForwardNetwork):
 		self.build_functions()
 
 
-class DynamicAlexNet(FeedForwardNetwork):
+class DynamicAlexNet(DynamicFeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 
@@ -195,14 +190,16 @@ class DynamicAlexNet(FeedForwardNetwork):
 
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
-	             learning_rate=1e-3,
-	             learning_rate_decay=None,
-	             max_norm_constraint=0,
-	             # learning_rate_decay_style=None,
-	             # learning_rate_decay_parameter=0,
 
-	             dropout_rate_update_interval=-1,
+	             learning_rate=1e-3,
+	             #learning_rate_decay=None,
+
+	             dropout_learning_rate=1e-3,
+	             #dropout_learning_rate_decay=None,
+	             dropout_rate_update_interval=1,
 	             update_hidden_layer_dropout_only=False,
+
+	             max_norm_constraint=0,
 
 	             validation_interval=-1,
 
@@ -221,13 +218,14 @@ class DynamicAlexNet(FeedForwardNetwork):
 		                                     objective_functions,
 		                                     update_function,
 		                                     learning_rate,
-		                                     learning_rate_decay,
-		                                     max_norm_constraint,
-		                                     # learning_rate_decay_style,
-		                                     # learning_rate_decay_parameter,
-		                                     validation_interval)
+		                                     #learning_rate_decay,
 
-		self._dropout_rate_update_interval = dropout_rate_update_interval
+		                                     dropout_learning_rate,
+		                                     #dropout_learning_rate_decay,
+		                                     dropout_rate_update_interval,
+
+		                                     max_norm_constraint,
+		                                     validation_interval)
 
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
 		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
@@ -348,12 +346,13 @@ class DynamicAlexNet(FeedForwardNetwork):
 
 		self.build_functions()
 
+	'''
 	def build_functions(self):
 		super(DynamicAlexNet, self).build_functions()
 
 		# Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
 		dropout_loss = self.get_loss(self._output_variable, deterministic=True)
-		dropout_objective= self.get_objectives(self._output_variable, deterministic=True)
+		dropout_objective = self.get_objectives(self._output_variable, deterministic=True)
 		dropout_accuracy = self.get_objectives(self._output_variable,
 		                                       objective_functions="categorical_accuracy",
 		                                       deterministic=True)
@@ -369,7 +368,6 @@ class DynamicAlexNet(FeedForwardNetwork):
 			updates=adaptable_params_updates
 		)
 
-		'''
 		from debugger import debug_rademacher
 		self._debug_function = theano.function(
 			inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
@@ -377,7 +375,6 @@ class DynamicAlexNet(FeedForwardNetwork):
 			# outputs=[self.get_objectives(self._output_variable, determininistic=True), self.get_loss(self._output_variable, deterministic=True)],
 			on_unused_input='ignore'
 		)
-		'''
 
 	def train_minibatch(self, minibatch_x, minibatch_y, learning_rate):
 		minibatch_running_time = timeit.default_timer()
@@ -392,3 +389,4 @@ class DynamicAlexNet(FeedForwardNetwork):
 		# print self._debug_function(minibatch_x, minibatch_y, learning_rate)
 
 		return minibatch_running_time, minibatch_average_train_objective, minibatch_average_train_accuracy
+	'''

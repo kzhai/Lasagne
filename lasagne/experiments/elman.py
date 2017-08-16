@@ -42,14 +42,23 @@ def construct_elman_parser():
 	# help="recurrent network style [default=elman, bi-elman]")
 	model_parser.add_argument("--recurrent_type", dest="recurrent_type", action='store', default='LSTMLayer',
 	                          help="recurrent layer type [default=LSTMLayer]")
+	model_parser.add_argument("--total_norm_constraint", dest="total_norm_constraint", action='store', default=0,
+	                          type=float,
+	                          help="total norm constraint [0]")
+
 	'''
 	It is highly recomended that---in this implementation---to realize backward pass through the concept of input mask (hence to support different input sequence lenght).
 	The settings for gradient_steps should be less than the settings for sequence_length, and larger than -1.
+	'''
 	'''
 	model_parser.add_argument("--gradient_steps", dest="gradient_steps", action='store', default=-1, type=int,
 	                          help="number of timesteps to include in the backpropagated gradient [-1 = backpropagate through the entire sequence]")
 	model_parser.add_argument("--gradient_clipping", dest="gradient_clipping", action='store', default=0, type=float,
 	                          help="if nonzero, the gradient messages are clipped to the given value during the backward pass [0]")
+	'''
+
+	model_parser.add_argument('--normalize_embeddings', dest="normalize_embeddings", action='store_true', default=False,
+	                          help="normalize embeddings after each mini-batch [False]")
 
 	return model_parser
 
@@ -145,8 +154,9 @@ def validate_elman_arguments(arguments):
 	# model argument set 4
 	# assert arguments.recurrent_style in ["elman", "bi-elman"]
 	arguments.recurrent_type = getattr(layers.recurrent, arguments.recurrent_type)
-	assert arguments.gradient_steps >= -1 and arguments.gradient_steps < arguments.sequence_length
-	assert arguments.gradient_clipping >= 0
+	assert arguments.total_norm_constraint >= 0
+	# assert arguments.gradient_steps >= -1 and arguments.gradient_steps < arguments.sequence_length
+	# assert arguments.gradient_clipping >= 0
 
 	vocabulary_dimension = 0
 	for line in open(os.path.join(arguments.input_directory, "type.info"), 'r'):
@@ -194,11 +204,11 @@ def train_elman():
 		embedding_dimension=settings.embedding_dimension,
 
 		recurrent_type=settings.recurrent_type,
-		gradient_clipping=settings.gradient_clipping,
 
 		window_size=settings.window_size,
 		position_offset=settings.position_offset,
-		gradient_steps=settings.gradient_steps,
+		# gradient_steps=settings.gradient_steps,
+		# gradient_clipping=settings.gradient_clipping,
 
 		layer_activation_parameters=settings.layer_activation_parameters,
 		layer_activation_styles=settings.layer_activation_styles,
@@ -208,8 +218,11 @@ def train_elman():
 		# pretrained_model=pretrained_model
 
 		learning_rate=settings.learning_rate,
-		learning_rate_decay=settings.learning_rate_decay,
+		#learning_rate_decay=settings.learning_rate_decay,
 		max_norm_constraint=settings.max_norm_constraint,
+		total_norm_constraint=settings.total_norm_constraint,
+		normalize_embeddings=settings.normalize_embeddings,
+
 		validation_interval=settings.validation_interval,
 	)
 

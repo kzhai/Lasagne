@@ -238,7 +238,7 @@ def train_lenet():
 		update_function=settings.update,
 
 		learning_rate=settings.learning_rate,
-		learning_rate_decay=settings.learning_rate_decay,
+		#learning_rate_decay=settings.learning_rate_decay,
 		max_norm_constraint=settings.max_norm_constraint,
 		# learning_rate_decay_style=settings.learning_rate_decay_style,
 		# learning_rate_decay_parameter=settings.learning_rate_decay_parameter,

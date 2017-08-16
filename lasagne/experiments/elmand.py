@@ -15,7 +15,17 @@ def construct_delman_parser():
 
 	model_parser.description = "dynamic elman net argument"
 
-	# model argument set
+	# model argument set 1
+	'''
+	model_parser.add_argument("--dropout_learning_rate", dest="dropout_learning_rate", type=float, action='store',
+	                          default=0, help="dropout learning rate [0 = learning_rate]")
+	model_parser.add_argument("--dropout_learning_rate_decay", dest="dropout_learning_rate_decay", action='store',
+	                          default=None, help="dropout learning rate decay [None = learning_rate_decay]")
+	'''
+	model_parser.add_argument("--dropout_learning_rate", dest="dropout_learning_rate", action='store',
+	                          default=None, help="dropout learning rate [None = learning_rate]")
+
+	# model argument set 2
 	model_parser.add_argument("--dropout_rate_update_interval", dest="dropout_rate_update_interval", type=int,
 	                          action='store', default=0,
 	                          help="dropout rate update interval [0=no update]")
@@ -30,8 +40,26 @@ def validate_delman_arguments(arguments):
 	from .elman import validate_elman_arguments
 	arguments = validate_elman_arguments(arguments)
 
-	# model argument set
-	assert (arguments.dropout_rate_update_interval >= 0)
+	# model argument set 1
+	if arguments.dropout_learning_rate is None:
+		arguments.dropout_learning_rate = arguments.learning_rate;
+	else:
+		dropout_learning_rate_tokens = arguments.dropout_learning_rate.split(",")
+		dropout_learning_rate_tokens[0] = float(dropout_learning_rate_tokens[0]);
+		assert dropout_learning_rate_tokens[0] > 0
+		if len(dropout_learning_rate_tokens) == 1:
+			pass
+		elif len(dropout_learning_rate_tokens) == 5:
+			assert dropout_learning_rate_tokens[1] in ["iteration", "epoch"]
+			assert dropout_learning_rate_tokens[2] in ["inverse_t", "exponential", "step"]
+			dropout_learning_rate_tokens[3] = float(dropout_learning_rate_tokens[3])
+			dropout_learning_rate_tokens[4] = float(dropout_learning_rate_tokens[4])
+		else:
+			logger.error("unrecognized dropout learning rate %s..." % (arguments.dropout_learning_rate))
+		arguments.dropout_learning_rate = dropout_learning_rate_tokens
+
+	# model argument set 2
+	assert (arguments.dropout_rate_update_interval > 0)
 
 	return arguments
 
@@ -55,11 +83,11 @@ def train_delman():
 		embedding_dimension=settings.embedding_dimension,
 
 		recurrent_type=settings.recurrent_type,
-		gradient_clipping=settings.gradient_clipping,
 
 		window_size=settings.window_size,
 		position_offset=settings.position_offset,
-		gradient_steps=settings.gradient_steps,
+		# gradient_steps=settings.gradient_steps,
+		# gradient_clipping=settings.gradient_clipping,
 
 		layer_activation_parameters=settings.layer_activation_parameters,
 		layer_activation_styles=settings.layer_activation_styles,
@@ -69,12 +97,17 @@ def train_delman():
 		# pretrained_model=pretrained_model
 
 		learning_rate=settings.learning_rate,
-		learning_rate_decay=settings.learning_rate_decay,
-		max_norm_constraint=settings.max_norm_constraint,
+		#learning_rate_decay=settings.learning_rate_decay,
 
+		dropout_learning_rate=settings.dropout_learning_rate,
+		#dropout_learning_rate_decay=settings.dropout_learning_rate_decay,
 		dropout_rate_update_interval=settings.dropout_rate_update_interval,
 		update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
 
+		total_norm_constraint=settings.total_norm_constraint,
+		normalize_embeddings=settings.normalize_embeddings,
+
+		max_norm_constraint=settings.max_norm_constraint,
 		validation_interval=settings.validation_interval,
 	)
 

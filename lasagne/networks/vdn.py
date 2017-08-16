@@ -32,10 +32,8 @@ class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 	             update_function=updates.nesterov_momentum,
 
 	             learning_rate=1e-3,
-	             learning_rate_decay=None,
+	             #learning_rate_decay=None,
 	             max_norm_constraint=0,
-	             # learning_rate_decay_style=None,
-	             # learning_rate_decay_parameter=0,
 
 	             validation_interval=-1,
 	             ):
@@ -43,10 +41,8 @@ class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 		                                                     objective_functions,
 		                                                     update_function,
 		                                                     learning_rate,
-		                                                     learning_rate_decay,
+		                                                     #learning_rate_decay,
 		                                                     max_norm_constraint,
-		                                                     # learning_rate_decay_style,
-		                                                     # learning_rate_decay_parameter,
 		                                                     validation_interval,
 		                                                     )
 
@@ -142,6 +138,7 @@ class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 			on_unused_input='ignore'
 		)
 
+	'''
 	def train_minibatch(self, minibatch_x, minibatch_y, learning_rate):
 		minibatch_running_time = timeit.default_timer()
 		train_function_outputs = self._train_function(minibatch_x, minibatch_y, learning_rate)
@@ -153,7 +150,6 @@ class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 
 		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
 
-	'''
 	def __set_regularizer_functions(self, regularizer_functions=None):
 		_regularizer_functions = {}
 		if regularizer_functions!=None:
@@ -192,10 +188,8 @@ class VariationalDropoutTypeBNetwork(FeedForwardNetwork):
 	             update_function=updates.nesterov_momentum,
 
 	             learning_rate=1e-3,
-	             learning_rate_decay=None,
+	             #learning_rate_decay=None,
 	             max_norm_constraint=0,
-	             # learning_rate_decay_style=None,
-	             # learning_rate_decay_parameter=0,
 
 	             validation_interval=-1,
 	             ):
@@ -203,7 +197,6 @@ class VariationalDropoutTypeBNetwork(FeedForwardNetwork):
 		                                                     objective_functions,
 		                                                     update_function,
 		                                                     learning_rate,
-		                                                     learning_rate_decay,
 		                                                     max_norm_constraint,
 		                                                     # learning_rate_decay_style,
 		                                                     # learning_rate_decay_parameter,
@@ -286,6 +279,7 @@ class VariationalDropoutTypeBNetwork(FeedForwardNetwork):
 			on_unused_input='ignore'
 		)
 
+	'''
 	def train_minibatch(self, minibatch_x, minibatch_y, learning_rate):
 		minibatch_running_time = timeit.default_timer()
 		train_function_outputs = self._train_function(minibatch_x, minibatch_y, learning_rate)
@@ -296,6 +290,7 @@ class VariationalDropoutTypeBNetwork(FeedForwardNetwork):
 		# print self._debug_function(minibatch_x, minibatch_y, learning_rate)
 
 		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_accuracy
+	'''
 
 
 def print_output_dimension(checkpoint_text, neural_network, batch_size):

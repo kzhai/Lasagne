@@ -234,8 +234,7 @@ def linf_norm(X, axis=None):
 	return T.max(abs(X), axis=axis)
 
 
-def __find_layer_before_dropout(network, axis=None):
-	print(network.get_network_layers())
+def __find_pre_dropout_layer(network):
 	for layer_1, layer_2 in zip(network.get_network_layers()[:-1], network.get_network_layers()[1:]):
 		if isinstance(layer_2, LinearDropoutLayer) or isinstance(layer_2, AdaptiveDropoutLayer):
 			return layer_1
@@ -246,9 +245,11 @@ def __find_input_layer(network):
 			return layer
 	return network._input_layer
 
+find_input_layer = __find_pre_dropout_layer
+#find_input_layer = __find_input_layer
 
 def rademacher_p_2_q_2(network, **kwargs):
-	input_layer = __find_input_layer(network)
+	input_layer = find_input_layer(network)
 
 	input_shape = get_output_shape(input_layer)
 	input_value = get_output(input_layer)
@@ -287,7 +288,7 @@ rademacher = rademacher_p_2_q_2  # shortcut
 
 
 def rademacher_p_inf_q_1(network, **kwargs):
-	input_layer = __find_input_layer(network)
+	input_layer = find_input_layer(network)
 
 	input_shape = get_output_shape(input_layer)
 	input_value = get_output(input_layer)
@@ -318,7 +319,7 @@ def rademacher_p_inf_q_1(network, **kwargs):
 
 
 def rademacher_p_1_q_inf(network, **kwargs):
-	input_layer = __find_input_layer(network)
+	input_layer = find_input_layer(network)
 
 	input_shape = get_output_shape(input_layer)
 	input_value = get_output(input_layer)

@@ -10,6 +10,7 @@ import timeit
 import numpy
 
 from .. import objectives, updates, regularization
+from lasagne.experiments import debugger
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +40,9 @@ def construct_generic_parser():
 	# help="logging file [None]")
 
 	# generic argument set 2
-	generic_parser.add_argument("--objective", dest="objective", action='store',
-	                            default="categorical_crossentropy",
+	generic_parser.add_argument("--objective", dest="objective", action='store', default="categorical_crossentropy",
 	                            help="objective function [categorical_crossentropy], example, 'squared_error' represents the neural network optimizes squared error")
-	generic_parser.add_argument("--update", dest="update", action='store',
-	                            default="nesterov_momentum",
+	generic_parser.add_argument("--update", dest="update", action='store', default="nesterov_momentum",
 	                            help="update function to minimize [nesterov_momentum], example, 'sgd' represents the stochastic gradient descent")
 	generic_parser.add_argument("--regularizer", dest='regularizer', action='append', default=[],
 	                            help="regularizer function [None], example, " +
@@ -59,28 +58,33 @@ def construct_generic_parser():
 	                            help="snapshot interval in number of epochs [0 - no snapshot]")
 
 	# generic argument set 4
+	'''
 	generic_parser.add_argument("--learning_rate", dest="learning_rate", type=float, action='store', default=1e-2,
 	                            help="learning rate [1e-2]")
 	generic_parser.add_argument("--learning_rate_decay", dest="learning_rate_decay", action='store', default=None,
 	                            help="learning rate decay [None], example, 'iteration,inverse_t,0.2,0.1', 'epoch,exponential,1.7,0.1', 'epoch,step,0.2,100'")
+	'''
+	generic_parser.add_argument("--learning_rate", dest="learning_rate", action='store', default="1e-2",
+	                            help="learning rate [1e-2], example, '1e-3', '1e-2,iteration,inverse_t,0.2,0.1'")
+
 	generic_parser.add_argument("--max_norm_constraint", dest="max_norm_constraint", type=float, action='store',
-	                            default=0,
-	                            help="max norm constraint [0 - None]")
-	'''
-	generic_parser.add_argument("--learning_rate_decay_style", dest="learning_rate_decay_style", action='store',
-								default=None,
-								help="learning rate decay style [None], example, 'inverse_t', 'exponential'")
-	generic_parser.add_argument("--learning_rate_decay_parameter", dest="learning_rate_decay_parameter", #type=float,
-								action='store', default=None,
-								help="learning rate decay [0 - no learning rate decay], example, half life iterations for inverse_t or exponential decay")
-	'''
+	                            default=0, help="max norm constraint [0 - None]")
+
 	generic_parser.add_argument('--debug', dest="debug", action='store_true', default=False, help="debug mode [False]")
+
+	generic_parser.add_argument("--debugger", dest='debugger', action='append', default=[],
+	                            help="debugger function [None]")
+	'''	                            
+	generic_parser.add_argument("--debug_minibatch", dest='debug_minibatch', action='append', default=[],
+	                            help="debug function [None]")
+	'''
 
 	return generic_parser
 
 
 def validate_generic_arguments(arguments):
 	# generic argument set 4
+	'''
 	assert arguments.learning_rate > 0
 	if arguments.learning_rate_decay is not None:
 		learning_rate_decay_tokens = arguments.learning_rate_decay.split(",")
@@ -90,7 +94,28 @@ def validate_generic_arguments(arguments):
 		learning_rate_decay_tokens[2] = float(learning_rate_decay_tokens[2])
 		learning_rate_decay_tokens[3] = float(learning_rate_decay_tokens[3])
 		arguments.learning_rate_decay = learning_rate_decay_tokens
+	'''
+	learning_rate_tokens = arguments.learning_rate.split(",")
+	learning_rate_tokens[0] = float(learning_rate_tokens[0]);
+	assert learning_rate_tokens[0] > 0
+	if len(learning_rate_tokens) == 1:
+		pass
+	elif len(learning_rate_tokens) == 5:
+		assert learning_rate_tokens[1] in ["iteration", "epoch"]
+		assert learning_rate_tokens[2] in ["inverse_t", "exponential", "step"]
+		learning_rate_tokens[3] = float(learning_rate_tokens[3])
+		learning_rate_tokens[4] = float(learning_rate_tokens[4])
+	else:
+		logger.error("unrecognized learning rate %s..." % (arguments.learning_rate))
+	arguments.learning_rate = learning_rate_tokens
+
 	assert arguments.max_norm_constraint >= 0
+
+	# generic argument set debug
+	debuggers = [];
+	for debugger_function in arguments.debugger:
+		debuggers.append(getattr(debugger, debugger_function))
+	arguments.debugger = debuggers
 
 	# generic argument set 3
 	assert arguments.minibatch_size > 0
@@ -307,8 +332,8 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	# input_shape.insert(0, None)
 	# input_shape = tuple(input_shape)
 
-	# train_dataset = (train_dataset[0][:100], train_dataset[1][:100])
-	# test_dataset = (test_dataset[0][:100], test_dataset[1][:100])
+	#train_dataset = (train_dataset[0][:80], train_dataset[1][:80])
+	#test_dataset = (test_dataset[0][:2], test_dataset[1][:2])
 
 	'''
 	test_x, test_y = test_dataset
@@ -342,12 +367,17 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	# START MODEL TRAINING #
 	########################
 
+	'''
 	if settings.debug:
 		try:
 			network.debug(settings)
 		except NotImplementedError:
 			settings.debug = False
 			print("Oops, debug mode is not available...")
+	'''
+
+	for debug_function in settings.debugger:
+		debug_function(network, settings);
 
 	start_train = timeit.default_timer()
 	# Finally, launch the training loop.
@@ -359,8 +389,8 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 			model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
 		# pickle.dump(network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
-		if settings.debug:
-			network.debug(settings)
+		for debug_function in settings.debugger:
+			debug_function(network, settings);
 
 		print("PROGRESS: %f%%" % (100. * (epoch_index + 1) / settings.number_of_epochs))
 

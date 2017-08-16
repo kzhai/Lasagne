@@ -146,10 +146,8 @@ def train_vdn():
 			# pretrained_model=pretrained_model
 
 			learning_rate=settings.learning_rate,
-			learning_rate_decay=settings.learning_rate_decay,
+			#learning_rate_decay=settings.learning_rate_decay,
 			max_norm_constraint=settings.max_norm_constraint,
-			# learning_rate_decay_style=settings.learning_rate_decay_style,
-			# learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
 
 			validation_interval=settings.validation_interval,
 		)
@@ -169,10 +167,8 @@ def train_vdn():
 			# pretrained_model=pretrained_model
 
 			learning_rate=settings.learning_rate,
-			learning_rate_decay=settings.learning_rate_decay,
+			#learning_rate_decay=settings.learning_rate_decay,
 			max_norm_constraint=settings.max_norm_constraint,
-			# learning_rate_decay_style=settings.learning_rate_decay_style,
-			# learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
 
 			validation_interval=settings.validation_interval,
 		)

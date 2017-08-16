@@ -17,13 +17,21 @@ def construct_dalexnet_parser():
 	from .alexnet import construct_alexnet_parser
 	model_parser = construct_alexnet_parser()
 
-	# model argument set
+	# model argument set 1
+	'''
+	model_parser.add_argument("--dropout_learning_rate", dest="dropout_learning_rate", type=float, action='store',
+	                          default=0, help="dropout learning rate [0 = learning_rate]")
+	model_parser.add_argument("--dropout_learning_rate_decay", dest="dropout_learning_rate_decay", action='store',
+	                          default=None, help="dropout learning rate decay [None = learning_rate_decay]")
+	'''
+	model_parser.add_argument("--dropout_learning_rate", dest="dropout_learning_rate", action='store',
+	                          default=None, help="dropout learning rate [None = learning_rate]")
+
+	# model argument set 2
 	model_parser.add_argument("--dropout_rate_update_interval", dest="dropout_rate_update_interval", type=int,
-	                          action='store', default=0,
-	                          help="dropout rate update interval [0=no update]")
+	                          action='store', default=1, help="dropout rate update interval [1]")
 	model_parser.add_argument('--update_hidden_layer_dropout_only', dest="update_hidden_layer_dropout_only",
-	                          action='store_true', default=False,
-	                          help="update hidden layer dropout only [False]")
+	                          action='store_true', default=False, help="update hidden layer dropout only [False]")
 
 	return model_parser
 
@@ -32,9 +40,26 @@ def validate_dalexnet_arguments(arguments):
 	from .alexnet import validate_alexnet_arguments
 	arguments = validate_alexnet_arguments(arguments)
 
-	# model argument set
-	assert (arguments.dropout_rate_update_interval >= 0)
+	# model argument set 1
+	if arguments.dropout_learning_rate is None:
+		arguments.dropout_learning_rate = arguments.learning_rate;
+	else:
+		dropout_learning_rate_tokens = arguments.dropout_learning_rate.split(",")
+		dropout_learning_rate_tokens[0] = float(dropout_learning_rate_tokens[0]);
+		assert dropout_learning_rate_tokens[0] > 0
+		if len(dropout_learning_rate_tokens) == 1:
+			pass
+		elif len(dropout_learning_rate_tokens) == 5:
+			assert dropout_learning_rate_tokens[1] in ["iteration", "epoch"]
+			assert dropout_learning_rate_tokens[2] in ["inverse_t", "exponential", "step"]
+			dropout_learning_rate_tokens[3] = float(dropout_learning_rate_tokens[3])
+			dropout_learning_rate_tokens[4] = float(dropout_learning_rate_tokens[4])
+		else:
+			logger.error("unrecognized dropout learning rate %s..." % (arguments.dropout_learning_rate))
+		arguments.dropout_learning_rate = dropout_learning_rate_tokens
 
+	# model argument set 2
+	assert (arguments.dropout_rate_update_interval > 0)
 	return arguments
 
 
@@ -71,13 +96,14 @@ def train_dalexnet():
 		update_function=settings.update,
 
 		learning_rate=settings.learning_rate,
-		learning_rate_decay=settings.learning_rate_decay,
-		max_norm_constraint=settings.max_norm_constraint,
-		# learning_rate_decay_style=settings.learning_rate_decay_style,
-		# learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
+		#learning_rate_decay=settings.learning_rate_decay,
 
+		dropout_learning_rate=settings.dropout_learning_rate,
+		#dropout_learning_rate_decay=settings.dropout_learning_rate_decay,
 		dropout_rate_update_interval=settings.dropout_rate_update_interval,
 		update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
+
+		max_norm_constraint=settings.max_norm_constraint,
 
 		validation_interval=settings.validation_interval,
 	)
@@ -99,41 +125,6 @@ def train_dalexnet():
 
 	from . import train_model
 	train_model(network, settings)
-
-	'''
-	########################
-	# START MODEL TRAINING #
-	########################
-
-	start_train = timeit.default_timer()
-	# Finally, launch the training loop.
-	# We iterate over epochs:
-
-	if settings.debug:
-		snapshot_retain_rates(network, output_directory)
-
-	for epoch_index in range(settings.number_of_epochs):
-		network.train(train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory)
-
-		if settings.snapshot_interval>0 and network.epoch_index % settings.snapshot_interval == 0:
-			model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-			#cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
-
-		print("PROGRESS: %f%%" % (100. * epoch_index / settings.number_of_epochs))
-
-		if settings.debug:
-			snapshot_retain_rates(network, output_directory)
-
-	model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-	#cPickle.dump(network, open(model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
-
-	end_train = timeit.default_timer()
-
-	print("Optimization complete...")
-	logger.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
-		network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index))
-	print('The code for file %s ran for %.2fm' % (os.path.split(__file__)[1], (end_train - start_train) / 60.))
-	'''
 
 
 def snapshot_retain_rates(network, output_directory):

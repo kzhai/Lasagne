@@ -1,6 +1,7 @@
 from .alexnet import *
 from .alexnetd import *
 from .base import *
+from .debugger import *
 from .fdn import *
 from .lenet import *
 from .lenetd import *

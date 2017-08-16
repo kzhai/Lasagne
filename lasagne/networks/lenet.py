@@ -1,12 +1,11 @@
 import logging
 import os
-import timeit
 
 import numpy
 import theano
 import theano.tensor
 
-from . import FeedForwardNetwork
+from . import FeedForwardNetwork, DynamicFeedForwardNetwork
 from .. import init, objectives, updates
 from .. import layers
 
@@ -40,10 +39,8 @@ class LeNet(FeedForwardNetwork):
 	             update_function=updates.nesterov_momentum,
 
 	             learning_rate=1e-3,
-	             learning_rate_decay=None,
+	             #learning_rate_decay=None,
 	             max_norm_constraint=0,
-	             # learning_rate_decay_style=None,
-	             # learning_rate_decay_parameter=0,
 
 	             validation_interval=-1,
 
@@ -58,10 +55,8 @@ class LeNet(FeedForwardNetwork):
 		                            objective_functions,
 		                            update_function,
 		                            learning_rate,
-		                            learning_rate_decay,
+		                            #learning_rate_decay,
 		                            max_norm_constraint,
-		                            # learning_rate_decay_style,
-		                            # learning_rate_decay_parameter,
 		                            validation_interval)
 
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
@@ -314,7 +309,7 @@ class LeNet(FeedForwardNetwork):
 	"""
 
 
-class DynamicLeNet(FeedForwardNetwork):
+class DynamicLeNet(DynamicFeedForwardNetwork):
 	def __init__(self,
 	             # input_network=None,
 	             # input_shape,
@@ -335,14 +330,14 @@ class DynamicLeNet(FeedForwardNetwork):
 	             update_function=updates.nesterov_momentum,
 
 	             learning_rate=1e-3,
-	             learning_rate_decay=None,
-	             max_norm_constraint=0,
-	             # learning_rate_decay_style=None,
-	             # learning_rate_decay_parameter=0,
+	             #learning_rate_decay=None,
 
-	             dropout_rate_update_interval=-1,
+	             dropout_learning_rate=1e-3,
+	             #dropout_learning_rate_decay=None,
+	             dropout_rate_update_interval=1,
 	             update_hidden_layer_dropout_only=False,
 
+	             max_norm_constraint=0,
 	             validation_interval=-1,
 
 	             convolution_kernel_sizes=(5, 5),
@@ -356,12 +351,14 @@ class DynamicLeNet(FeedForwardNetwork):
 		                                   objective_functions,
 		                                   update_function,
 		                                   learning_rate,
-		                                   learning_rate_decay,
-		                                   # learning_rate_decay_style,
-		                                   # learning_rate_decay_parameter,
-		                                   validation_interval)
+		                                   #learning_rate_decay,
 
-		self._dropout_rate_update_interval = dropout_rate_update_interval
+		                                   dropout_learning_rate,
+		                                   #dropout_learning_rate_decay,
+		                                   dropout_rate_update_interval,
+
+		                                   max_norm_constraint,
+		                                   validation_interval)
 
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
 		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
@@ -473,6 +470,7 @@ class DynamicLeNet(FeedForwardNetwork):
 
 		self.build_functions()
 
+	'''
 	def build_functions(self):
 		super(DynamicLeNet, self).build_functions()
 
@@ -494,16 +492,6 @@ class DynamicLeNet(FeedForwardNetwork):
 			updates=adaptable_params_updates
 		)
 
-		'''
-		from debugger import debug_rademacher
-		self._debug_function = theano.function(
-			inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
-			outputs=debug_rademacher(self, self._output_variable, deterministic=True),
-			# outputs=[self.get_objectives(self._output_variable, determininistic=True), self.get_loss(self._output_variable, deterministic=True)],
-			on_unused_input='ignore'
-		)
-		'''
-
 	def train_minibatch(self, minibatch_x, minibatch_y, learning_rate):
 		minibatch_running_time = timeit.default_timer()
 		train_function_outputs = self._train_function(minibatch_x, minibatch_y, learning_rate)
@@ -517,6 +505,7 @@ class DynamicLeNet(FeedForwardNetwork):
 		# print self._debug_function(minibatch_x, minibatch_y, learning_rate)
 
 		return minibatch_running_time, minibatch_average_train_objective, minibatch_average_train_accuracy
+	'''
 
 	def debug(self, settings, **kwargs):
 		output_directory = settings.output_directory
