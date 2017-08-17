@@ -54,8 +54,8 @@ def construct_generic_parser():
 	                            help="mini-batch size [-1]")
 	generic_parser.add_argument("--number_of_epochs", dest="number_of_epochs", type=int, action='store', default=-1,
 	                            help="number of epochs [-1]")
-	generic_parser.add_argument("--snapshot_interval", dest="snapshot_interval", type=int, action='store', default=0,
-	                            help="snapshot interval in number of epochs [0 - no snapshot]")
+	#generic_parser.add_argument("--snapshot_interval", dest="snapshot_interval", type=int, action='store', default=0,
+	                            #help="snapshot interval in number of epochs [0 - no snapshot]")
 
 	# generic argument set 4
 	'''
@@ -72,8 +72,8 @@ def construct_generic_parser():
 
 	generic_parser.add_argument('--debug', dest="debug", action='store_true', default=False, help="debug mode [False]")
 
-	generic_parser.add_argument("--debugger", dest='debugger', action='append', default=[],
-	                            help="debugger function [None]")
+	generic_parser.add_argument("--snapshot", dest='snapshot', action='append', default=[],
+	                            help="snapshot function [None]")
 	'''	                            
 	generic_parser.add_argument("--debug_minibatch", dest='debug_minibatch', action='append', default=[],
 	                            help="debug function [None]")
@@ -111,16 +111,24 @@ def validate_generic_arguments(arguments):
 
 	assert arguments.max_norm_constraint >= 0
 
-	# generic argument set debug
-	debuggers = [];
-	for debugger_function in arguments.debugger:
-		debuggers.append(getattr(debugger, debugger_function))
-	arguments.debugger = debuggers
+	# generic argument set snapshots
+	snapshots = [];
+	for snapshot_interval_mapping in arguments.snapshot:
+		fields = snapshot_interval_mapping.split(":")
+		snapshot_function = getattr(debugger, fields[0])
+		if len(fields) == 1:
+			interval = 1;
+		elif len(fields) == 2:
+			interval = float(fields[1])
+		else:
+			logger.error("unrecognized snapshot function setting %s..." % (snapshot_interval_mapping))
+		snapshots[snapshot_function] = interval
+	arguments.snapshot = snapshots
 
 	# generic argument set 3
 	assert arguments.minibatch_size > 0
 	assert arguments.number_of_epochs > 0
-	assert arguments.snapshot_interval >= 0
+	#assert arguments.snapshot_interval >= 0
 
 	# generic argument set 2
 	arguments.objective = getattr(objectives, arguments.objective)
@@ -129,16 +137,16 @@ def validate_generic_arguments(arguments):
 	regularizers = {}
 	for regularizer_weight_mapping in arguments.regularizer:
 		fields = regularizer_weight_mapping.split(":")
-		regularizer_function = getattr(regularization, fields[0])
+		snapshot_function = getattr(regularization, fields[0])
 		if len(fields) == 1:
-			regularizers[regularizer_function] = 1.0
+			regularizers[snapshot_function] = 1.0
 		elif len(fields) == 2:
 			tokens = fields[1].split(",")
 			if len(tokens) == 1:
 				weight = float(tokens[0])
 			else:
 				weight = [float(token) for token in tokens]
-			regularizers[regularizer_function] = weight
+			regularizers[snapshot_function] = weight
 		else:
 			logger.error("unrecognized regularizer function setting %s..." % (regularizer_weight_mapping))
 	arguments.regularizer = regularizers
@@ -327,21 +335,9 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	else:
 		train_dataset = load_data(input_directory, dataset="train")
 		validate_dataset = load_data(input_directory, dataset="validate")
-	# train_set_x, train_set_y = train_dataset
-	# input_shape = list(train_set_x.shape[1:])
-	# input_shape.insert(0, None)
-	# input_shape = tuple(input_shape)
 
 	#train_dataset = (train_dataset[0][:80], train_dataset[1][:80])
 	#test_dataset = (test_dataset[0][:2], test_dataset[1][:2])
-
-	'''
-	test_x, test_y = test_dataset
-	print type(test_x), test_x.shape, type(test_y), len(test_y)
-	print test_x.dtype, test_y.dtype
-	print test_x[0], type(test_x[0]), test_y[0], type(test_y[0])
-	print test_x[0].dtype, test_y[0].dtype
-	'''
 
 	if dataset_preprocessing_function is not None:
 		train_dataset = dataset_preprocessing_function(train_dataset)
@@ -376,8 +372,8 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 			print("Oops, debug mode is not available...")
 	'''
 
-	for debug_function in settings.debugger:
-		debug_function(network, settings);
+	for snapshot_function in settings.snapshot:
+		snapshot_function(network, settings);
 
 	start_train = timeit.default_timer()
 	# Finally, launch the training loop.
@@ -385,16 +381,17 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	for epoch_index in range(settings.number_of_epochs):
 		network.train(train_dataset, settings.minibatch_size, validate_dataset, test_dataset, output_directory)
 
-		if settings.snapshot_interval > 0 and network.epoch_index % settings.snapshot_interval == 0:
-			model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
+		#if settings.snapshot_interval > 0 and network.epoch_index % settings.snapshot_interval == 0:
+			#model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
 		# pickle.dump(network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
-		for debug_function in settings.debugger:
-			debug_function(network, settings);
+		for snapshot_function in settings.snapshot:
+			if network.epoch_index % settings.snapshot[snapshot_function] == 0:
+				snapshot_function(network, settings);
 
 		print("PROGRESS: %f%%" % (100. * (epoch_index + 1) / settings.number_of_epochs))
 
-	model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
+	#model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
 	# pickle.dump(network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
 	end_train = timeit.default_timer()

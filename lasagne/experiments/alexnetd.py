@@ -59,7 +59,8 @@ def validate_dalexnet_arguments(arguments):
 		arguments.dropout_learning_rate = dropout_learning_rate_tokens
 
 	# model argument set 2
-	assert (arguments.dropout_rate_update_interval > 0)
+	assert (arguments.dropout_rate_update_interval >= 0)
+
 	return arguments
 
 

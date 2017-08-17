@@ -31,7 +31,7 @@ def construct_dlenet_parser():
 
 	# model argument set 2
 	model_parser.add_argument("--dropout_rate_update_interval", dest="dropout_rate_update_interval", type=int,
-	                          action='store', default=1, help="dropout rate update interval [1]")
+	                          action='store', default=0, help="dropout rate update interval [1]")
 	model_parser.add_argument('--update_hidden_layer_dropout_only', dest="update_hidden_layer_dropout_only",
 	                          action='store_true', default=False, help="update hidden layer dropout only [False]")
 
@@ -61,7 +61,7 @@ def validate_dlenet_arguments(arguments):
 		arguments.dropout_learning_rate = dropout_learning_rate_tokens
 
 	# model argument set 2
-	assert (arguments.dropout_rate_update_interval > 0)
+	assert (arguments.dropout_rate_update_interval >= 0)
 
 	return arguments
 
