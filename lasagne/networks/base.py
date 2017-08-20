@@ -145,13 +145,16 @@ class Network(object):
 		regularizer = 0
 		for regularizer_function, lambdas in self._regularizer_functions.items():
 			assert type(regularizer_function) is types.FunctionType
-			if regularizer_function == regularization.rademacher \
-					or regularizer_function == regularization.rademacher_p_2_q_2 \
-					or regularizer_function == regularization.rademacher_p_1_q_inf \
-					or regularizer_function == regularization.rademacher_p_inf_q_1:
+			if regularizer_function in set(
+					[regularization.rademacher,
+					 regularization.rademacher_p_2_q_2,
+					 regularization.rademacher_p_1_q_inf,
+					 regularization.rademacher_p_inf_q_1,
+					 regularization.kl_divergence_kingma,
+					 regularization.kl_divergence_sparse]):
 				assert type(lambdas) is float
-				regularizer += lambdas * regularization.rademacher(self, **kwargs)
-			elif regularizer_function in set([regularization.l1, regularization.l2, regularization.linf]):
+				regularizer += lambdas * regularizer_function(self, **kwargs)
+			elif regularizer_function in set([regularization.l1, regularization.l2]):
 				if type(lambdas) is list:
 					dense_layers = []
 					for layer in self.get_network_layers():
@@ -411,7 +414,8 @@ class FeedForwardNetwork(Network):
 
 		# Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
 		trainable_params = self.get_network_params(trainable=True)
-		trainable_params_updates = self._update_function(train_loss, trainable_params, self._learning_rate_variable, momentum=0.95)
+		trainable_params_updates = self._update_function(train_loss, trainable_params, self._learning_rate_variable,
+		                                                 momentum=0.95)
 
 		if self.max_norm_constraint > 0:
 			for param in self.get_network_params(trainable=True, regularizable=True):
@@ -698,7 +702,7 @@ class DynamicFeedForwardNetwork(FeedForwardNetwork):
 		'''
 
 		minibatch_running_time_temp = timeit.default_timer()
-		if self._dropout_rate_update_interval>0 and self.minibatch_index % self._dropout_rate_update_interval == 0:
+		if self._dropout_rate_update_interval > 0 and self.minibatch_index % self._dropout_rate_update_interval == 0:
 			dropout_learning_rate = decay_learning_rate(self.dropout_learning_rate, self.epoch_index)
 			train_dropout_function_outputs = self._train_dropout_function(minibatch_x, minibatch_y,
 			                                                              dropout_learning_rate)

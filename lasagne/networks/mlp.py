@@ -70,8 +70,8 @@ class MultiLayerPerceptron(FeedForwardNetwork):
 			                                                              layer_activation_styles[layer_index],
 			                                                              layer_activation_parameters[layer_index])
 
-			neural_network = layers.LinearDropoutLayer(neural_network,
-			                                           activation_probability=activation_probability)
+			neural_network = layers.BernoulliDropoutLayer(neural_network,
+			                                              activation_probability=activation_probability)
 
 			layer_dimension = dense_dimensions[layer_index]
 			layer_nonlinearity = dense_nonlinearities[layer_index]
@@ -164,8 +164,8 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			                                                              layer_activation_parameters[layer_index])
 
 			if update_hidden_layer_dropout_only and layer_index == 0:
-				neural_network = layers.LinearDropoutLayer(neural_network,
-				                                           activation_probability=activation_probability)
+				neural_network = layers.BernoulliDropoutLayer(neural_network,
+				                                              activation_probability=activation_probability)
 			else:
 				neural_network = layers.AdaptiveDropoutLayer(neural_network,
 				                                             activation_probability=activation_probability)

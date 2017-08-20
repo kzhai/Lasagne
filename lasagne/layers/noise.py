@@ -19,12 +19,13 @@ __all__ = [
 	#
 	"sample_activation_probability",
 	#
-	"LinearDropoutLayer",
+	"BernoulliDropoutLayer",
 	"GaussianDropoutLayer",
 	"FastDropoutLayer",
 	"VariationalDropoutLayer",
 	"VariationalDropoutTypeALayer",
 	"VariationalDropoutTypeBLayer",
+	"SparseVariationalDropoutLayer",
 	#
 	"StandoutLayer",
 	"AdaptiveDropoutLayer",
@@ -344,7 +345,7 @@ def get_filter(input_shape, retain_probability, rng=RandomStreams()):
 	return filter
 
 
-class LinearDropoutLayer(Layer):
+class BernoulliDropoutLayer(Layer):
 	"""Dropout layer
 
 	Sets values to zero with probability p. See notes for disabling dropout
@@ -399,7 +400,7 @@ class LinearDropoutLayer(Layer):
 	def __init__(self, incoming, activation_probability=0.5, rescale=True, shared_axes=(),
 	             num_leading_axes=1, **kwargs):
 		# super(LinearDropoutLayer, self).__init__(incoming, activation_probability, **kwargs);
-		super(LinearDropoutLayer, self).__init__(incoming, **kwargs)
+		super(BernoulliDropoutLayer, self).__init__(incoming, **kwargs)
 		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
 		# self.activation_probability = activation_probability
 
@@ -410,7 +411,7 @@ class LinearDropoutLayer(Layer):
 		'''
 
 		self.activation_probability = self.add_param(activation_probability, self.input_shape[num_leading_axes:],
-		                                             name="p", trainable=False, regularizable=False)
+		                                             name="r", trainable=False, regularizable=False)
 
 		self.rescale = rescale
 		self.shared_axes = tuple(shared_axes)
@@ -621,6 +622,35 @@ class FastDropoutLayer(MergeLayer):
 	'''
 
 
+def _validate_activation_probability_for_logit_parameterization(activation_probability, clip_margin=1e-6):
+	"""
+	Thanks to our logit parameterisation we can't accept p of smaller or equal
+	to 0.5 nor greater or equal to 1. So we'll just warn the user and
+	scale it down slightly.
+	"""
+	'''
+	if p == 0.5:
+		warnings.warn("Cannot set p to exactly 0.5, limits are: 0 < p < 0.5."
+				" Setting to 0.4999", RuntimeWarning)
+		return 0.4999
+	elif p > 0.5:
+		warnings.warn("Cannot set p to greater than 0.5, limits are: "
+				"0 < p < 0.5. Setting to 0.4999", RuntimeWarning)
+		return 0.4999
+	elif p <= 0.0:
+		warnings.warn("Cannot set p to less than or equal to 0.0, limits are: "
+				"0 < p < 0.5. Setting to 0.0001", RuntimeWarning)
+		return 0.0001
+	else:
+		return p
+	'''
+
+	if numpy.any(activation_probability <= 0.5 or activation_probability >= 1.0):
+		warnings.warn("Clipping p to the interval of (0.5, 1.0).", RuntimeWarning)
+		return numpy.clip(activation_probability, 0.5 + clip_margin, 1 - clip_margin)
+	return activation_probability
+
+
 class VariationalDropoutLayer(Layer):
 	"""
 	Base class for variational dropout layers, because the noise sampling
@@ -637,7 +667,7 @@ class VariationalDropoutLayer(Layer):
 			think this is actually necessary to replicate)
 	"""
 
-	def __init__(self, incoming, activation_probability=0.5, adaptive="layerwise", nonlinearity=None, **kwargs):
+	def __init__(self, incoming, activation_probability=0.5, adaptive="layerwise", **kwargs):
 		super(VariationalDropoutLayer, self).__init__(incoming, **kwargs)
 
 		'''
@@ -747,10 +777,10 @@ class VariationalDropoutTypeALayer(VariationalDropoutLayer, GaussianDropoutLayer
 			think this is actually necessary to replicate)
 	"""
 
-	def __init__(self, incoming, activation_probability=0.5, adaptive="elementwise", nonlinearity=None,
+	def __init__(self, incoming, activation_probability=0.5, adaptive="elementwise",
 	             **kwargs):
 		VariationalDropoutLayer.__init__(self, incoming, activation_probability=activation_probability,
-		                                 adaptive=adaptive, nonlinearity=nonlinearity, **kwargs)
+		                                 adaptive=adaptive, **kwargs)
 
 
 class VariationalDropoutTypeBLayer(FastDropoutLayer, VariationalDropoutLayer):
@@ -773,6 +803,42 @@ class VariationalDropoutTypeBLayer(FastDropoutLayer, VariationalDropoutLayer):
 	def __init__(self, incoming, activation_probability=0.5, adaptive="weightwise", **kwargs):
 		FastDropoutLayer.__init__(self, incoming, activation_probability, **kwargs)
 		self.init_adaptive(activation_probability, adaptive)
+
+
+class SparseVariationalDropoutLayer(VariationalDropoutLayer, GaussianDropoutLayer):
+	"""
+	Layer implementing the sparse variational dropout described in:
+	https://arxiv.org/abs/1701.05369
+	Alpha unconstrained to positive infinity, so we store in log
+	space instead of logit space.
+	Inits:
+		* p - initialisation of the parameters sampled for the noise
+	distribution.
+		* adaptive - one of:
+			* None - will not allow updates to the dropout rate
+			* "layerwise" - allow updates to a single parameter controlling the
+			updates
+			* "elementwise" - allow updates to a parameter for each hidden layer
+			* "weightwise" - allow updates to a parameter for each weight (don't
+			think this is actually necessary to replicate)
+	"""
+
+	def __init__(self, incoming, activation_probability=0.5, adaptive="elementwise", **kwargs):
+		VariationalDropoutLayer.__init__(self, incoming, activation_probability=activation_probability,
+		                                 adaptive=adaptive, **kwargs)
+		# forward pass depends on this name, but we are remapping it to be log alpha
+		log_alpha = T.log(T.nnet.sigmoid(self.logit_sigma)).eval()
+
+		# remove the old parameter
+		del self.params[self.logit_sigma]
+		del self.logit_sigma
+
+		self.log_alpha = self.add_param(log_alpha, log_alpha.shape, name="variational.dropout.log_alpha",
+		                                trainable=True, regularizable=False)
+		self.logit_sigma = self.log_alpha
+
+		# self.log_alpha = theano.shared(value=log_alpha, name='logalpha')
+		#self.add_param(self.log_alpha, log_alpha.shape)
 
 
 class AdaptiveDropoutLayer(Layer):
@@ -914,35 +980,6 @@ class StandoutLayer(Layer):
 		return activation_flag
 
 
-def _validate_activation_probability_for_logit_parameterization(activation_probability):
-	"""
-	Thanks to our logit parameterisation we can't accept p of smaller or equal
-	to 0.5 nor greater or equal to 1. So we'll just warn the user and
-	scale it down slightly.
-	"""
-	'''
-	if p == 0.5:
-		warnings.warn("Cannot set p to exactly 0.5, limits are: 0 < p < 0.5."
-				" Setting to 0.4999", RuntimeWarning)
-		return 0.4999
-	elif p > 0.5:
-		warnings.warn("Cannot set p to greater than 0.5, limits are: "
-				"0 < p < 0.5. Setting to 0.4999", RuntimeWarning)
-		return 0.4999
-	elif p <= 0.0:
-		warnings.warn("Cannot set p to less than or equal to 0.0, limits are: "
-				"0 < p < 0.5. Setting to 0.0001", RuntimeWarning)
-		return 0.0001
-	else:
-		return p
-	'''
-
-	if numpy.any(activation_probability <= 0.5 or activation_probability >= 1.0):
-		warnings.warn("Clipping p to the interval of (0.5, 1.0).", RuntimeWarning)
-		return numpy.clip(activation_probability, 0.5 + 1e-6, 1 - 1e-6)
-	return activation_probability
-
-
 def _logit(x):
 	"""
 	Logit function in Numpy. Useful for parameterizing alpha.
@@ -1004,7 +1041,7 @@ class GenericDropoutLayer(Layer):
 		num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
 		if isinstance(activation_probability, numpy.ndarray):
 			assert activation_probability.shape == (num_inputs,)
-		self.activation_probability = self.add_param(activation_probability, (num_inputs,), name="p",
+		self.activation_probability = self.add_param(activation_probability, (num_inputs,), name="r",
 		                                             trainable=False, regularizable=False, adaptable=True)
 
 	def get_output_for(self, input, deterministic=False, **kwargs):

@@ -1,6 +1,6 @@
 import logging
 
-from .. import networks
+from .. import networks, regularization
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +20,16 @@ def construct_vdn_parser():
 	                          help="dropout probability of different layer [1], either one number of a list of numbers, example, '0.2' represents 0.2 dropout rate for all input+hidden layers, or '0.2,0.5' represents 0.2 dropout rate for input layer and 0.5 dropout rate for first hidden layer respectively")
 
 	model_parser.add_argument("--variational_dropout_style", dest="variational_dropout_style", action='store',
-	                          default=None,
-	                          help="variational dropout style [None], example, 'TypeA' or 'TypeB'")
+	                          default="Sparse",
+	                          help="variational dropout style [Sparse], example, 'Sparse', 'TypeA' or 'TypeB'")
 	model_parser.add_argument("--adaptive_styles", dest="adaptive_styles", action='store', default="layerwise",
 	                          help="adaptive styles [layerwise], either one string of a list of string, example, 'layerwise', 'elementwise' and 'weightwise' (only apply to VariationalDropoutTypeB layers")
+
+	'''
 	model_parser.add_argument("--variational_dropout_regularizer_lambdas",
 	                          dest="variational_dropout_regularizer_lambdas", action='store', default="0.1",
 	                          help="variational dropout regularizer lambdas [0.1], either one number of a list of numbers")
+	'''
 	# model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store', default="bernoulli",
 	# help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively")
 
@@ -52,7 +55,7 @@ def validate_vdn_arguments(arguments):
 	# model argument set 2
 	assert arguments.variational_dropout_style is not None
 	arguments.variational_dropout_style = arguments.variational_dropout_style
-	assert arguments.variational_dropout_style in set(["TypeA", "TypeB"])
+	assert arguments.variational_dropout_style in set(["Sparse", "TypeA", "TypeB"])
 
 	layer_activation_parameters = arguments.layer_activation_parameters
 	layer_activation_parameter_tokens = layer_activation_parameters.split(",")
@@ -74,13 +77,23 @@ def validate_vdn_arguments(arguments):
 	assert len(adaptive_styles) == number_of_layers
 	arguments.adaptive_styles = adaptive_styles
 
-	if arguments.variational_dropout_style == "TypeB":
+	if arguments.variational_dropout_style == "Sparse":
 		assert (adaptive_style is None or adaptive_style in set(["layerwise", "elementwise", "weightwise"]) for
 		        adaptive_style in arguments.adaptive_styles)
+		if regularization.kl_divergence_sparse not in arguments.regularizer:
+			arguments.regularizer[regularization.kl_divergence_sparse] = 1.0
+	elif arguments.variational_dropout_style == "TypeB":
+		assert (adaptive_style is None or adaptive_style in set(["layerwise", "elementwise", "weightwise"]) for
+		        adaptive_style in arguments.adaptive_styles)
+		if regularization.kl_divergence_kingma not in arguments.regularizer:
+			arguments.regularizer[regularization.kl_divergence_kingma] = 1.0
 	elif arguments.variational_dropout_style == "TypeA":
 		assert (adaptive_style is None or adaptive_style in set(["layerwise", "elementwise"]) for adaptive_style in
 		        arguments.adaptive_styles)
+		if regularization.kl_divergence_kingma not in arguments.regularizer:
+			arguments.regularizer[regularization.kl_divergence_kingma] = 1.0
 
+	'''
 	variational_dropout_regularizer_lambdas = arguments.variational_dropout_regularizer_lambdas
 	variational_dropout_regularizer_lambdas_tokens = variational_dropout_regularizer_lambdas.split(",")
 	if len(variational_dropout_regularizer_lambdas_tokens) == 1:
@@ -93,6 +106,7 @@ def validate_vdn_arguments(arguments):
 	                                           variational_dropout_regularizer_lambdas_tokens in
 	                                           variational_dropout_regularizer_lambdas]
 	arguments.variational_dropout_regularizer_lambdas = variational_dropout_regularizer_lambdas
+	'''
 
 	'''
 	dae_regularizer_lambdas = arguments.dae_regularizer_lambdas
@@ -130,7 +144,28 @@ def train_vdn():
 	settings = config_model(construct_vdn_parser, validate_vdn_arguments)
 	settings = validate_config(settings)
 
-	if settings.variational_dropout_style == "TypeA":
+	if settings.variational_dropout_style == "Sparse":
+		network = networks.SparseVariationalDropoutNetwork(
+			incoming=settings.input_shape,
+
+			dense_dimensions=settings.dense_dimensions,
+			dense_nonlinearities=settings.dense_nonlinearities,
+
+			layer_activation_parameters=settings.layer_activation_parameters,
+			adaptive_styles=settings.adaptive_styles,
+			#variational_dropout_regularizer_lambdas=settings.variational_dropout_regularizer_lambdas,
+
+			objective_functions=settings.objective,
+			update_function=settings.update,
+			# pretrained_model=pretrained_model
+
+			learning_rate=settings.learning_rate,
+			# learning_rate_decay=settings.learning_rate_decay,
+			max_norm_constraint=settings.max_norm_constraint,
+
+			validation_interval=settings.validation_interval,
+		)
+	elif settings.variational_dropout_style == "TypeA":
 		network = networks.VariationalDropoutTypeANetwork(
 			incoming=settings.input_shape,
 
@@ -139,14 +174,14 @@ def train_vdn():
 
 			layer_activation_parameters=settings.layer_activation_parameters,
 			adaptive_styles=settings.adaptive_styles,
-			variational_dropout_regularizer_lambdas=settings.variational_dropout_regularizer_lambdas,
+			#variational_dropout_regularizer_lambdas=settings.variational_dropout_regularizer_lambdas,
 
 			objective_functions=settings.objective,
 			update_function=settings.update,
 			# pretrained_model=pretrained_model
 
 			learning_rate=settings.learning_rate,
-			#learning_rate_decay=settings.learning_rate_decay,
+			# learning_rate_decay=settings.learning_rate_decay,
 			max_norm_constraint=settings.max_norm_constraint,
 
 			validation_interval=settings.validation_interval,
@@ -160,22 +195,20 @@ def train_vdn():
 
 			layer_activation_parameters=settings.layer_activation_parameters,
 			adaptive_styles=settings.adaptive_styles,
-			variational_dropout_regularizer_lambdas=settings.variational_dropout_regularizer_lambdas,
+			#variational_dropout_regularizer_lambdas=settings.variational_dropout_regularizer_lambdas,
 
 			objective_functions=settings.objective,
 			update_function=settings.update,
 			# pretrained_model=pretrained_model
 
 			learning_rate=settings.learning_rate,
-			#learning_rate_decay=settings.learning_rate_decay,
+			# learning_rate_decay=settings.learning_rate_decay,
 			max_norm_constraint=settings.max_norm_constraint,
 
 			validation_interval=settings.validation_interval,
 		)
 
 	network.set_regularizers(settings.regularizer)
-	# network.set_L1_regularizer_lambda(settings.L1_regularizer_lambdas)
-	# network.set_L2_regularizer_lambda(settings.L2_regularizer_lambdas)
 
 	from . import train_model
 	train_model(network, settings)

@@ -5,7 +5,7 @@ import numpy
 import numpy.random
 
 
-def plot_retain_rates(model_directory, interval=1):
+def plot_retain_rates(model_directory, snapshot_interval=1, plot_directory=None):
 	retain_rates_file_name_pattern = re.compile(r'layer\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
 
 	epoch_indices = set()
@@ -18,7 +18,7 @@ def plot_retain_rates(model_directory, interval=1):
 		epoch_index = int(matcher.group("epoch"))
 		layer_index = int(matcher.group("layer"))
 
-		if epoch_index % interval != 0:
+		if epoch_index % snapshot_interval != 0:
 			continue
 
 		if layer_index not in layer_dimensions:
@@ -38,15 +38,16 @@ def plot_retain_rates(model_directory, interval=1):
 		epoch_index = int(matcher.group("epoch"))
 		layer_index = int(matcher.group("layer"))
 
-		if epoch_index % interval != 0:
+		if epoch_index % snapshot_interval != 0:
 			continue
 
 		retain_rates = numpy.load(os.path.join(model_directory, file_name))
-		layer_epoch_retain_rates[layer_index][epoch_index / interval, :] = retain_rates
+		layer_epoch_retain_rates[layer_index][epoch_index / snapshot_interval, :] = retain_rates
 
 	for layer_index in layer_dimensions:
-		# plot_3D_hist(layer_epoch_retain_rates[layer_index], interval)
-		plot_3D_wires(layer_epoch_retain_rates[layer_index], interval)
+		output_file_path = None if plot_directory is None else os.path.join(plot_directory, "layer.%d.pdf" % layer_index)
+		# plot_3D_hist(layer_epoch_retain_rates[layer_index], snapshot_interval)
+		plot_3D_wires(layer_epoch_retain_rates[layer_index], snapshot_interval, output_file_path)
 
 
 def plot_3D_hist(matrix=None, rescale_x_interval=1):
@@ -106,7 +107,7 @@ def plot_3D_hist(matrix=None, rescale_x_interval=1):
 	plt.show()
 
 
-def plot_3D_wires(matrix=None, rescale_x_interval=1):
+def plot_3D_wires(matrix=None, rescale_x_interval=1, output_file_path=None):
 	from mpl_toolkits.mplot3d import axes3d
 	import matplotlib.pyplot as plt
 
@@ -136,7 +137,8 @@ def plot_3D_wires(matrix=None, rescale_x_interval=1):
 		hist, xedges, yedges = numpy.histogram2d(x, y, bins=[number_of_epochs / bin_x_size, 1. / bin_y_size],
 		                                         range=[[0, number_of_epochs], [0, 1]])
 
-		xpos, ypos = numpy.meshgrid(xedges[:-1] + 0.25 * bin_x_size, yedges[:-1] + 0.25 * bin_y_size)
+		#xpos, ypos = numpy.meshgrid(xedges[:-1] + 0.25 * bin_x_size, yedges[:-1] + 0.25 * bin_y_size)
+		xpos, ypos = numpy.meshgrid(xedges[:-1], yedges[:-1])
 
 		Z = hist.T
 		X = xpos * rescale_x_interval
@@ -154,12 +156,15 @@ def plot_3D_wires(matrix=None, rescale_x_interval=1):
 
 	# Give the second plot only wireframes of the type x = c
 	ax.plot_wireframe(X, Y, Z, rstride=10, cstride=1)
-	ax.set_title("Column (x) stride set to 0")
+	#ax.set_title("Column (x) stride set to 0")
 	# ax.plot_wireframe(X, Y, Z, rstride=1, cstride=10)
 	# ax.set_title("Row (y) stride set to 0")
 
 	plt.tight_layout()
-	plt.show()
+	if output_file_path is None:
+		plt.show()
+	else:
+		plt.savefig(output_file_path, bbox_inches='tight')
 
 
 def plot_3D_bars():
@@ -184,16 +189,57 @@ def plot_3D_bars():
 	plt.show()
 
 
+def plot_feature_map(model_directory, feature_map_size, layer_index=0, snapshot_interval=100, plot_directory=None):
+	retain_rates_file_name_pattern = re.compile(r'layer\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
+
+	for file_name in os.listdir(model_directory):
+		matcher = re.match(retain_rates_file_name_pattern, file_name)
+		if matcher is None:
+			continue
+
+		temp_layer_index = int(matcher.group("layer"))
+		if temp_layer_index != layer_index:
+			continue
+
+		temp_epoch_index = int(matcher.group("epoch"))
+		if temp_epoch_index % snapshot_interval != 0:
+			continue
+
+		retain_rates = numpy.load(os.path.join(model_directory, file_name))
+		retain_rates = numpy.reshape(retain_rates, feature_map_size)
+		output_file_path = None if plot_directory is None else os.path.join(model_directory, "layer.%d.epoch.%d.pdf" % (temp_layer_index, temp_epoch_index))
+		plot_image(retain_rates, output_file_path)
+
+
+def plot_image(matrix, output_file_path=None, interpolation='bilinear'):
+	import matplotlib.pyplot as plt
+
+	plt.figure()
+	plt.imshow(matrix, interpolation=interpolation)
+	plt.grid(False)
+	plt.tight_layout()
+
+	if output_file_path is None:
+		plt.show()
+	else:
+		plt.savefig(output_file_path, bbox_inches='tight')
+
+
 if __name__ == '__main__':
 	import argparse
 
 	argument_parser = argparse.ArgumentParser()
 	argument_parser.add_argument("--model_directory", dest="model_directory", action='store', default=None,
 	                             help="model directory [None]")
-	# argument_parser.add_argument("--output", dest="select_settings", action='store', default="None",
-	# help="select settings to display [None]")
+	argument_parser.add_argument("--plot_directory", dest="plot_directory", action='store', default=None,
+	                             help="plot directory [None]")
 	argument_parser.add_argument("--snapshot_interval", dest="snapshot_interval", action='store', type=int, default=1,
-	                             help="interval [None]")
+	                             help="snapshot interval [1]")
+
+	argument_parser.add_argument("--feature_map_size", dest="feature_map_size", action='store', default=None,
+	                             help="feature map dimensions [None]")
+	argument_parser.add_argument("--layer_index", dest="layer_index", action='store', type=int, default=0,
+	                             help="layer index [0 - input layer]")
 
 	arguments, additionals = argument_parser.parse_known_args()
 
@@ -203,6 +249,12 @@ if __name__ == '__main__':
 	print("========== ========== ========== ========== ==========")
 
 	model_directory = arguments.model_directory
+	plot_directory = arguments.plot_directory
 	snapshot_interval = arguments.snapshot_interval
 
-	plot_retain_rates(model_directory, snapshot_interval)
+	if arguments.feature_map_size is None:
+		plot_retain_rates(model_directory, snapshot_interval, plot_directory)
+	else:
+		feature_map_size = tuple([int(dimension) for dimension in arguments.feature_map_size.split(",")])
+		layer_index = arguments.layer_index
+		plot_feature_map(model_directory, feature_map_size, layer_index, snapshot_interval, plot_directory)

@@ -12,12 +12,13 @@ from .. import layers
 logger = logging.getLogger(__name__)
 
 __all__ = [
+	"SparseVariationalDropoutNetwork",
 	"VariationalDropoutTypeANetwork",
 	"VariationalDropoutTypeBNetwork",
 ]
 
 
-class VariationalDropoutTypeANetwork(FeedForwardNetwork):
+class SparseVariationalDropoutNetwork(FeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 
@@ -32,19 +33,19 @@ class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 	             update_function=updates.nesterov_momentum,
 
 	             learning_rate=1e-3,
-	             #learning_rate_decay=None,
+	             # learning_rate_decay=None,
 	             max_norm_constraint=0,
 
 	             validation_interval=-1,
 	             ):
-		super(VariationalDropoutTypeANetwork, self).__init__(incoming,
-		                                                     objective_functions,
-		                                                     update_function,
-		                                                     learning_rate,
-		                                                     #learning_rate_decay,
-		                                                     max_norm_constraint,
-		                                                     validation_interval,
-		                                                     )
+		super(SparseVariationalDropoutNetwork, self).__init__(incoming,
+		                                                      objective_functions,
+		                                                      update_function,
+		                                                      learning_rate,
+		                                                      # learning_rate_decay,
+		                                                      max_norm_constraint,
+		                                                      validation_interval,
+		                                                      )
 
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
 		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
@@ -54,7 +55,7 @@ class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 
 		assert len(dense_dimensions) == len(dense_nonlinearities)
 		assert len(dense_dimensions) == len(layer_activation_parameters)
-		assert len(dense_dimensions) == len(variational_dropout_regularizer_lambdas)
+		# assert len(dense_dimensions) == len(variational_dropout_regularizer_lambdas)
 		assert len(dense_dimensions) == len(adaptive_styles)
 		assert (adaptive_style in set(["layerwise", "elementwise"]) for adaptive_style in adaptive_styles)
 
@@ -64,7 +65,7 @@ class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 			pretrained_network_layers = lasagne.layers.get_all_layers(pretrained_model._neural_network)
 		'''
 
-		self.layers_coeff = {}
+		# self.layers_coeff = {}
 
 		# neural_network = input_network
 		neural_network = self._input_layer
@@ -77,12 +78,12 @@ class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 			layer_dimension = dense_dimensions[layer_index]
 			layer_nonlinearity = dense_nonlinearities[layer_index]
 
-			neural_network = layers.VariationalDropoutTypeALayer(neural_network,
-			                                                     activation_probability=layer_activation_parameters[
-				                                                     layer_index],
-			                                                     adaptive=adaptive_styles[layer_index])
+			neural_network = layers.SparseVariationalDropoutLayer(neural_network,
+			                                                      activation_probability=layer_activation_parameters[
+				                                                      layer_index],
+			                                                      adaptive=adaptive_styles[layer_index])
 
-			self.layers_coeff[neural_network] = variational_dropout_regularizer_lambdas[layer_index]
+			# self.layers_coeff[neural_network] = variational_dropout_regularizer_lambdas[layer_index]
 
 			neural_network = layers.DenseLayer(neural_network, layer_dimension,
 			                                   W=init.GlorotUniform(gain=init.GlorotUniformGain[layer_nonlinearity]),
@@ -111,32 +112,128 @@ class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 
 		self.build_functions()
 
+
+class VariationalDropoutTypeANetwork(FeedForwardNetwork):
+	def __init__(self,
+	             incoming,
+
+	             dense_dimensions,
+	             dense_nonlinearities,
+
+	             layer_activation_parameters=None,
+	             adaptive_styles="layerwise",
+	             variational_dropout_regularizer_lambdas=None,
+
+	             objective_functions=objectives.categorical_crossentropy,
+	             update_function=updates.nesterov_momentum,
+
+	             learning_rate=1e-3,
+	             # learning_rate_decay=None,
+	             max_norm_constraint=0,
+
+	             validation_interval=-1,
+	             ):
+		super(VariationalDropoutTypeANetwork, self).__init__(incoming,
+		                                                     objective_functions,
+		                                                     update_function,
+		                                                     learning_rate,
+		                                                     # learning_rate_decay,
+		                                                     max_norm_constraint,
+		                                                     validation_interval,
+		                                                     )
+
+		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
+		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+
+		# self._input_layer = layers.InputLayer(shape=input_shape)
+		# self._input_variable = self._input_layer.input_var
+
+		assert len(dense_dimensions) == len(dense_nonlinearities)
+		assert len(dense_dimensions) == len(layer_activation_parameters)
+		# assert len(dense_dimensions) == len(variational_dropout_regularizer_lambdas)
+		assert len(dense_dimensions) == len(adaptive_styles)
+		assert (adaptive_style in set(["layerwise", "elementwise"]) for adaptive_style in adaptive_styles)
+
+		'''
+		pretrained_network_layers = None
+		if pretrained_model != None:
+			pretrained_network_layers = lasagne.layers.get_all_layers(pretrained_model._neural_network)
+		'''
+
+		# self.layers_coeff = {}
+
+		# neural_network = input_network
+		neural_network = self._input_layer
+		for layer_index in range(len(dense_dimensions)):
+			# previous_layer_dimension = layers.get_output_shape(neural_network)[1:]
+			# activation_probability = noise.sample_activation_probability(previous_layer_dimension, layer_activation_styles[layer_index], layer_activation_parameters[layer_index])
+
+			# neural_network = noise.GeneralizedDropoutLayer(neural_network, activation_probability=activation_probability)
+
+			layer_dimension = dense_dimensions[layer_index]
+			layer_nonlinearity = dense_nonlinearities[layer_index]
+
+			neural_network = layers.VariationalDropoutTypeALayer(neural_network,
+			                                                     activation_probability=layer_activation_parameters[
+				                                                     layer_index],
+			                                                     adaptive=adaptive_styles[layer_index])
+
+			# self.layers_coeff[neural_network] = variational_dropout_regularizer_lambdas[layer_index]
+
+			neural_network = layers.DenseLayer(neural_network, layer_dimension,
+			                                   W=init.GlorotUniform(gain=init.GlorotUniformGain[layer_nonlinearity]),
+			                                   nonlinearity=layer_nonlinearity)
+
+			# print_output_dimension("checkpoint", neural_network, 100)
+			# print_output("checkpoint", neural_network, numpy.random.random((100, 784)))
+
+			'''
+			if pretrained_network_layers == None or len(pretrained_network_layers) <= layer_index:
+				_neural_network = lasagne.layers.DenseLayer(_neural_network, layer_dimension, nonlinearity=layer_nonlinearity)
+			else:
+				pretrained_layer = pretrained_network_layers[layer_index]
+				assert isinstance(pretrained_layer, lasagne.layers.DenseLayer)
+				assert pretrained_layer.nonlinearity == layer_nonlinearity, (pretrained_layer.nonlinearity, layer_nonlinearity)
+				assert pretrained_layer.num_units == layer_dimension
+
+				_neural_network = lasagne.layers.DenseLayer(_neural_network,
+													layer_dimension,
+													W=pretrained_layer.W,
+													b=pretrained_layer.b,
+													nonlinearity=layer_nonlinearity)
+			'''
+
+		self._neural_network = neural_network
+
+		self.build_functions()
+
+	'''
 	def get_loss(self, label, **kwargs):
 		loss = super(VariationalDropoutTypeANetwork, self).get_loss(label, **kwargs)
 
-		'''
-		loss += regularization.regularize_layer_params_weighted(self.layers_coeff, regularization.priorKL,
-																tags={"trainable":False,
-																	  "regularizable": False,
-																	  "adaptable": True}, **kwargs)
-		'''
+		#loss += regularization.regularize_layer_params_weighted(self.layers_coeff, regularization.priorKL,
+			#tags={"trainable":False, "regularizable": False, "adaptable": True}, **kwargs)
 
 		loss += self.get_prior_KL()
 
 		return loss
 
 	def get_prior_KL(self):
-		return objectives.priorKL(self._neural_network) / self._output_variable.shape[0]
+		return regularization.kl_divergence_kingma(self._neural_network) / self._output_variable.shape[0]
+	'''
 
+	'''
+	# TODO:
 	def build_functions(self):
 		super(VariationalDropoutTypeANetwork, self).build_functions()
 
 		self._debug_function = theano.function(
 			inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
 			outputs=[super(VariationalDropoutTypeANetwork, self).get_loss(self._output_variable), self.get_prior_KL(),
-			         objectives.priorKL(self._neural_network)],
+			         regularization.kl_divergence_kingma(self._neural_network)],
 			on_unused_input='ignore'
 		)
+	'''
 
 	'''
 	def train_minibatch(self, minibatch_x, minibatch_y, learning_rate):
@@ -188,7 +285,7 @@ class VariationalDropoutTypeBNetwork(FeedForwardNetwork):
 	             update_function=updates.nesterov_momentum,
 
 	             learning_rate=1e-3,
-	             #learning_rate_decay=None,
+	             # learning_rate_decay=None,
 	             max_norm_constraint=0,
 
 	             validation_interval=-1,
@@ -267,7 +364,7 @@ class VariationalDropoutTypeBNetwork(FeedForwardNetwork):
 		return loss
 
 	def get_prior_KL(self):
-		return objectives.priorKL(self._neural_network) / self._output_variable.shape[0]
+		return regularization.kl_divergence_kingma(self._neural_network) / self._output_variable.shape[0]
 
 	def build_functions(self):
 		super(VariationalDropoutTypeBNetwork, self).build_functions()
@@ -275,7 +372,7 @@ class VariationalDropoutTypeBNetwork(FeedForwardNetwork):
 		self._debug_function = theano.function(
 			inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
 			outputs=[super(VariationalDropoutTypeBNetwork, self).get_loss(self._output_variable), self.get_prior_KL(),
-			         objectives.priorKL(self._neural_network)],
+			         regularization.kl_divergence_kingma(self._neural_network)],
 			on_unused_input='ignore'
 		)
 

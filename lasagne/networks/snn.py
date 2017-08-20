@@ -65,8 +65,8 @@ class StandoutNeuralNetworkTypeA(FeedForwardNetwork):
 			if layer_index == 0:
 				# activation_probability = sample_activation_probability(previous_layer_dimension, layer_activation_styles[0], layer_activation_parameters[0])
 				# neural_network = GeneralizedDropoutLayer(neural_network, activation_probability=activation_probability)
-				neural_network = layers.LinearDropoutLayer(neural_network,
-				                                           activation_probability=input_activation_rate)
+				neural_network = layers.BernoulliDropoutLayer(neural_network,
+				                                              activation_probability=input_activation_rate)
 
 			layer_dimension = dense_dimensions[layer_index]
 			layer_nonlinearity = dense_nonlinearities[layer_index]
@@ -270,7 +270,7 @@ class StandoutNeuralNetworkTypeB(FeedForwardNetwork):
 
 		previous_layer_dimension = layers.get_output_shape(neural_network)[1:]
 		activation_probability = numpy.zeros(previous_layer_dimension) + input_activation_rate
-		neural_network = layers.LinearDropoutLayer(neural_network, activation_probability=activation_probability)
+		neural_network = layers.BernoulliDropoutLayer(neural_network, activation_probability=activation_probability)
 
 		for layer_index in range(len(dense_dimensions)):
 			layer_dimension = dense_dimensions[layer_index]

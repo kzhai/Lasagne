@@ -17,7 +17,7 @@ __all__ = [
 
 def debug_rademacher(network, label, **kwargs):
 	import theano.tensor as T
-	from ..layers import DenseLayer, LinearDropoutLayer, AdaptiveDropoutLayer
+	from ..layers import DenseLayer, BernoulliDropoutLayer, AdaptiveDropoutLayer
 
 	#
 	#
@@ -48,7 +48,7 @@ def debug_rademacher(network, label, **kwargs):
 	# rademacher_regularization *= T.max(abs(get_output(pseudo_input_layer)))
 
 	for layer in network.get_network_layers():
-		if isinstance(layer, LinearDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
 			output.append(T.sqrt(T.mean(retain_probability ** 2)))
 		elif isinstance(layer, DenseLayer):

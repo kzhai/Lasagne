@@ -238,6 +238,155 @@ class NINLayer(Layer):
 #
 #
 
+'''
+class DenseLayer(Layer):
+    def __init__(self, incoming, num_units, Wfc, nonlinearity=rectify, mnc=False, b=Constant(0.), **kwargs):
+        super(DenseLayer, self).__init__(incoming)
+        self.num_units = num_units
+        self.nonlinearity = nonlinearity
+        self.num_inputs = int(np.prod(self.input_shape[1:]))
+        self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+        self.W = self.add_param(Wfc, (self.num_inputs, self.num_units), name="W")
+        if mnc:
+            self.W = updates.norm_constraint(self.W, mnc)
+
+        self.b = self.add_param(b, (num_units,), name="b", regularizable=False)
+
+    def get_output_shape_for(self, input_shape):
+        return input_shape[0], self.num_units
+
+    def get_output_for(self, input, deterministic=False, **kwargs):
+        if input.ndim > 2:
+            input = input.flatten(2)
+        return self.get_output_for_(input, deterministic, **kwargs)
+
+    def get_output_for_(self, input, deterministic, **kwargs):
+        return self.nonlinearity(T.dot(input, self.W) + self.b)
+'''
+
+
+class BernoulliDropoutDenseLayer(DenseLayer):
+	def __init__(self, incoming, num_units, activation_probability=0.5, rescale=True, W=init.GlorotNormal(),
+	             b=init.Constant(0.), nonlinearity=nonlinearities.rectify, shared_axes=(), num_leading_axes=1,
+	             **kwargs):
+		super(BernoulliDropoutDenseLayer, self).__init__(incoming, num_units, W=W, b=b, nonlinearity=nonlinearity,
+		                                                 num_leading_axes=num_leading_axes, **kwargs)
+		# self.activation_probability = activation_probability
+		self.activation_probability = self.add_param(activation_probability, self.input_shape[num_leading_axes:],
+		                                             name="r", trainable=False, regularizable=False)
+
+		self.rescale = rescale
+		self.shared_axes = tuple(shared_axes)
+
+		#
+		#
+		#
+		#
+		#
+
+		self.reg = True
+		self.num_updates = 0
+
+	def get_output_for(self, input, deterministic=False, **kwargs):
+		retain_prob = self.activation_probability.eval()
+		if not (deterministic or np.all(retain_prob == 1)):
+			# Using theano constant to prevent upcasting
+			if self.rescale:
+				T.true_div(input, self.activation_probability)
+			# input /= retain_prob
+
+			# use nonsymbolic shape for dropout mask if possible
+			mask_shape = self.input_shape
+			if any(s is None for s in mask_shape):
+				mask_shape = input.shape
+
+			# apply dropout, respecting shared axes
+			if self.shared_axes:
+				shared_axes = tuple(a if a >= 0 else a + input.ndim for a in self.shared_axes)
+				mask_shape = tuple(1 if a in shared_axes else s for a, s in enumerate(mask_shape))
+			mask = self._srng.binomial(mask_shape, p=retain_prob, dtype=input.dtype)
+			if self.shared_axes:
+				bcast = tuple(bool(s == 1) for s in mask_shape)
+				mask = T.patternbroadcast(mask, bcast)
+			input *= mask
+
+		return self.nonlinearity(T.dot(input, self.W) + self.b)
+
+	'''
+	def eval_reg(self, **kwargs):
+		return 0
+
+	def get_ard(self, **kwargs):
+		return None
+
+	def get_reg(self):
+		return str(self.activation_probability / (1 - self.activation_probability))
+	'''
+
+
+class DenseVarDropOutARD(DenseLayer):
+	def __init__(self, incoming, num_units, activation_probability=0.5, rescale=True, W=init.GlorotNormal(),
+	             b=init.Constant(0.), nonlinearity=nonlinearities.rectify, ard_init=-10, shared_axes=(),
+	             num_leading_axes=1, **kwargs):
+		super(DenseVarDropOutARD, self).__init__(incoming, num_units, W=W, b=b, nonlinearity=nonlinearity,
+		                                         num_leading_axes=num_leading_axes, **kwargs)
+
+		self.rescale = rescale
+		self.shared_axes = tuple(shared_axes)
+
+		#
+		#
+		#
+		#
+		#
+
+		self.reg = True
+		self.log_sigma2 = self.add_param(Constant(ard_init), (self.num_inputs, self.num_units), name="ls2")
+
+	@staticmethod
+	def clip(mtx, to=8):
+		mtx = T.switch(T.le(mtx, -to), -to, mtx)
+		mtx = T.switch(T.ge(mtx, to), to, mtx)
+
+		return mtx
+
+	def get_output_for(self, input, deterministic=False, train_clip=False, thresh=3, **kwargs):
+		log_alpha = self.clip(self.log_sigma2 - T.log(self.W ** 2))
+		clip_mask = T.ge(log_alpha, thresh)
+
+		if deterministic:
+			activation = T.dot(input, T.switch(clip_mask, 0, self.W))
+		else:
+			W = self.W
+			if train_clip:
+				W = T.switch(clip_mask, 0, self.W)
+			mu = T.dot(input, W)
+			si = T.sqrt(T.dot(input * input, T.exp(log_alpha) * self.W * self.W) + 1e-8)
+			activation = mu + self._srng.normal(mu.shape, avg=0, std=1) * si
+		return self.nonlinearity(activation + self.b)
+
+	def kl_divergence_approximation(self, **kwargs):
+		k1, k2, k3 = 0.63576, 1.8732, 1.48695
+		C = -k1
+		log_alpha = self.clip(self.log_sigma2 - T.log(self.W ** 2))
+		mdkl = k1 * T.nnet.sigmoid(k2 + k3 * log_alpha) - 0.5 * T.log1p(T.exp(-log_alpha)) + C
+		return -T.sum(mdkl)
+
+	#
+	#
+	#
+	#
+	#
+
+	def get_ard(self, thresh=3, **kwargs):
+		log_alpha = self.log_sigma2.get_value() - 2 * np.log(np.abs(self.W.get_value()))
+		return '%.4f' % (np.sum(log_alpha > thresh) * 1.0 / log_alpha.size)
+
+	def get_reg(self):
+		log_alpha = self.log_sigma2.get_value() - 2 * np.log(np.abs(self.W.get_value()))
+		return '%.1f, %.1f' % (log_alpha.min(), log_alpha.max())
+
+
 class ElasticDenseLayer(DenseLayer):
 	def __init__(self, incoming, num_units, W=init.GlorotUniform(),
 	             b=init.Constant(0.), nonlinearity=nonlinearities.rectify,

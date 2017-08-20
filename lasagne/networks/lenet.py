@@ -81,7 +81,7 @@ class LeNet(FeedForwardNetwork):
 				                                                              dropout_layer_index])
 			activation_probability = numpy.reshape(activation_probability, input_layer_shape)
 			# print "before dropout", lasagne.layers.get_output_shape(neural_network)
-			neural_network = layers.LinearDropoutLayer(neural_network, activation_probability=activation_probability)
+			neural_network = layers.BernoulliDropoutLayer(neural_network, activation_probability=activation_probability)
 			dropout_layer_index += 1
 
 			conv_filter_number = convolution_filters[conv_layer_index]
@@ -136,8 +136,8 @@ class LeNet(FeedForwardNetwork):
 				                                                              dropout_layer_index])
 			activation_probability = numpy.reshape(activation_probability, input_layer_shape)
 			# print "before dropout", lasagne.layers.get_output_shape(neural_network)
-			neural_network = layers.LinearDropoutLayer(neural_network,
-			                                           activation_probability=activation_probability)
+			neural_network = layers.BernoulliDropoutLayer(neural_network,
+			                                              activation_probability=activation_probability)
 			dropout_layer_index += 1
 
 			layer_shape = dense_dimensions[dense_layer_index]
@@ -386,8 +386,8 @@ class DynamicLeNet(DynamicFeedForwardNetwork):
 			activation_probability = numpy.reshape(activation_probability, input_layer_shape)
 			# print "before dropout", lasagne.layers.get_output_shape(neural_network)
 			if update_hidden_layer_dropout_only:
-				neural_network = layers.LinearDropoutLayer(neural_network,
-				                                           activation_probability=activation_probability)
+				neural_network = layers.BernoulliDropoutLayer(neural_network,
+				                                              activation_probability=activation_probability)
 			else:
 				neural_network = layers.AdaptiveDropoutLayer(neural_network,
 				                                             activation_probability=activation_probability)
@@ -447,8 +447,8 @@ class DynamicLeNet(DynamicFeedForwardNetwork):
 			activation_probability = activation_probability.astype(theano.config.floatX)
 			activation_probability = numpy.reshape(activation_probability, input_layer_shape)
 			if update_hidden_layer_dropout_only and dense_layer_index == 0:
-				neural_network = layers.LinearDropoutLayer(neural_network,
-				                                           activation_probability=activation_probability)
+				neural_network = layers.BernoulliDropoutLayer(neural_network,
+				                                              activation_probability=activation_probability)
 			else:
 				neural_network = layers.AdaptiveDropoutLayer(neural_network,
 				                                             activation_probability=activation_probability)
