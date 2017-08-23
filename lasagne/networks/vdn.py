@@ -32,7 +32,7 @@ class SparseVariationalDropoutNetwork(FeedForwardNetwork):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             # learning_rate_decay=None,
 	             max_norm_constraint=0,
 
@@ -41,7 +41,7 @@ class SparseVariationalDropoutNetwork(FeedForwardNetwork):
 		super(SparseVariationalDropoutNetwork, self).__init__(incoming,
 		                                                      objective_functions,
 		                                                      update_function,
-		                                                      learning_rate,
+		                                                      learning_rate_policy,
 		                                                      # learning_rate_decay,
 		                                                      max_norm_constraint,
 		                                                      validation_interval,
@@ -127,7 +127,7 @@ class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             # learning_rate_decay=None,
 	             max_norm_constraint=0,
 
@@ -136,7 +136,7 @@ class VariationalDropoutTypeANetwork(FeedForwardNetwork):
 		super(VariationalDropoutTypeANetwork, self).__init__(incoming,
 		                                                     objective_functions,
 		                                                     update_function,
-		                                                     learning_rate,
+		                                                     learning_rate_policy,
 		                                                     # learning_rate_decay,
 		                                                     max_norm_constraint,
 		                                                     validation_interval,
@@ -284,7 +284,7 @@ class VariationalDropoutTypeBNetwork(FeedForwardNetwork):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             # learning_rate_decay=None,
 	             max_norm_constraint=0,
 
@@ -293,7 +293,7 @@ class VariationalDropoutTypeBNetwork(FeedForwardNetwork):
 		super(VariationalDropoutTypeBNetwork, self).__init__(incoming,
 		                                                     objective_functions,
 		                                                     update_function,
-		                                                     learning_rate,
+		                                                     learning_rate_policy,
 		                                                     max_norm_constraint,
 		                                                     # learning_rate_decay_style,
 		                                                     # learning_rate_decay_parameter,

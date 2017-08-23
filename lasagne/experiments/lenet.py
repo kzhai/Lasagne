@@ -1,6 +1,7 @@
 import logging
 
 from .. import networks, nonlinearities
+from . import layer_deliminator, param_deliminator
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +16,12 @@ __all__ = [
 def add_convpool_options(model_parser):
 	# model argument set 1
 	model_parser.add_argument("--convolution_filters", dest="convolution_filters", action='store', default=None,
-	                          help="number of convolution filters [None], example, '32,16' represents 32 and 16 filters for convolution layers respectively")
+	                          help="number of convolution filters [None], example, '32;16' represents 32 and 16 filters for convolution layers respectively")
 	model_parser.add_argument("--convolution_nonlinearities", dest="convolution_nonlinearities", action='store',
 	                          default=None,
-	                          help="activation functions of convolution layers [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively")
+	                          help="activation functions of convolution layers [None], example, 'tanh;softmax' represents 2 layers with tanh and softmax activation function respectively")
 	model_parser.add_argument("--pool_modes", dest="pool_modes", action='store', default="max",
-	                          help="pool modes after each convolution layers [max], set to none to omit, example, 'max,max,none,none,max'")
+	                          help="pool modes after each convolution layers [max], set to none to omit, example, 'max;max;none;none;max'")
 
 	return model_parser
 
@@ -28,18 +29,18 @@ def add_convpool_options(model_parser):
 def validate_convpool_arguments(arguments):
 	# model argument set 1
 	assert arguments.convolution_filters is not None
-	conv_filters = arguments.convolution_filters.split(",")
+	conv_filters = arguments.convolution_filters.split(layer_deliminator)
 	arguments.convolution_filters = [int(conv_filter) for conv_filter in conv_filters]
 
 	assert arguments.convolution_nonlinearities is not None
-	conv_nonlinearities = arguments.convolution_nonlinearities.split(",")
+	conv_nonlinearities = arguments.convolution_nonlinearities.split(layer_deliminator)
 	arguments.convolution_nonlinearities = [getattr(nonlinearities, conv_nonlinearity) for conv_nonlinearity in
 	                                        conv_nonlinearities]
 
 	assert len(conv_filters) == len(conv_nonlinearities)
 
 	assert arguments.pool_modes is not None
-	pool_modes = arguments.pool_modes.split(",")
+	pool_modes = arguments.pool_modes.split(layer_deliminator)
 	if len(pool_modes) == 1:
 		pool_modes *= len(arguments.convolution_filters)
 	for pool_mode_index in range(len(pool_modes)):
@@ -124,21 +125,21 @@ def validate_lenet_arguments(arguments):
 	'''
 	# model argument set 4
 	convolution_filter_sizes = arguments.convolution_filter_sizes
-	convolution_filter_sizes = [tuple(int(x) for x in token.split("*")) for token in convolution_filter_sizes.split(",")]
+	convolution_filter_sizes = [tuple(int(x) for x in token.split("*")) for token in convolution_filter_sizes.split(layer_deliminator)]
 	if len(convolution_filter_sizes)==1:
 		convolution_filter_sizes *= number_of_convolution_layers
 	assert len(convolution_filter_sizes) == number_of_convolution_layers
 	arguments.convolution_filter_sizes = convolution_filter_sizes
 
 	convolution_strides = arguments.convolution_strides
-	convolution_strides = [tuple(int(x) for x in token.split("*")) for token in convolution_strides.split(",")]
+	convolution_strides = [tuple(int(x) for x in token.split("*")) for token in convolution_strides.split(layer_deliminator)]
 	if len(convolution_strides)==1:
 		convolution_strides *= number_of_convolution_layers
 	assert len(convolution_strides)==number_of_convolution_layers
 	arguments.convolution_strides = convolution_strides
 
 	convolution_pads = arguments.convolution_pads
-	convolution_pads = [int(x) for x in convolution_pads.split(",")]
+	convolution_pads = [int(x) for x in convolution_pads.split(layer_deliminator)]
 	if len(convolution_pads) == 1:
 		convolution_pads *= number_of_convolution_layers
 	assert len(convolution_pads) == number_of_convolution_layers
@@ -147,21 +148,21 @@ def validate_lenet_arguments(arguments):
 	# model argument set 5
 	local_convolution_filter_sizes = arguments.local_convolution_filter_sizes
 	local_convolution_filter_sizes = [tuple(int(x) for x in token.split("*")) for token in
-									  local_convolution_filter_sizes.split(",")]
+									  local_convolution_filter_sizes.split(layer_deliminator)]
 	if len(local_convolution_filter_sizes) == 1:
 		local_convolution_filter_sizes *= number_of_local_convolution_layers
 	assert len(convolution_filter_sizes) == number_of_local_convolution_layers
 	arguments.local_convolution_filter_sizes = local_convolution_filter_sizes
 
 	local_convolution_strides = arguments.local_convolution_strides
-	local_convolution_strides = [tuple(int(x) for x in token.split("*")) for token in local_convolution_strides.split(",")]
+	local_convolution_strides = [tuple(int(x) for x in token.split("*")) for token in local_convolution_strides.split(layer_deliminator)]
 	if len(local_convolution_strides) == 1:
 		local_convolution_strides *= number_of_local_convolution_layers
 	assert len(local_convolution_strides) == number_of_local_convolution_layers
 	arguments.local_convolution_strides = local_convolution_strides
 
 	local_convolution_pads = arguments.local_convolution_pads
-	local_convolution_pads = [int(x) for x in local_convolution_pads.split(",")]
+	local_convolution_pads = [int(x) for x in local_convolution_pads.split(layer_deliminator)]
 	if len(local_convolution_pads) == 1:
 		local_convolution_pads *= number_of_local_convolution_layers
 	assert len(local_convolution_pads) == number_of_local_convolution_layers
@@ -169,14 +170,14 @@ def validate_lenet_arguments(arguments):
 
 	# model argument set 6
 	pooling_sizes = arguments.pooling_sizes
-	pooling_sizes = [tuple(int(x) for x in token.split("*")) for token in pooling_sizes.split(",")]
+	pooling_sizes = [tuple(int(x) for x in token.split("*")) for token in pooling_sizes.split(layer_deliminator)]
 	if len(pooling_sizes) == 1:
 		pooling_sizes *= number_of_convolution_layers
 	assert len(pooling_sizes) == number_of_convolution_layers
 	arguments.pooling_sizes=pooling_sizes
 
 	pooling_strides = arguments.pooling_strides
-	pooling_strides = [tuple(int(x) for x in token.split("*")) for token in pooling_strides.split(",")]
+	pooling_strides = [tuple(int(x) for x in token.split("*")) for token in pooling_strides.split(layer_deliminator)]
 	if len(pooling_strides) == 1:
 		pooling_strides *= number_of_convolution_layers
 	assert len(pooling_strides) == number_of_convolution_layers
@@ -219,7 +220,7 @@ def train_lenet():
 	settings = config_model(construct_lenet_parser, validate_lenet_arguments)
 	settings = validate_config(settings)
 
-	network = networks.LeNet(
+	network = networks.NewLeNet(
 		incoming=settings.input_shape,
 
 		convolution_filters=settings.convolution_filters,
@@ -231,13 +232,14 @@ def train_lenet():
 		dense_dimensions=settings.dense_dimensions,
 		dense_nonlinearities=settings.dense_nonlinearities,
 
+		layer_activation_types=settings.layer_activation_types,
 		layer_activation_parameters=settings.layer_activation_parameters,
 		layer_activation_styles=settings.layer_activation_styles,
 
 		objective_functions=settings.objective,
 		update_function=settings.update,
 
-		learning_rate=settings.learning_rate,
+		learning_rate_policy=settings.learning_rate,
 		#learning_rate_decay=settings.learning_rate_decay,
 		max_norm_constraint=settings.max_norm_constraint,
 		# learning_rate_decay_style=settings.learning_rate_decay_style,

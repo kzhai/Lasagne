@@ -96,10 +96,10 @@ def train_dalexnet():
 		objective_functions=settings.objective,
 		update_function=settings.update,
 
-		learning_rate=settings.learning_rate,
+		learning_rate_policy=settings.learning_rate,
 		#learning_rate_decay=settings.learning_rate_decay,
 
-		dropout_learning_rate=settings.dropout_learning_rate,
+		dropout_learning_rate_policy=settings.dropout_learning_rate,
 		#dropout_learning_rate_decay=settings.dropout_learning_rate_decay,
 		dropout_rate_update_interval=settings.dropout_rate_update_interval,
 		update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,

@@ -29,6 +29,7 @@ from . import random
 from . import regularization
 from . import updates
 from . import utils
+from . import policy
 
 
 __version__ = "0.2.dev1"

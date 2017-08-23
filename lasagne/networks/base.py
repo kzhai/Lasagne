@@ -9,12 +9,11 @@ import theano
 import theano.tensor
 
 from .. import layers
-from .. import objectives, regularization, updates, utils
+from .. import policy, objectives, regularization, updates, utils
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-	# "decay_learning_rate",
 	"Network",
 	"FeedForwardNetwork",
 	"DynamicFeedForwardNetwork",
@@ -24,22 +23,17 @@ __all__ = [
 ]
 
 
-def decay_learning_rate(learning_rate, epoch_index):
-	if len(learning_rate) == 1:
-		current_learning_rate = numpy.asarray(learning_rate[0])
-	elif learning_rate[2] == "inverse_t":
-		current_learning_rate = numpy.asarray(learning_rate[0]) * learning_rate[3] / (
-			1. + learning_rate[4] * epoch_index)
-	elif learning_rate[2] == "exponential":
-		current_learning_rate = numpy.asarray(learning_rate[0]) * learning_rate[3] * numpy.exp(
-			- learning_rate[4] * epoch_index)
-	elif learning_rate[2] == "step":
-		current_learning_rate = numpy.asarray(learning_rate[0]) * numpy.power(learning_rate[3],
-		                                                                      epoch_index // learning_rate[4])
-	else:
-		logger.error("unrecognized learning rate %s..." % (learning_rate))
+def decay_parameter(decay_policy, epoch_index):
+	if decay_policy[1] is policy.constant:
+		current_rate = policy.constant(decay_policy[0])
+	elif decay_policy[1] is policy.piecewise_constant:
+		current_rate = decay_policy[1](decay_policy[0], epoch_index, decay_policy[2], decay_policy[3])
+	elif decay_policy[1] is policy.inverse_time_decay \
+			or decay_policy[1] is policy.natural_exp_decay \
+			or decay_policy[1] is policy.exponential_decay:
+		current_rate = decay_policy[1](decay_policy[0], epoch_index, decay_policy[2], decay_policy[3], decay_policy[4])
 
-	return current_learning_rate.astype(theano.config.floatX)
+	return current_rate.astype(theano.config.floatX)
 
 
 class Network(object):
@@ -47,7 +41,7 @@ class Network(object):
 	             incoming,
 	             objective_functions,
 	             update_function,
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             # learning_rate_decay=None,
 	             max_norm_constraint=0,
 	             ):
@@ -68,7 +62,9 @@ class Network(object):
 
 		# self._input_variable = input_layers[0].input_var
 		self._input_variable = self._input_layer.input_var
-		self._learning_rate_variable = theano.tensor.scalar()
+		# self._learning_rate_variable = theano.tensor.scalar()
+		self._learning_rate_variable = theano.shared(value=numpy.array(1e-3).astype(theano.config.floatX),
+		                                             name="learning_rate")
 
 		#
 		#
@@ -80,17 +76,17 @@ class Network(object):
 		self.minibatch_index = 0
 
 		self.objective_functions_change_stack = []
-		self.regularizer_functions_change_stack = []
 		self.update_function_change_stack = []
-		# self.learning_rate_decay_change_stack = []
-		self.learning_rate_change_stack = []
+		self.learning_rate_policy_change_stack = []
+
+		self.regularizer_functions_change_stack = []
 		self.max_norm_constraint_change_stack = []
 
 		self.__set_objective_functions(objective_functions)
-		self.__set_regularizer_functions()
 		self.__set_update_function(update_function)
-		# self.set_learning_rate_decay(learning_rate_decay)
-		self.set_learning_rate(learning_rate)
+		self.set_learning_rate_policy(learning_rate_policy)
+
+		self.__set_regularizer_functions()
 		self.set_max_norm_constraint(max_norm_constraint)
 
 	def get_network_input(self, **kwargs):
@@ -109,17 +105,19 @@ class Network(object):
 		params = chain.from_iterable(l.get_params(**tags) for l in self.get_network_layers()[1:])
 		return utils.unique(params)
 
+	'''
 	def count_network_params(self, **tags):
 		# return lasagne.layers.count_params(self.get_all_layers()[1:], **tags)
 		params = self.get_network_params(**tags)
 		shapes = [p.get_value().shape for p in params]
 		counts = [numpy.prod(shape) for shape in shapes]
 		return sum(counts)
-
+	
 	def get_network_param_values(self, **tags):
 		# return lasagne.layers.get_all_param_values(self.get_all_layers()[1:], **tags)
 		params = self.get_network_params(**tags)
 		return [p.get_value() for p in params]
+	'''
 
 	def set_input_variable(self, input):
 		'''This is to establish the computational graph'''
@@ -140,10 +138,14 @@ class Network(object):
 	def get_objectives(self, **kwargs):
 		raise NotImplementedError("Not implemented in successor classes!")
 
-	def get_regularizers(self, **kwargs):
+	def get_regularizers(self, regularizer_functions=None, **kwargs):
 		assert hasattr(self, "_neural_network")
 		regularizer = 0
-		for regularizer_function, lambdas in self._regularizer_functions.items():
+
+		if regularizer_functions == None:
+			regularizer_functions = self._regularizer_functions
+
+		for regularizer_function, regularizer_weight_variable in regularizer_functions.items():
 			assert type(regularizer_function) is types.FunctionType
 			if regularizer_function in set(
 					[regularization.rademacher,
@@ -152,23 +154,31 @@ class Network(object):
 					 regularization.rademacher_p_inf_q_1,
 					 regularization.kl_divergence_kingma,
 					 regularization.kl_divergence_sparse]):
-				assert type(lambdas) is float
-				regularizer += lambdas * regularizer_function(self, **kwargs)
+				# assert type(lambda_policy) is float
+				# decayed_lambda = decay_parameter(lambda_decay_policy, self.epoch_index)
+				# regularizer += decayed_lambda * regularizer_function(self, **kwargs)
+				regularizer += regularizer_weight_variable * regularizer_function(self, **kwargs)
 			elif regularizer_function in set([regularization.l1, regularization.l2]):
-				if type(lambdas) is list:
+				regularizer += regularizer_weight_variable * regularization.regularize_network_params(
+					self._neural_network,
+					regularizer_function, **kwargs)
+				'''
+				if type(lambda_decay_policy) is list:
 					dense_layers = []
 					for layer in self.get_network_layers():
 						if isinstance(layer, layers.dense.DenseLayer):
 							dense_layers.append(layer)
-					assert len(dense_layers) == len(lambdas), (dense_layers, lambdas)
+					assert len(dense_layers) == len(lambda_decay_policy), (dense_layers, lambda_decay_policy)
 					regularizer += regularization.regularize_layer_params_weighted(
-						dict(list(zip(dense_layers, lambdas))), regularizer_function, **kwargs)
-				elif type(lambdas) is float:
-					regularizer += lambdas * regularization.regularize_network_params(self._neural_network,
+						dict(list(zip(dense_layers, lambda_decay_policy))), regularizer_function, **kwargs)
+				elif type(lambda_decay_policy) is float:
+					decayed_lambda = decay_rate(lambda_decay_policy, self.epoch_index)
+					regularizer += decayed_lambda * regularization.regularize_network_params(self._neural_network,
 					                                                                  regularizer_function, **kwargs)
 				else:
 					logger.error(
-						"unrecognized regularizer function settings: %s, %s" % (regularizer_function, lambdas))
+						"unrecognized regularizer function settings: %s, %s" % (regularizer_function, lambda_decay_policy))
+				'''
 			else:
 				logger.error("unrecognized regularizer function: %s" % (regularizer_function))
 
@@ -177,55 +187,6 @@ class Network(object):
 	@property
 	def get_loss(self, **kwargs):
 		raise NotImplementedError("Not implemented in successor classes!")
-
-	#
-	#
-	#
-	#
-	#
-
-	'''
-	def L1_regularizer(self):
-		if self._layer_L1_regularizer_lambdas == None:
-			return 0
-		else:
-			# We could add some weight decay as well here, see lasagne.regularization.
-			return regularization.regularize_layer_params_weighted(self._layer_L1_regularizer_lambdas,
-																   regularization.l1)
-
-	def set_L1_regularizer_lambda(self, L1_regularizer_lambdas=None):
-		if L1_regularizer_lambdas == None or L1_regularizer_lambdas == 0 or all(
-						L1_regularizer_lambda == 0 for L1_regularizer_lambda in L1_regularizer_lambdas):
-			self._layer_L1_regularizer_lambdas = None
-		else:
-			assert len(L1_regularizer_lambdas) == len(self.get_network_layers()) - 1
-			self._layer_L1_regularizer_lambdas = {temp_layer: L1_regularizer_lambda for
-												  temp_layer, L1_regularizer_lambda in
-												  zip(self.get_network_layers(), L1_regularizer_lambdas)}
-
-			# self.build_functions()
-
-	def L2_regularizer(self):
-		if self._layer_L2_regularizer_lambdas == None:
-			return 0
-		else:
-			# We could add some weight decay as well here, see lasagne.regularization.
-			return regularization.regularize_layer_params_weighted(self._layer_L2_regularizer_lambdas,
-																   regularization.l2)
-
-	def set_L2_regularizer_lambda(self, L2_regularizer_lambdas):
-		if L2_regularizer_lambdas == None or L2_regularizer_lambdas == 0 or all(
-						L2_regularizer_lambda == 0 for L2_regularizer_lambda in L2_regularizer_lambdas):
-			self._layer_L2_regularizer_lambdas = None
-		else:
-			assert len(L2_regularizer_lambdas) == len(self.get_network_layers()) - 1
-
-			self._layer_L2_regularizer_lambdas = {temp_layer: L2_regularizer_lambda for
-												  temp_layer, L2_regularizer_lambda in
-												  zip(self.get_network_layers(), L2_regularizer_lambdas)}
-
-			# self.build_functions()
-	'''
 
 	#
 	#
@@ -249,23 +210,38 @@ class Network(object):
 
 	def __set_regularizer_functions(self, regularizer_functions=None):
 		_regularizer_functions = {}
+		_regularizer_lambda_policy = {};
 		if regularizer_functions is not None:
 			assert hasattr(self, "_neural_network")
+			assert type(regularizer_functions) is dict
+			'''
 			if type(regularizer_functions) is types.FunctionType:
-				_regularizer_functions[regularizer_functions] = 1.0
-			elif type(regularizer_functions) is dict:
-				for regularizer_function, lambdas in regularizer_functions.items():
-					assert type(regularizer_function) is types.FunctionType
-					if type(lambdas) is list:
-						for weight in lambdas:
-							# assert isinstance(layer, layers.Layer)
-							assert type(weight) == float
-					else:
-						assert type(lambdas) == float
-					_regularizer_functions[regularizer_function] = lambdas
-			else:
-				logger.error('unrecognized regularizer functions: %s' % (regularizer_functions))
+				regularizer_weight_variable = theano.shared(value=numpy.array(1.0).astype(theano.config.floatX),
+				                                            name="%s" % regularizer_functions)
+
+				_regularizer_functions[regularizer_functions] = regularizer_weight_variable
+			'''
+
+			for regularizer_function, lambda_decay_policy in regularizer_functions.items():
+				assert type(regularizer_function) is types.FunctionType
+				assert type(lambda_decay_policy) is list;
+
+				'''
+				if type(lambda_decay_policy) is list:
+					for weight in lambda_decay_policy:
+						# assert isinstance(layer, layers.Layer)
+						assert type(weight) == float
+				else:
+					assert type(lambda_decay_policy) == float
+				'''
+				regularizer_weight_variable = theano.shared(value=numpy.array(0.).astype(theano.config.floatX),
+				                                            name="%s lambda" % regularizer_function)
+				_regularizer_functions[regularizer_function] = regularizer_weight_variable
+				_regularizer_lambda_policy[regularizer_weight_variable] = lambda_decay_policy
+
+			# _regularizer_functions[regularizer_function] = lambda_decay_policy
 		self._regularizer_functions = _regularizer_functions
+		self._regularizer_lambda_policy = _regularizer_lambda_policy
 		self.regularizer_functions_change_stack.append((self.epoch_index, self._regularizer_functions))
 
 	def set_regularizers(self, regularizers=None):
@@ -281,69 +257,27 @@ class Network(object):
 		self.__set_update_function(update)
 		self.build_functions()
 
-	'''
-	def set_learning_rate_decay(self, learning_rate_decay):
-		self.learning_rate_decay = learning_rate_decay
-		self.learning_rate_decay_change_stack.append((self.epoch_index, self.learning_rate_decay))
-	'''
-
-	def set_learning_rate(self, learning_rate):
-		self.learning_rate = learning_rate
-		self.learning_rate_change_stack.append((self.epoch_index, self.learning_rate))
+	def set_learning_rate_policy(self, learning_rate_policy):
+		self.learning_rate_policy = learning_rate_policy
+		self.learning_rate_policy_change_stack.append((self.epoch_index, self.learning_rate_policy))
 
 	def set_max_norm_constraint(self, max_norm_constraint):
 		self.max_norm_constraint = max_norm_constraint
 		self.max_norm_constraint_change_stack.append((self.epoch_index, self.max_norm_constraint))
 
-	'''
-	def build_functions(self):
-		# Create a train_loss expression for training, i.e., a scalar objective we want to minimize (for our multi-class problem, it is the cross-entropy train_loss):
-		train_loss = self.get_loss(self._output_variable)
-		train_accuracy = self.get_objective(self._output_variable, objective_function="categorical_accuracy")
-		# train_prediction = self.get_output(**kwargs)
-		# train_accuracy = theano.tensor.mean(theano.tensor.eq(theano.tensor.argmax(train_prediction, axis=1), self._output_variable), dtype=theano.config.floatX)
+	def __update_learning_rate(self):
+		self._learning_rate_variable.set_value(decay_parameter(self.learning_rate_policy, self.epoch_index))
 
-		# Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
-		all_params = self.get_network_params(trainable=True)
-		all_params_updates = self._update_function(train_loss, all_params, self._learning_rate_variable)
+	def __update_regularizer_weight(self):
+		if not hasattr(self, "_regularizer_lambda_policy"):
+			return
 
-		# Compile a function performing a training step on a mini-batch (by giving the updates dictionary) and returning the corresponding training train_loss:
-		self._train_function = theano.function(
-			inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
-			outputs=[train_loss, train_accuracy],
-			updates=all_params_updates
-		)
+		for regularizer_weight_variable, lambda_decay_policy in self._regularizer_lambda_policy.items():
+			regularizer_weight_variable.set_value(decay_parameter(lambda_decay_policy, self.epoch_index))
 
-		# Create a train_loss expression for validation/testing. The crucial difference here is that we do a deterministic forward pass through the networks, disabling dropout layers.
-		test_loss = self.get_loss(self._output_variable, deterministic=True)
-		test_accuracy = self.get_objective(self._output_variable, objective_function="categorical_accuracy",
-										   deterministic=True)
-		# As a bonus, also create an expression for the classification accuracy:
-		# test_prediction = self.get_output(deterministic=True)
-		# test_accuracy = theano.tensor.mean(theano.tensor.eq(theano.tensor.argmax(test_prediction, axis=1), self._output_variable), dtype=theano.config.floatX)
-
-		# Compile a second function computing the validation train_loss and accuracy:
-		self._test_function = theano.function(
-			inputs=[self._input_variable, self._output_variable],
-			outputs=[test_loss, test_accuracy],
-		)
-	'''
-
-	'''
-	def test(self, test_dataset):
-		test_dataset_x, test_dataset_y = test_dataset
-		test_running_time = timeit.default_timer()
-		average_test_loss, average_test_accuracy = self._test_function(test_dataset_x, test_dataset_y)
-		test_running_time = timeit.default_timer() - test_running_time
-		return average_test_loss, average_test_accuracy, test_running_time
-
-	def train(self, train_dataset, learning_rate):
-		train_dataset_x, train_dataset_y = train_dataset
-		train_running_time = timeit.default_timer()
-		average_train_loss, average_train_accuracy = self._train_function(train_dataset_x, train_dataset_y, learning_rate)
-		train_running_time = timeit.default_timer() - train_running_time
-		return average_train_loss, average_train_accuracy, train_running_time
-	'''
+	def update_shared_variables(self):
+		self.__update_learning_rate()
+		self.__update_regularizer_weight()
 
 	def debug(self, settings, **kwargs):
 		raise NotImplementedError("Not implemented in successor classes!")
@@ -353,7 +287,7 @@ class FeedForwardNetwork(Network):
 	def __init__(self, incoming,
 	             objective_functions,
 	             update_function,
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             # learning_rate_decay=None,
 	             max_norm_constraint=0,
 	             # learning_rate_decay_style=None,
@@ -364,7 +298,7 @@ class FeedForwardNetwork(Network):
 		super(FeedForwardNetwork, self).__init__(incoming,
 		                                         objective_functions,
 		                                         update_function,
-		                                         learning_rate,
+		                                         learning_rate_policy,
 		                                         # learning_rate_decay,
 		                                         max_norm_constraint,
 		                                         # learning_rate_decay_style,
@@ -377,14 +311,6 @@ class FeedForwardNetwork(Network):
 		self.best_epoch_index = 0
 		self.best_minibatch_index = 0
 		self.best_validate_accuracy = 0
-
-	# self.best_validate_model = None
-
-	'''
-	@property
-	def build_functions(self):
-		raise NotImplementedError("Not implemented in successor classes!")
-	'''
 
 	def get_objectives(self, label, objective_functions=None, threshold=1e-9, **kwargs):
 		output = self.get_output(**kwargs)
@@ -435,7 +361,8 @@ class FeedForwardNetwork(Network):
 
 		# Compile a function performing a training step on a mini-batch (by giving the updates dictionary) and returning the corresponding training train_loss:
 		self._train_function = theano.function(
-			inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
+			# inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
+			inputs=[self._input_variable, self._output_variable],
 			outputs=[train_objective, train_accuracy],
 			updates=trainable_params_updates
 		)
@@ -453,6 +380,17 @@ class FeedForwardNetwork(Network):
 		self._test_function = theano.function(
 			inputs=[self._input_variable, self._output_variable],
 			outputs=[test_objective, test_accuracy],
+		)
+
+		#
+		#
+		#
+		#
+		#
+
+		self._debug_function = theano.function(
+			inputs=[self._input_variable, self._output_variable],
+			outputs=[train_loss, train_objective, test_loss, test_objective],
 		)
 
 		'''
@@ -519,11 +457,7 @@ class FeedForwardNetwork(Network):
 		data_indices = numpy.random.permutation(number_of_data)
 		minibatch_start_index = 0
 
-		'''
-		learning_rate = self.learning_rate
-		if self.learning_rate_decay is not None and self.learning_rate_decay[0] == "epoch":
-			learning_rate = decay_learning_rate(self.learning_rate, self.epoch_index, self.learning_rate_decay)
-		'''
+		self.update_shared_variables()
 
 		total_train_objective = 0
 		total_train_accuracy = 0
@@ -534,11 +468,6 @@ class FeedForwardNetwork(Network):
 
 			minibatch_x = train_dataset_x[minibatch_indices, :]
 			minibatch_y = train_dataset_y[minibatch_indices]
-
-			'''
-			if self.learning_rate_decay is not None and self.learning_rate_decay[0] == "iteration":
-				learning_rate = decay_learning_rate(self.learning_rate, self.minibatch_index, self.learning_rate_decay)
-			'''
 
 			minibatch_running_time, minibatch_average_train_objective, minibatch_average_train_accuracy = self.train_minibatch(
 				minibatch_x, minibatch_y)
@@ -596,14 +525,14 @@ class FeedForwardNetwork(Network):
 			elif self.learning_rate_decay[0] == "iteration":
 				learning_rate = decay_learning_rate(self.learning_rate, self.minibatch_index, self.learning_rate_decay)
 		'''
-		learning_rate = decay_learning_rate(self.learning_rate, self.epoch_index)
+		# learning_rate = decay_parameter(self.learning_rate_policy, self.epoch_index)
 
 		minibatch_running_time = timeit.default_timer()
-		train_function_outputs = self._train_function(minibatch_x, minibatch_y, learning_rate)
+		train_function_outputs = self._train_function(minibatch_x, minibatch_y)
 		minibatch_average_train_objective, minibatch_average_train_accuracy = train_function_outputs
 		minibatch_running_time = timeit.default_timer() - minibatch_running_time
 
-		# print self._debug_function(minibatch_x, minibatch_y, learning_rate)
+		# print self._debug_function(minibatch_x, minibatch_y)
 
 		return minibatch_running_time, minibatch_average_train_objective, minibatch_average_train_accuracy
 
@@ -613,10 +542,10 @@ class DynamicFeedForwardNetwork(FeedForwardNetwork):
 	             incoming,
 	             objective_functions,
 	             update_function,
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             # learning_rate_decay=None,
 
-	             dropout_learning_rate=1e-3,
+	             dropout_learning_rate_policy=1e-3,
 	             # dropout_learning_rate_decay=None,
 	             dropout_rate_update_interval=0,
 
@@ -626,12 +555,14 @@ class DynamicFeedForwardNetwork(FeedForwardNetwork):
 		super(DynamicFeedForwardNetwork, self).__init__(incoming,
 		                                                objective_functions,
 		                                                update_function,
-		                                                learning_rate,
+		                                                learning_rate_policy,
 		                                                # learning_rate_decay,
 		                                                max_norm_constraint,
 		                                                validation_interval,
 		                                                )
-		self._dropout_learning_rate_variable = theano.tensor.scalar()
+		# self._dropout_learning_rate_variable = theano.tensor.scalar()
+		self._dropout_learning_rate_variable = theano.shared(value=numpy.array(1e-3).astype(theano.config.floatX),
+		                                                     name="dropout_learning_rate")
 
 		self._dropout_rate_update_interval = dropout_rate_update_interval
 
@@ -639,7 +570,7 @@ class DynamicFeedForwardNetwork(FeedForwardNetwork):
 		self.dropout_learning_rate_change_stack = []
 
 		# self.set_dropout_learning_rate_decay(dropout_learning_rate_decay)
-		self.set_dropout_learning_rate(dropout_learning_rate)
+		self.set_dropout_learning_rate_policy(dropout_learning_rate_policy)
 
 	'''
 	def set_dropout_learning_rate_decay(self, dropout_learning_rate_decay):
@@ -647,9 +578,16 @@ class DynamicFeedForwardNetwork(FeedForwardNetwork):
 		self.dropout_learning_rate_decay_change_stack.append((self.epoch_index, self.dropout_learning_rate_decay))
 	'''
 
-	def set_dropout_learning_rate(self, dropout_learning_rate):
-		self.dropout_learning_rate = dropout_learning_rate
-		self.dropout_learning_rate_change_stack.append((self.epoch_index, self.dropout_learning_rate))
+	def set_dropout_learning_rate_policy(self, dropout_learning_rate):
+		self.dropout_learning_rate_policy = dropout_learning_rate
+		self.dropout_learning_rate_change_stack.append((self.epoch_index, self.dropout_learning_rate_policy))
+
+	def __update_dropout_learning_rate(self):
+		self._dropout_learning_rate_variable.set_value(decay_parameter(self.dropout_learning_rate_policy, self.epoch_index))
+
+	def update_shared_variables(self):
+		super(DynamicFeedForwardNetwork, self).update_shared_variables();
+		self.__update_dropout_learning_rate()
 
 	def build_functions(self):
 		super(DynamicFeedForwardNetwork, self).build_functions()
@@ -667,7 +605,7 @@ class DynamicFeedForwardNetwork(FeedForwardNetwork):
 
 		# Compile a second function computing the validation train_loss and accuracy:
 		self._train_dropout_function = theano.function(
-			inputs=[self._input_variable, self._output_variable, self._dropout_learning_rate_variable],
+			inputs=[self._input_variable, self._output_variable],
 			outputs=[dropout_objective, dropout_accuracy],
 			updates=adaptable_params_updates
 		)
@@ -703,9 +641,8 @@ class DynamicFeedForwardNetwork(FeedForwardNetwork):
 
 		minibatch_running_time_temp = timeit.default_timer()
 		if self._dropout_rate_update_interval > 0 and self.minibatch_index % self._dropout_rate_update_interval == 0:
-			dropout_learning_rate = decay_learning_rate(self.dropout_learning_rate, self.epoch_index)
-			train_dropout_function_outputs = self._train_dropout_function(minibatch_x, minibatch_y,
-			                                                              dropout_learning_rate)
+			#dropout_learning_rate = decay_parameter(self.dropout_learning_rate_policy, self.epoch_index)
+			train_dropout_function_outputs = self._train_dropout_function(minibatch_x, minibatch_y)
 
 		minibatch_running_time_temp = timeit.default_timer() - minibatch_running_time_temp
 
@@ -824,7 +761,7 @@ class RecurrentNetwork(FeedForwardNetwork):
 
 	             objective_functions,
 	             update_function,
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             # learning_rate_decay=None,
 
 	             max_norm_constraint=0,
@@ -856,7 +793,7 @@ class RecurrentNetwork(FeedForwardNetwork):
 		super(RecurrentNetwork, self).__init__(incoming,
 		                                       objective_functions,
 		                                       update_function,
-		                                       learning_rate,
+		                                       learning_rate_policy,
 		                                       # learning_rate_decay,
 		                                       max_norm_constraint,
 		                                       validation_interval
@@ -1044,6 +981,8 @@ class RecurrentNetwork(FeedForwardNetwork):
 			number_of_data = len(train_sequence_x)
 		# data_indices = numpy.random.permutation(number_of_data)
 
+		self.update_shared_variables()
+
 		minibatch_start_index = 0
 		'''
 		if self.learning_rate_decay[0] == "epoch":
@@ -1076,10 +1015,6 @@ class RecurrentNetwork(FeedForwardNetwork):
 			minibatch_m = train_sequence_m[sequence_start_index:sequence_end_index]
 
 			minibatch_start_index += minibatch_size
-			'''
-			if self.learning_rate_decay[0] == "iteration":
-				learning_rate = decay_learning_rate(self.learning_rate, self.minibatch_index, self.learning_rate_decay)
-			'''
 
 			minibatch_running_time, minibatch_average_train_objective, minibatch_average_train_accuracy = self.train_minibatch(
 				minibatch_x, minibatch_y, minibatch_m)
@@ -1149,7 +1084,7 @@ class RecurrentNetwork(FeedForwardNetwork):
 				learning_rate = decay_learning_rate(self.learning_rate, self.minibatch_index, self.learning_rate_decay)
 		'''
 
-		learning_rate = decay_learning_rate(self.learning_rate, self.epoch_index)
+		learning_rate = decay_parameter(self.learning_rate_policy, self.epoch_index)
 
 		minibatch_running_time = timeit.default_timer()
 		train_function_outputs = self._train_function(minibatch_x, minibatch_y, minibatch_m, learning_rate)
@@ -1172,7 +1107,7 @@ class DynamicRecurrentNetwork(RecurrentNetwork):
 
 	             objective_functions,
 	             update_function,
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             # learning_rate_decay=None,
 
 	             dropout_learning_rate=1e-3,
@@ -1198,7 +1133,7 @@ class DynamicRecurrentNetwork(RecurrentNetwork):
 
 			objective_functions,
 			update_function,
-			learning_rate,
+			learning_rate_policy,
 			# learning_rate_decay,
 
 			max_norm_constraint,
@@ -1426,7 +1361,7 @@ class DynamicRecurrentNetwork(RecurrentNetwork):
 
 		minibatch_running_time_temp = timeit.default_timer()
 		if self._dropout_rate_update_interval > 0 and self.minibatch_index % self._dropout_rate_update_interval == 0:
-			dropout_learning_rate = decay_learning_rate(self.dropout_learning_rate, self.epoch_index)
+			dropout_learning_rate = decay_parameter(self.dropout_learning_rate, self.epoch_index)
 			train_dropout_function_outputs = self._train_dropout_function(minibatch_x, minibatch_y, minibatch_m,
 			                                                              dropout_learning_rate)
 		minibatch_running_time_temp = timeit.default_timer() - minibatch_running_time_temp
@@ -1466,14 +1401,14 @@ class GenerativeNetwork(Network):
 	def __init__(self, incoming,
 	             objective_functions,
 	             update_function,
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             learning_rate_decay_style=None,
 	             learning_rate_decay_parameter=0,
 	             ):
 		super(GenerativeNetwork, self).__init__(incoming,
 		                                        objective_functions,
 		                                        update_function,
-		                                        learning_rate,
+		                                        learning_rate_policy,
 		                                        learning_rate_decay_style,
 		                                        learning_rate_decay_parameter,
 		                                        )
@@ -1595,8 +1530,8 @@ class GenerativeNetwork(Network):
 			minibatch_x = train_dataset[minibatch_indices, :]
 			# minibatch_y = train_dataset_y[minibatch_indices]
 
-			learning_rate = decay_learning_rate(self.minibatch_index, self.learning_rate,
-			                                    self.learning_rate_decay_style, self.learning_rate_decay_parameter)
+			learning_rate = decay_parameter(self.minibatch_index, self.learning_rate_policy,
+			                                self.learning_rate_decay_style, self.learning_rate_decay_parameter)
 
 			minibatch_running_time = timeit.default_timer()
 			minibatch_average_train_loss, = self._train_function(minibatch_x, learning_rate)

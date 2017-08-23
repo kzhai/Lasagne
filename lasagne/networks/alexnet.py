@@ -35,7 +35,7 @@ class AlexNet(FeedForwardNetwork):
 
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             #learning_rate_decay=None,
 	             max_norm_constraint=0,
 
@@ -55,7 +55,7 @@ class AlexNet(FeedForwardNetwork):
 		super(AlexNet, self).__init__(incoming,
 		                              objective_functions,
 		                              update_function,
-		                              learning_rate,
+		                              learning_rate_policy,
 		                              #learning_rate_decay,
 		                              max_norm_constraint,
 		                              # learning_rate_decay_style,
@@ -191,10 +191,10 @@ class DynamicAlexNet(DynamicFeedForwardNetwork):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             #learning_rate_decay=None,
 
-	             dropout_learning_rate=1e-3,
+	             dropout_learning_rate_policy=1e-3,
 	             #dropout_learning_rate_decay=None,
 	             dropout_rate_update_interval=1,
 	             update_hidden_layer_dropout_only=False,
@@ -217,10 +217,10 @@ class DynamicAlexNet(DynamicFeedForwardNetwork):
 		super(DynamicAlexNet, self).__init__(incoming,
 		                                     objective_functions,
 		                                     update_function,
-		                                     learning_rate,
+		                                     learning_rate_policy,
 		                                     #learning_rate_decay,
 
-		                                     dropout_learning_rate,
+		                                     dropout_learning_rate_policy,
 		                                     #dropout_learning_rate_decay,
 		                                     dropout_rate_update_interval,
 

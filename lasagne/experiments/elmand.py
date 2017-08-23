@@ -96,7 +96,7 @@ def train_delman():
 		update_function=settings.update,
 		# pretrained_model=pretrained_model
 
-		learning_rate=settings.learning_rate,
+		learning_rate_policy=settings.learning_rate,
 		#learning_rate_decay=settings.learning_rate_decay,
 
 		dropout_learning_rate=settings.dropout_learning_rate,

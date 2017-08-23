@@ -410,7 +410,8 @@ class BernoulliDropoutLayer(Layer):
 			assert activation_probability.shape == (num_inputs,);
 		'''
 
-		self.activation_probability = self.add_param(activation_probability, self.input_shape[num_leading_axes:],
+		# self.activation_probability = self.add_param(activation_probability, self.input_shape[num_leading_axes:], name="r", trainable=False, regularizable=False)
+		self.activation_probability = self.add_param(activation_probability, activation_probability.shape,
 		                                             name="r", trainable=False, regularizable=False)
 
 		self.rescale = rescale
@@ -446,6 +447,20 @@ class BernoulliDropoutLayer(Layer):
 			return input * mask
 
 
+def _logit(x):
+	"""
+	Logit function in Numpy. Useful for parameterizing alpha.
+	"""
+	return numpy.log(x / (1. - x))
+
+
+def _sigmoid(x):
+	"""
+	Logit function in Numpy. Useful for parameterizing alpha.
+	"""
+	return 1. / (1 + numpy.exp(-x))
+
+
 class GaussianDropoutLayer(Layer):
 	"""
 	Replication of the Gaussian dropout of Srivastava et al. 2014 (section
@@ -476,7 +491,8 @@ class GaussianDropoutLayer(Layer):
 		activation_probability = _validate_activation_probability_for_logit_parameterization(activation_probability)
 		# self.logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability))
 		logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability))
-		self.logit_sigma = self.add_param(logit_sigma, (), name="logit_sigma", trainable=False, regularizable=False)
+		self.logit_sigma = self.add_param(logit_sigma, logit_sigma.shape, name="logit_sigma", trainable=False,
+		                                  regularizable=False)
 
 	'''
 	def old__init__(self, incoming, p=0.5, **kwargs):
@@ -546,7 +562,8 @@ class FastDropoutLayer(MergeLayer):
 
 		activation_probability = _validate_activation_probability_for_logit_parameterization(activation_probability)
 		logit_sigma = _logit(numpy.sqrt((1 - activation_probability) / activation_probability))
-		self.logit_sigma = self.add_param(logit_sigma, (), name="logit_sigma", trainable=False, regularizable=False)
+		self.logit_sigma = self.add_param(logit_sigma, logit_sigma.shape, name="logit_sigma", trainable=False,
+		                                  regularizable=False)
 
 		# self.logitalpha = theano.shared(
 		# value=np.array(_logit(np.sqrt(p / (1. - p)))).astype(theano.config.floatX),
@@ -645,7 +662,7 @@ def _validate_activation_probability_for_logit_parameterization(activation_proba
 		return p
 	'''
 
-	if numpy.any(activation_probability <= 0.5 or activation_probability >= 1.0):
+	if numpy.any(activation_probability <= 0.5) or numpy.any(activation_probability >= 1.0):
 		warnings.warn("Clipping p to the interval of (0.5, 1.0).", RuntimeWarning)
 		return numpy.clip(activation_probability, 0.5 + clip_margin, 1 - clip_margin)
 	return activation_probability
@@ -667,7 +684,7 @@ class VariationalDropoutLayer(Layer):
 			think this is actually necessary to replicate)
 	"""
 
-	def __init__(self, incoming, activation_probability=0.5, adaptive="layerwise", **kwargs):
+	def __init__(self, incoming, activation_probability=0.5, adaptive="elementwise", **kwargs):
 		super(VariationalDropoutLayer, self).__init__(incoming, **kwargs)
 
 		'''
@@ -687,6 +704,7 @@ class VariationalDropoutLayer(Layer):
 
 		self.adaptive = adaptive
 		activation_probability = _validate_activation_probability_for_logit_parameterization(activation_probability)
+
 		# init based on adaptive options:
 		'''
 		if self.adaptive == None:
@@ -800,12 +818,12 @@ class VariationalDropoutTypeBLayer(FastDropoutLayer, VariationalDropoutLayer):
 			think this is actually necessary to replicate)
 	"""
 
-	def __init__(self, incoming, activation_probability=0.5, adaptive="weightwise", **kwargs):
+	def __init__(self, incoming, activation_probability=0.5, adaptive="elementwise", **kwargs):
 		FastDropoutLayer.__init__(self, incoming, activation_probability, **kwargs)
 		self.init_adaptive(activation_probability, adaptive)
 
 
-class SparseVariationalDropoutLayer(VariationalDropoutLayer, GaussianDropoutLayer):
+class SparseVariationalDropoutLayer(Layer):
 	"""
 	Layer implementing the sparse variational dropout described in:
 	https://arxiv.org/abs/1701.05369
@@ -823,22 +841,53 @@ class SparseVariationalDropoutLayer(VariationalDropoutLayer, GaussianDropoutLaye
 			think this is actually necessary to replicate)
 	"""
 
-	def __init__(self, incoming, activation_probability=0.5, adaptive="elementwise", **kwargs):
-		VariationalDropoutLayer.__init__(self, incoming, activation_probability=activation_probability,
-		                                 adaptive=adaptive, **kwargs)
-		# forward pass depends on this name, but we are remapping it to be log alpha
-		log_alpha = T.log(T.nnet.sigmoid(self.logit_sigma)).eval()
+	def __init__(self, incoming, activation_probability=0.5, shared_axes=(), num_leading_axes=1, **kwargs):
+		# VariationalDropoutLayer.__init__(self, incoming, activation_probability=activation_probability, adaptive=adaptive, **kwargs)
+		super(SparseVariationalDropoutLayer, self).__init__(incoming, **kwargs)
 
-		# remove the old parameter
-		del self.params[self.logit_sigma]
-		del self.logit_sigma
+		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+
+		self.shared_axes = tuple(shared_axes)
+
+		activation_probability = numpy.clip(activation_probability, 0 + 1e-6, 1 - 1e-6)
+
+		# forward pass depends on this name, but we are remapping it to be log alpha
+		log_alpha = numpy.log((1. - activation_probability) / activation_probability)
 
 		self.log_alpha = self.add_param(log_alpha, log_alpha.shape, name="variational.dropout.log_alpha",
 		                                trainable=True, regularizable=False)
-		self.logit_sigma = self.log_alpha
 
-		# self.log_alpha = theano.shared(value=log_alpha, name='logalpha')
-		#self.add_param(self.log_alpha, log_alpha.shape)
+	def get_output_for(self, input, deterministic=False, **kwargs):
+		"""
+		Parameters
+		----------
+		input : tensor
+		output from the previous layer
+		deterministic : bool
+		If true noise is disabled, see notes
+		"""
+		# self.sigma = T.nnet.sigmoid(self.logit_sigma)
+		self.alpha = T.sqrt(T.exp(self.log_alpha))
+		if deterministic or numpy.all(self.alpha.eval() == 0):
+			return input
+		else:
+			# use nonsymbolic shape for dropout mask if possible
+			perturbation_shape = self.input_shape
+			if any(s is None for s in perturbation_shape):
+				perturbation_shape = input.shape
+
+			# apply dropout, respecting shared axes
+			if self.shared_axes:
+				shared_axes = tuple(a if a >= 0 else a + input.ndim
+				                    for a in self.shared_axes)
+				perturbation_shape = tuple(1 if a in shared_axes else s
+				                           for a, s in enumerate(perturbation_shape))
+			perturbation = 1 + self.alpha * self._srng.normal(input.shape, avg=0.0, std=1.)
+
+			if self.shared_axes:
+				bcast = tuple(bool(s == 1) for s in perturbation_shape)
+				perturbation = T.patternbroadcast(perturbation, bcast)
+			return input * perturbation
 
 
 class AdaptiveDropoutLayer(Layer):
@@ -978,20 +1027,6 @@ class StandoutLayer(Layer):
 			activation_flag = activation_flag / activation_probability
 
 		return activation_flag
-
-
-def _logit(x):
-	"""
-	Logit function in Numpy. Useful for parameterizing alpha.
-	"""
-	return numpy.log(x / (1. - x))
-
-
-def _sigmoid(x):
-	"""
-	Logit function in Numpy. Useful for parameterizing alpha.
-	"""
-	return 1. / (1 + numpy.exp(-x))
 
 
 class GenericDropoutLayer(Layer):

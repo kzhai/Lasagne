@@ -93,7 +93,7 @@ def train_snn():
 		objective_functions=settings.objective,
 		update_function=settings.update,
 
-		learning_rate=settings.learning_rate,
+		learning_rate_policy=settings.learning_rate,
 		#learning_rate_decay=settings.learning_rate_decay,
 		max_norm_constraint=settings.max_norm_constraint,
 

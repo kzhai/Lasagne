@@ -12,9 +12,149 @@ from .. import layers
 logger = logging.getLogger(__name__)
 
 __all__ = [
+	"NewLeNet",
 	"LeNet",
 	"DynamicLeNet",
 ]
+
+
+class NewLeNet(FeedForwardNetwork):
+	def __init__(self,
+	             # input_network=None,
+	             # input_shape,
+	             incoming,
+
+	             convolution_filters,
+	             convolution_nonlinearities,
+	             # convolution_filter_sizes=None,
+	             # maxpooling_sizes=None,
+	             pool_modes,
+
+	             dense_dimensions,
+	             dense_nonlinearities,
+
+	             layer_activation_types,
+	             layer_activation_parameters,
+	             layer_activation_styles,
+
+	             objective_functions=objectives.categorical_crossentropy,
+	             update_function=updates.nesterov_momentum,
+
+	             learning_rate_policy=1e-3,
+	             # learning_rate_decay=None,
+	             max_norm_constraint=0,
+
+	             validation_interval=-1,
+
+	             convolution_kernel_sizes=(5, 5),
+	             convolution_strides=(1, 1),
+	             convolution_pads=2,
+
+	             pooling_kernel_sizes=(3, 3),
+	             pooling_strides=(2, 2),
+	             ):
+		super(NewLeNet, self).__init__(incoming,
+		                               objective_functions,
+		                               update_function,
+		                               learning_rate_policy,
+		                               # learning_rate_decay,
+		                               max_norm_constraint,
+		                               validation_interval)
+
+		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
+		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+
+		# self._input_layer = layers.InputLayer(shape=input_shape)
+		# self._input_variable = self._input_layer.input_var
+
+		assert len(layer_activation_types) == len(dense_nonlinearities) + len(convolution_nonlinearities)
+		assert len(layer_activation_parameters) == len(dense_nonlinearities) + len(convolution_nonlinearities)
+		assert len(layer_activation_styles) == len(dense_nonlinearities) + len(convolution_nonlinearities)
+		assert len(convolution_filters) == len(convolution_nonlinearities)
+		assert len(convolution_filters) == len(pool_modes)
+
+		dropout_layer_index = 0
+		neural_network = self._input_layer
+		for conv_layer_index in range(len(convolution_filters)):
+			input_layer_shape = layers.get_output_shape(neural_network)[1:]
+			previous_layer_shape = numpy.prod(input_layer_shape)
+			activation_probability = layers.sample_activation_probability(previous_layer_shape,
+			                                                              layer_activation_styles[dropout_layer_index],
+			                                                              layer_activation_parameters[
+				                                                              dropout_layer_index])
+			activation_probability = numpy.reshape(activation_probability, input_layer_shape)
+			# print "before dropout", lasagne.layers.get_output_shape(neural_network)
+			neural_network = layer_activation_types[dropout_layer_index](neural_network,
+			                                                             activation_probability=activation_probability)
+			dropout_layer_index += 1
+
+			conv_filter_number = convolution_filters[conv_layer_index]
+			conv_nonlinearity = convolution_nonlinearities[conv_layer_index]
+			# conv_filter_size = convolution_filter_sizes[conv_layer_index]
+			conv_kernel_size = convolution_kernel_sizes
+			conv_stride = convolution_strides
+			conv_pad = convolution_pads
+
+			# print "before convolution", lasagne.layers.get_output_shape(neural_network)
+			# Convolutional layer with 32 kernels of size 5x5. Strided and padded convolutions are supported as well see the docstring.
+			neural_network = layers.Conv2DLayer(neural_network,
+			                                    W=init.GlorotUniform(gain=init.GlorotUniformGain[conv_nonlinearity]),
+			                                    # This is ONLY for CIFAR-10 dataset.
+			                                    # W=init.Uniform(0.1**(1+len(convolution_filters)-conv_layer_index)),
+			                                    # W=init.HeNormal(gain=0.1),
+			                                    # b=init.Constant(1.0 * (conv_layer_index!=0)),
+			                                    b=init.Constant(0.),
+			                                    nonlinearity=conv_nonlinearity,
+			                                    num_filters=conv_filter_number,
+			                                    filter_size=conv_kernel_size,
+
+			                                    stride=conv_stride,
+			                                    pad=conv_pad,
+			                                    )
+
+			pool_mode = pool_modes[conv_layer_index]
+			if pool_mode is not None:
+				pool_kernel_size = pooling_kernel_sizes
+				pool_stride = pooling_strides
+
+				# print "before maxpooling", layers.get_output_shape(neural_network)
+				# Max-pooling layer of factor 2 in both dimensions:
+				filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]
+				if numpy.any(filter_size_for_pooling < pool_kernel_size):
+					print("warning: filter size %s is smaller than pooling size %s, skip pooling layer" % (
+						layers.get_output_shape(neural_network), pool_kernel_size))
+					continue
+				neural_network = layers.Pool2DLayer(neural_network, pool_size=pool_kernel_size, stride=pool_stride,
+				                                    mode=pool_mode)
+
+		assert len(dense_dimensions) == len(dense_nonlinearities)
+		for dense_layer_index in range(len(dense_dimensions)):
+			input_layer_shape = layers.get_output_shape(neural_network)[1:]
+			previous_layer_shape = numpy.prod(input_layer_shape)
+			activation_probability = layers.sample_activation_probability(previous_layer_shape,
+			                                                              layer_activation_styles[dropout_layer_index],
+			                                                              layer_activation_parameters[
+				                                                              dropout_layer_index])
+			activation_probability = numpy.reshape(activation_probability, input_layer_shape)
+			# print "before dropout", lasagne.layers.get_output_shape(neural_network)
+			neural_network = layer_activation_types[dropout_layer_index](neural_network,
+			                                                             activation_probability=activation_probability)
+			dropout_layer_index += 1
+
+			layer_shape = dense_dimensions[dense_layer_index]
+			layer_nonlinearity = dense_nonlinearities[dense_layer_index]
+
+			# print "before dense", lasagne.layers.get_output_shape(neural_network)
+			neural_network = layers.DenseLayer(neural_network,
+			                                   layer_shape,
+			                                   W=init.GlorotUniform(gain=init.GlorotUniformGain[layer_nonlinearity]),
+			                                   # This is ONLY for CIFAR-10 dataset.
+			                                   # W=init.HeNormal('relu'),
+			                                   nonlinearity=layer_nonlinearity)
+
+		self._neural_network = neural_network
+
+		self.build_functions()
 
 
 class LeNet(FeedForwardNetwork):
@@ -38,8 +178,8 @@ class LeNet(FeedForwardNetwork):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 
-	             learning_rate=1e-3,
-	             #learning_rate_decay=None,
+	             learning_rate_policy=1e-3,
+	             # learning_rate_decay=None,
 	             max_norm_constraint=0,
 
 	             validation_interval=-1,
@@ -54,8 +194,8 @@ class LeNet(FeedForwardNetwork):
 		super(LeNet, self).__init__(incoming,
 		                            objective_functions,
 		                            update_function,
-		                            learning_rate,
-		                            #learning_rate_decay,
+		                            learning_rate_policy,
+		                            # learning_rate_decay,
 		                            max_norm_constraint,
 		                            validation_interval)
 
@@ -329,11 +469,11 @@ class DynamicLeNet(DynamicFeedForwardNetwork):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 
-	             learning_rate=1e-3,
-	             #learning_rate_decay=None,
+	             learning_rate_policy=1e-3,
+	             # learning_rate_decay=None,
 
-	             dropout_learning_rate=1e-3,
-	             #dropout_learning_rate_decay=None,
+	             dropout_learning_rate_policy=1e-3,
+	             # dropout_learning_rate_decay=None,
 	             dropout_rate_update_interval=1,
 	             update_hidden_layer_dropout_only=False,
 
@@ -350,11 +490,11 @@ class DynamicLeNet(DynamicFeedForwardNetwork):
 		super(DynamicLeNet, self).__init__(incoming,
 		                                   objective_functions,
 		                                   update_function,
-		                                   learning_rate,
-		                                   #learning_rate_decay,
+		                                   learning_rate_policy,
+		                                   # learning_rate_decay,
 
-		                                   dropout_learning_rate,
-		                                   #dropout_learning_rate_decay,
+		                                   dropout_learning_rate_policy,
+		                                   # dropout_learning_rate_decay,
 		                                   dropout_rate_update_interval,
 
 		                                   max_norm_constraint,

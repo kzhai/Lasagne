@@ -3,10 +3,10 @@ from .base import *
 #from .dae import *
 from .alexnet import *
 from .elman import *
-from .fdn import *
+#from .fdn import *
 from .lenet import *
 from .mlp import *
 #from .rbm import *
 #from .rnn import *
 from .snn import *
-from .vdn import *
+#from .vdn import *

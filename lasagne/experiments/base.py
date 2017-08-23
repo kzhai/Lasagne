@@ -2,19 +2,22 @@ import argparse
 import datetime
 import logging
 import os
-import pickle
 import random
 import sys
 import timeit
 
 import numpy
 
-from .. import objectives, updates, regularization
 from lasagne.experiments import debugger
+from .. import policy, objectives, regularization, updates
 
+logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 __all__ = [
+	"layer_deliminator",
+	"param_deliminator",
+	#
 	"construct_discriminative_parser",
 	"validate_discriminative_arguments",
 	#
@@ -26,6 +29,9 @@ __all__ = [
 	"load_data",
 	"load_mnist",
 ]
+
+layer_deliminator = ","
+param_deliminator = ","
 
 
 def construct_generic_parser():
@@ -47,15 +53,15 @@ def construct_generic_parser():
 	generic_parser.add_argument("--regularizer", dest='regularizer', action='append', default=[],
 	                            help="regularizer function [None], example, " +
 	                                 "'l2:0.1'=l2-regularizer with lambda 0.1 applied over all layers, " +
-	                                 "'l1:0.1,0.2,0.3'=l1-regularizer with lambda 0.1, 0.2, 0.3 applied over three layers")
+	                                 "'l1:0.1;0.2;0.3'=l1-regularizer with lambda 0.1, 0.2, 0.3 applied over three layers")
 
 	# generic argument set 3
 	generic_parser.add_argument("--minibatch_size", dest="minibatch_size", type=int, action='store', default=-1,
 	                            help="mini-batch size [-1]")
 	generic_parser.add_argument("--number_of_epochs", dest="number_of_epochs", type=int, action='store', default=-1,
 	                            help="number of epochs [-1]")
-	#generic_parser.add_argument("--snapshot_interval", dest="snapshot_interval", type=int, action='store', default=0,
-	                            #help="snapshot interval in number of epochs [0 - no snapshot]")
+	# generic_parser.add_argument("--snapshot_interval", dest="snapshot_interval", type=int, action='store', default=0,
+	# help="snapshot interval in number of epochs [0 - no snapshot]")
 
 	# generic argument set 4
 	'''
@@ -65,21 +71,61 @@ def construct_generic_parser():
 	                            help="learning rate decay [None], example, 'iteration,inverse_t,0.2,0.1', 'epoch,exponential,1.7,0.1', 'epoch,step,0.2,100'")
 	'''
 	generic_parser.add_argument("--learning_rate", dest="learning_rate", action='store', default="1e-2",
-	                            help="learning rate [1e-2], example, '1e-3', '1e-2,iteration,inverse_t,0.2,0.1'")
+	                            help="learning rate [1e-2], example, '1e-3', '1e-2,exponential_decay,0.2,0.1'")
 
 	generic_parser.add_argument("--max_norm_constraint", dest="max_norm_constraint", type=float, action='store',
 	                            default=0, help="max norm constraint [0 - None]")
 
-	generic_parser.add_argument('--debug', dest="debug", action='store_true', default=False, help="debug mode [False]")
+	# generic_parser.add_argument('--debug', dest="debug", action='store_true', default=False, help="debug mode [False]")
 
 	generic_parser.add_argument("--snapshot", dest='snapshot', action='append', default=[],
 	                            help="snapshot function [None]")
-	'''	                            
-	generic_parser.add_argument("--debug_minibatch", dest='debug_minibatch', action='append', default=[],
-	                            help="debug function [None]")
-	'''
+	generic_parser.add_argument("--debug", dest='debug', action='append', default=[], help="debug function [None]")
 
 	return generic_parser
+
+
+def validate_decay_policy(decay_policy_tokens):
+	decay_policy_tokens[0] = float(decay_policy_tokens[0])
+	assert decay_policy_tokens[0] > 0
+	if len(decay_policy_tokens) == 1:
+		decay_policy_tokens.append(policy.constant);
+		return decay_policy_tokens
+
+	decay_policy_tokens[1] = getattr(policy, decay_policy_tokens[1])
+	if decay_policy_tokens[1] is policy.constant:
+		assert len(decay_policy_tokens) == 2
+		return decay_policy_tokens
+
+	if decay_policy_tokens[1] is policy.piecewise_constant:
+		assert len(decay_policy_tokens) == 4
+
+		decay_policy_tokens[2] = [float(boundary_token) for boundary_token in decay_policy_tokens[2].split("-")]
+		previous_boundary = 0
+		for next_boundary in decay_policy_tokens[2]:
+			assert next_boundary > previous_boundary
+			previous_boundary = next_boundary
+		decay_policy_tokens[3] = [float(value_token) for value_token in decay_policy_tokens[3].split("-")]
+		assert len(decay_policy_tokens[2])==len(decay_policy_tokens[3]);
+		return decay_policy_tokens
+
+	assert decay_policy_tokens[1] is policy.inverse_time_decay \
+	       or decay_policy_tokens[1] is policy.natural_exp_decay \
+	       or decay_policy_tokens[1] is policy.exponential_decay
+
+	for x in xrange(2, 4):
+		decay_policy_tokens[x] = float(decay_policy_tokens[x])
+		assert decay_policy_tokens[x] > 0
+
+	if len(decay_policy_tokens) == 4:
+		decay_policy_tokens.append(0)
+	elif len(decay_policy_tokens) == 5:
+		decay_policy_tokens[4] = float(decay_policy_tokens[4])
+		assert decay_policy_tokens[4] > 0
+	else:
+		logger.error("unrecognized parameter decay policy %s..." % (decay_policy_tokens))
+
+	return decay_policy_tokens
 
 
 def validate_generic_arguments(arguments):
@@ -95,40 +141,33 @@ def validate_generic_arguments(arguments):
 		learning_rate_decay_tokens[3] = float(learning_rate_decay_tokens[3])
 		arguments.learning_rate_decay = learning_rate_decay_tokens
 	'''
-	learning_rate_tokens = arguments.learning_rate.split(",")
-	learning_rate_tokens[0] = float(learning_rate_tokens[0]);
-	assert learning_rate_tokens[0] > 0
-	if len(learning_rate_tokens) == 1:
-		pass
-	elif len(learning_rate_tokens) == 5:
-		assert learning_rate_tokens[1] in ["iteration", "epoch"]
-		assert learning_rate_tokens[2] in ["inverse_t", "exponential", "step"]
-		learning_rate_tokens[3] = float(learning_rate_tokens[3])
-		learning_rate_tokens[4] = float(learning_rate_tokens[4])
-	else:
-		logger.error("unrecognized learning rate %s..." % (arguments.learning_rate))
-	arguments.learning_rate = learning_rate_tokens
-
+	learning_rate_tokens = arguments.learning_rate.split(param_deliminator)
+	arguments.learning_rate = validate_decay_policy(learning_rate_tokens)
 	assert arguments.max_norm_constraint >= 0
 
 	# generic argument set snapshots
-	snapshots = [];
+	snapshots = {};
 	for snapshot_interval_mapping in arguments.snapshot:
 		fields = snapshot_interval_mapping.split(":")
 		snapshot_function = getattr(debugger, fields[0])
 		if len(fields) == 1:
 			interval = 1;
 		elif len(fields) == 2:
-			interval = float(fields[1])
+			interval = int(fields[1])
 		else:
 			logger.error("unrecognized snapshot function setting %s..." % (snapshot_interval_mapping))
 		snapshots[snapshot_function] = interval
 	arguments.snapshot = snapshots
+	debugs = set();
+	for debug in arguments.debug:
+		debug = getattr(debugger, debug)
+		debugs.add(debug)
+	arguments.debug = debugs
 
 	# generic argument set 3
 	assert arguments.minibatch_size > 0
 	assert arguments.number_of_epochs > 0
-	#assert arguments.snapshot_interval >= 0
+	# assert arguments.snapshot_interval >= 0
 
 	# generic argument set 2
 	arguments.objective = getattr(objectives, arguments.objective)
@@ -137,16 +176,19 @@ def validate_generic_arguments(arguments):
 	regularizers = {}
 	for regularizer_weight_mapping in arguments.regularizer:
 		fields = regularizer_weight_mapping.split(":")
-		snapshot_function = getattr(regularization, fields[0])
+		regularizer_function = getattr(regularization, fields[0])
 		if len(fields) == 1:
-			regularizers[snapshot_function] = 1.0
+			regularizers[regularizer_function] = [policy.constant, 1.0]
 		elif len(fields) == 2:
-			tokens = fields[1].split(",")
+			regularizers[regularizer_function] = validate_decay_policy(fields[1].split(param_deliminator));
+			'''
+			tokens = fields[1].split(layer_deliminator)
 			if len(tokens) == 1:
 				weight = float(tokens[0])
 			else:
 				weight = [float(token) for token in tokens]
-			regularizers[snapshot_function] = weight
+			regularizers[regularizer_function] = weight
+			'''
 		else:
 			logger.error("unrecognized regularizer function setting %s..." % (regularizer_weight_mapping))
 	arguments.regularizer = regularizers
@@ -336,8 +378,8 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 		train_dataset = load_data(input_directory, dataset="train")
 		validate_dataset = load_data(input_directory, dataset="validate")
 
-	#train_dataset = (train_dataset[0][:80], train_dataset[1][:80])
-	#test_dataset = (test_dataset[0][:2], test_dataset[1][:2])
+	# train_dataset = (train_dataset[0][:80], train_dataset[1][:80])
+	# test_dataset = (test_dataset[0][:2], test_dataset[1][:2])
 
 	if dataset_preprocessing_function is not None:
 		train_dataset = dataset_preprocessing_function(train_dataset)
@@ -357,21 +399,14 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 		logger.info("%s=%s" % (key, value))
 	logger.info("========== ==========" + "parameters" + "========== ==========")
 
-	pickle.dump(settings, open(os.path.join(output_directory, "settings.pkl"), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+	# pickle.dump(settings, open(os.path.join(output_directory, "settings.pkl"), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
 	########################
 	# START MODEL TRAINING #
 	########################
 
-	'''
-	if settings.debug:
-		try:
-			network.debug(settings)
-		except NotImplementedError:
-			settings.debug = False
-			print("Oops, debug mode is not available...")
-	'''
-
+	if debugger.print_dimension in settings.debug:
+		debugger.print_dimension(network)
 	for snapshot_function in settings.snapshot:
 		snapshot_function(network, settings);
 
@@ -381,8 +416,8 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	for epoch_index in range(settings.number_of_epochs):
 		network.train(train_dataset, settings.minibatch_size, validate_dataset, test_dataset, output_directory)
 
-		#if settings.snapshot_interval > 0 and network.epoch_index % settings.snapshot_interval == 0:
-			#model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
+		# if settings.snapshot_interval > 0 and network.epoch_index % settings.snapshot_interval == 0:
+		# model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
 		# pickle.dump(network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
 		for snapshot_function in settings.snapshot:
@@ -391,7 +426,7 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 
 		print("PROGRESS: %f%%" % (100. * (epoch_index + 1) / settings.number_of_epochs))
 
-	#model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
+	# model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
 	# pickle.dump(network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
 	end_train = timeit.default_timer()

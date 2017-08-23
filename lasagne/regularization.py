@@ -379,8 +379,8 @@ def kl_divergence_kingma(network, **kwargs):
 	c3 = 0.586299206427007
 
 	# will get taken apart again in the autodiff
-	return sum([0.5 * T.sum(T.log(alpha)) + c1 * T.sum(alpha) + c2 * T.sum(T.pow(alpha, 2))
-	            + c3 * T.sum(T.pow(alpha, 3)) for alpha in alphas])
+	return T.sum([0.5 * T.sum(T.log(alpha)) + c1 * T.sum(alpha) + c2 * T.sum(T.pow(alpha, 2))
+	              + c3 * T.sum(T.pow(alpha, 3)) for alpha in alphas])
 
 
 def kl_divergence_sparse(network, **kwargs):
@@ -403,7 +403,8 @@ def kl_divergence_sparse(network, **kwargs):
 	k3 = 1.48695
 	C = -k1
 
-	return sum([T.sum(k1 * T.nnet.sigmoid(k2 + (k3 * T.log(alpha))) - 0.5 * T.log(1 + T.pow(alpha, -1)) + C) for alpha in
+	return -T.sum(
+		[T.sum(k1 * T.nnet.sigmoid(k2 + (k3 * T.log(alpha))) - 0.5 * T.log(1 + T.pow(alpha, -1)) + C) for alpha in
 		 alphas])
 
 

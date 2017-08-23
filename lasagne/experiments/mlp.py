@@ -2,7 +2,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .. import networks, nonlinearities
+from .. import layers, networks, nonlinearities, regularization
+from . import layer_deliminator, param_deliminator
 
 __all__ = [
 	"add_dense_options",
@@ -27,11 +28,11 @@ def add_dense_options(model_parser):
 def validate_dense_arguments(arguments):
 	# model argument set 1
 	assert arguments.dense_dimensions is not None
-	dense_dimensions = arguments.dense_dimensions.split(",")
+	dense_dimensions = arguments.dense_dimensions.split(layer_deliminator)
 	arguments.dense_dimensions = [int(dimensionality) for dimensionality in dense_dimensions]
 
 	assert arguments.dense_nonlinearities is not None
-	dense_nonlinearities = arguments.dense_nonlinearities.split(",")
+	dense_nonlinearities = arguments.dense_nonlinearities.split(layer_deliminator)
 	arguments.dense_nonlinearities = [getattr(nonlinearities, dense_nonlinearity) for dense_nonlinearity in
 	                                  dense_nonlinearities]
 
@@ -42,20 +43,52 @@ def validate_dense_arguments(arguments):
 
 def add_dropout_options(model_parser):
 	# model argument set 2
+	model_parser.add_argument("--layer_activation_types", dest="layer_activation_types", action='store', default=None,
+	                          help="dropout type [None]")
 	model_parser.add_argument("--layer_activation_parameters", dest="layer_activation_parameters", action='store',
 	                          default="1.0",
-	                          help="dropout probability of different layer [1], either one number of a list of numbers, example, '0.2' represents 0.2 dropout rate for all input+hidden layers, or '0.2,0.5' represents 0.2 dropout rate for input layer and 0.5 dropout rate for first hidden layer respectively")
+	                          help="dropout probability of different layer [1], either one number of a list of numbers, example, '0.2' represents 0.2 dropout rate for all input+hidden layers, or '0.2;0.5' represents 0.2 dropout rate for input layer and 0.5 dropout rate for first hidden layer respectively")
 	model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store',
 	                          default="bernoulli",
-	                          help="dropout style different layer [bernoulli], example, 'bernoulli,beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively")
+	                          help="dropout style different layer [bernoulli], example, 'bernoulli;beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively")
 
 	return model_parser
 
 
 def validate_dropout_arguments(arguments, number_of_layers):
 	# model argument set
+	layer_activation_types = arguments.layer_activation_types
+	if layer_activation_types is None:
+		layer_activation_types = ["BernoulliDropoutLayer"] * number_of_layers
+	else:
+		layer_activation_type_tokens = layer_activation_types.split(layer_deliminator)
+		if len(layer_activation_type_tokens) == 1:
+			layer_activation_types = layer_activation_type_tokens * number_of_layers
+		else:
+			layer_activation_types = layer_activation_type_tokens
+		assert len(layer_activation_types) == number_of_layers
+	assert layer_activation_types[0] not in set(["FastDropoutLayer", "VariationalDropoutTypeBLayer"])
+	for layer_activation_type_index in xrange(len(layer_activation_types)):
+		if layer_activation_types[layer_activation_type_index] in set(
+				["BernoulliDropoutLayer", "GaussianDropoutLayer", "FastDropoutLayer"]):
+			pass
+		elif layer_activation_types[layer_activation_type_index] in set(
+				["VariationalDropoutLayer", "VariationalDropoutTypeALayer", "VariationalDropoutTypeBLayer"]):
+			if regularization.kl_divergence_kingma not in arguments.regularizer:
+				arguments.regularizer[regularization.kl_divergence_kingma] = 1.0
+			assert regularization.kl_divergence_kingma in arguments.regularizer
+		elif layer_activation_types[layer_activation_type_index] in set(["SparseVariationalDropoutLayer"]):
+			if regularization.kl_divergence_sparse not in arguments.regularizer:
+				arguments.regularizer[regularization.kl_divergence_sparse] = 1.0
+			assert regularization.kl_divergence_sparse in arguments.regularizer
+		else:
+			logger.error("unrecognized dropout type %s..." % (layer_activation_types[layer_activation_type_index]))
+		layer_activation_types[layer_activation_type_index] = getattr(layers.noise, layer_activation_types[
+			layer_activation_type_index])
+	arguments.layer_activation_types = layer_activation_types
+
 	layer_activation_styles = arguments.layer_activation_styles
-	layer_activation_style_tokens = layer_activation_styles.split(",")
+	layer_activation_style_tokens = layer_activation_styles.split(layer_deliminator)
 	if len(layer_activation_style_tokens) == 1:
 		layer_activation_styles = [layer_activation_styles for layer_index in range(number_of_layers)]
 	elif len(layer_activation_style_tokens) == number_of_layers:
@@ -68,7 +101,7 @@ def validate_dropout_arguments(arguments, number_of_layers):
 	arguments.layer_activation_styles = layer_activation_styles
 
 	layer_activation_parameters = arguments.layer_activation_parameters
-	layer_activation_parameter_tokens = layer_activation_parameters.split(",")
+	layer_activation_parameter_tokens = layer_activation_parameters.split(layer_deliminator)
 	if len(layer_activation_parameter_tokens) == 1:
 		layer_activation_parameters = [layer_activation_parameters for layer_index in range(number_of_layers)]
 	elif len(layer_activation_parameter_tokens) == number_of_layers:
@@ -89,7 +122,7 @@ def validate_dropout_arguments(arguments, number_of_layers):
 				or layer_activation_styles[layer_index] == "reverse_reciprocal_beta_bernoulli" \
 				or layer_activation_styles[layer_index] == "mixed_beta_bernoulli":
 			layer_activation_parameter_tokens = layer_activation_parameters[layer_index].split("+")
-			assert len(layer_activation_parameter_tokens) == 2
+			assert len(layer_activation_parameter_tokens) == 2, layer_activation_parameter_tokens
 			layer_activation_parameters[layer_index] = (float(layer_activation_parameter_tokens[0]),
 			                                            float(layer_activation_parameter_tokens[1]))
 			assert layer_activation_parameters[layer_index][0] > 0
@@ -162,12 +195,13 @@ def train_mlp():
 	settings = config_model(construct_mlp_parser, validate_mlp_arguments)
 	settings = validate_config(settings)
 
-	network = networks.MultiLayerPerceptron(
+	network = networks.NewMultiLayerPerceptron(
 		incoming=settings.input_shape,
 
 		dense_dimensions=settings.dense_dimensions,
 		dense_nonlinearities=settings.dense_nonlinearities,
 
+		layer_activation_types=settings.layer_activation_types,
 		layer_activation_parameters=settings.layer_activation_parameters,
 		layer_activation_styles=settings.layer_activation_styles,
 
@@ -175,8 +209,8 @@ def train_mlp():
 		update_function=settings.update,
 		# pretrained_model=pretrained_model
 
-		learning_rate=settings.learning_rate,
-		#learning_rate_decay=settings.learning_rate_decay,
+		learning_rate_policy=settings.learning_rate,
+		# learning_rate_decay=settings.learning_rate_decay,
 		max_norm_constraint=settings.max_norm_constraint,
 		# learning_rate_decay_style=settings.learning_rate_decay_style,
 		# learning_rate_decay_parameter=settings.learning_rate_decay_parameter,

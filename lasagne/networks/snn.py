@@ -31,7 +31,7 @@ class StandoutNeuralNetworkTypeA(FeedForwardNetwork):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             #learning_rate_decay=None,
 	             max_norm_constraint=0,
 	             # learning_rate_decay_style=None,
@@ -42,7 +42,7 @@ class StandoutNeuralNetworkTypeA(FeedForwardNetwork):
 		super(StandoutNeuralNetworkTypeA, self).__init__(incoming,
 		                                                 objective_functions,
 		                                                 update_function,
-		                                                 learning_rate,
+		                                                 learning_rate_policy,
 		                                                 #learning_rate_decay,
 		                                                 max_norm_constraint,
 		                                                 # learning_rate_decay_style,
@@ -167,7 +167,7 @@ class StandoutNeuralNetworkTypeA(FeedForwardNetwork):
 			minibatch_x = train_dataset_x[minibatch_indices, :]
 			minibatch_y = train_dataset_y[minibatch_indices]
 
-			learning_rate = decay_learning_rate(self.minibatch_index, self.learning_rate,
+			learning_rate = decay_learning_rate(self.minibatch_index, self.learning_rate_policy,
 			                                    self.learning_rate_decay_style, self.learning_rate_decay_parameter)
 
 			minibatch_running_time = timeit.default_timer()
@@ -242,7 +242,7 @@ class StandoutNeuralNetworkTypeB(FeedForwardNetwork):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             #learning_rate_decay=None,
 	             max_norm_constraint=0,
 	             # learning_rate_decay_style=None,
@@ -253,7 +253,7 @@ class StandoutNeuralNetworkTypeB(FeedForwardNetwork):
 		super(StandoutNeuralNetworkTypeB, self).__init__(incoming,
 		                                                 objective_functions,
 		                                                 update_function,
-		                                                 learning_rate,
+		                                                 learning_rate_policy,
 		                                                 #learning_rate_decay,
 		                                                 max_norm_constraint,
 		                                                 # learning_rate_decay_style,

@@ -24,7 +24,7 @@ class FastDropoutNetwork(FeedForwardNetwork):
 
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
-	             learning_rate=1e-3,
+	             learning_rate_policy=1e-3,
 	             #learning_rate_decay=None,
 	             max_norm_constraint=0,
 
@@ -33,7 +33,7 @@ class FastDropoutNetwork(FeedForwardNetwork):
 		super(FastDropoutNetwork, self).__init__(incoming,
 		                                         objective_functions,
 		                                         update_function,
-		                                         learning_rate,
+		                                         learning_rate_policy,
 		                                         #learning_rate_decay,
 		                                         max_norm_constraint,
 		                                         validation_interval,
