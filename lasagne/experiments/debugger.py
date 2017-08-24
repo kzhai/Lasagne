@@ -13,8 +13,48 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
 	"debug_rademacher",
-	"snapshot_dropout"
+	"subsample_dataset",
+	"display_architecture",
+
+	#
+	"snapshot_dropouts",
+	"snapshot_conv_filters"
 ]
+
+
+def _subsample_dataset(dataset, fraction=100):
+	if dataset is None:
+		return None
+	dataset_x, dataset_y = dataset
+	size = len(dataset_y)
+	indices = numpy.random.permutation(size)[:(size // fraction)]
+	dataset_x = dataset_x[indices]
+	dataset_y = dataset_y[indices]
+	return dataset_x, dataset_y
+
+
+def subsample_dataset(train_dataset, validate_dataset, test_dataset, fraction=100, **kwargs):
+	if validate_dataset is None:
+		size_before = [len(train_dataset[1]), 0, len(test_dataset[1])]
+	else:
+		size_before = [len(train_dataset[1]), len(validate_dataset[1]), len(test_dataset[1])]
+	train_dataset = _subsample_dataset(train_dataset, fraction)
+	validate_dataset = _subsample_dataset(validate_dataset, fraction)
+	test_dataset = _subsample_dataset(test_dataset, fraction)
+	if validate_dataset is None:
+		size_after = [len(train_dataset[1]), 0, len(test_dataset[1])]
+	else:
+		size_after = [len(train_dataset[1]), len(validate_dataset[1]), len(test_dataset[1])]
+	logger.info("debug: subsample dataset from %s to %s instances for [train, validate, test] sets" % (size_before, size_after))
+	print("debug: subsample dataset from %s to %s instances for [train, validate, test] sets" % (size_before, size_after))
+	return train_dataset, validate_dataset, test_dataset
+
+
+def display_architecture(network, settings=None):
+	input_shape = network._input_shape
+	for layer in network.get_network_layers():
+		logger.info("output size after %s is %s" % (layer, layers.get_output_shape(layer, input_shape)))
+		print("output size after %s is %s" % (layer, layers.get_output_shape(layer, input_shape)))
 
 
 def debug_rademacher(network, label, **kwargs):
@@ -105,7 +145,7 @@ def debug_regularizer(network, label, **kwargs):
 	return output
 
 
-def snapshot_dropout(network, settings=None):
+def snapshot_dropouts(network, settings=None):
 	dropout_layer_index = 0
 	for network_layer in network.get_network_layers():
 		if isinstance(network_layer, layers.BernoulliDropoutLayer) or \
@@ -135,27 +175,25 @@ def snapshot_dropout(network, settings=None):
 			layer_retain_probability = numpy.reshape(layer_retain_probability,
 			                                         numpy.prod(layer_retain_probability.shape))
 			retain_rate_file = os.path.join(settings.output_directory,
-			                                "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
+			                                "noise.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
 			numpy.save(retain_rate_file, layer_retain_probability)
 		dropout_layer_index += 1
 
 
-def print_dimension(network, settings=None):
-	input_shape = network._input_shape
-	for layer in network.get_network_layers():
-		print("output size after %s is %s" % (layer, layers.get_output_shape(layer, input_shape)))
+def snapshot_conv_filters(network, settings=None):
+	conv_layer_index = 0
+	for network_layer in network.get_network_layers():
+		if isinstance(network_layer, layers.Conv2DLayer):
+			conv_filters = network_layer.W.eval()
+		else:
+			continue
 
-	'''
-	reference_to_input_layers = [input_layer for input_layer in layers.get_all_layers(neural_network) if
-	                             isinstance(input_layer, layers.InputLayer)]
-	if len(reference_to_input_layers) == 1:
-		print checkpoint_text, ":", layers.get_output_shape(neural_network, {
-			reference_to_input_layers[0]: (batch_size, sequence_length, window_size)})
-	elif len(reference_to_input_layers) == 2:
-		print checkpoint_text, ":", layers.get_output_shape(neural_network, {
-			reference_to_input_layers[0]: (batch_size, sequence_length, window_size),
-			reference_to_input_layers[1]: (batch_size, sequence_length)})
-	'''
+		if settings is not None:
+			# conv_filters = numpy.reshape(conv_filters, numpy.prod(conv_filters.shape))
+			conv_filter_file = os.path.join(settings.output_directory,
+			                                "conv.%d.epoch.%d.npy" % (conv_layer_index, network.epoch_index))
+			numpy.save(conv_filter_file, conv_filters)
+		conv_layer_index += 1
 
 
 def main():

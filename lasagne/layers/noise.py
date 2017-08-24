@@ -22,7 +22,7 @@ __all__ = [
 	"BernoulliDropoutLayer",
 	"GaussianDropoutLayer",
 	"FastDropoutLayer",
-	"VariationalDropoutLayer",
+	# "VariationalDropoutLayer",
 	"VariationalDropoutTypeALayer",
 	"VariationalDropoutTypeBLayer",
 	"SparseVariationalDropoutLayer",
@@ -326,25 +326,6 @@ def sample_activation_probability(input_dimensions, activation_style, activation
 	return activation_probability.astype(theano.config.floatX)
 
 
-def get_filter(input_shape, retain_probability, rng=RandomStreams()):
-	filter = rng.binomial(size=input_shape, n=1, p=retain_probability, dtype=theano.config.floatX)
-
-	# mask = rng.binomial(mask_shape, p=retain_prob, dtype=input.dtype)
-
-	'''
-	if isinstance(input_shape, tuple):
-		filter = numpy.zeros(input_shape);
-		for dim in range(len(retain_probability)):
-			filter[:, dim] = self._srng.binomial(size=len(input_shape[0]), n=1, p=retain_probability[dim], dtype=theano.config.floatX)
-	else:
-		if isinstance(input_shape, T.Variable) and input_shape.ndim == 1:
-			#filter = rng.binomial(size=input_shape, n=1, p=0.5, dtype=theano.config.floatX);
-			filter = self._srng.normal(size=input_shape, avg=0.0, std=1.0, dtype=theano.config.floatX);
-	'''
-
-	return filter
-
-
 class BernoulliDropoutLayer(Layer):
 	"""Dropout layer
 
@@ -447,18 +428,23 @@ class BernoulliDropoutLayer(Layer):
 			return input * mask
 
 
-def _logit(x):
-	"""
-	Logit function in Numpy. Useful for parameterizing alpha.
-	"""
-	return numpy.log(x / (1. - x))
+def get_filter(input_shape, retain_probability, rng=RandomStreams()):
+	filter = rng.binomial(size=input_shape, n=1, p=retain_probability, dtype=theano.config.floatX)
 
+	# mask = rng.binomial(mask_shape, p=retain_prob, dtype=input.dtype)
 
-def _sigmoid(x):
-	"""
-	Logit function in Numpy. Useful for parameterizing alpha.
-	"""
-	return 1. / (1 + numpy.exp(-x))
+	'''
+	if isinstance(input_shape, tuple):
+		filter = numpy.zeros(input_shape);
+		for dim in range(len(retain_probability)):
+			filter[:, dim] = self._srng.binomial(size=len(input_shape[0]), n=1, p=retain_probability[dim], dtype=theano.config.floatX)
+	else:
+		if isinstance(input_shape, T.Variable) and input_shape.ndim == 1:
+			#filter = rng.binomial(size=input_shape, n=1, p=0.5, dtype=theano.config.floatX);
+			filter = self._srng.normal(size=input_shape, avg=0.0, std=1.0, dtype=theano.config.floatX);
+	'''
+
+	return filter
 
 
 class GaussianDropoutLayer(Layer):
@@ -600,7 +586,7 @@ class FastDropoutLayer(MergeLayer):
 		# repeat check from DenseLayer
 		if inputs[1].ndim > 2:
 			# flatten if we have more than 2 dims
-			inputs[1].ndim = inputs[1].flatten(2)
+			inputs[1] = inputs[1].flatten(2)
 		self.sigma = T.nnet.sigmoid(self.logit_sigma)
 		mu_z = T.dot(inputs[1], self.theta) + self.b.dimshuffle('x', 0)
 		if deterministic or numpy.all(self.sigma.eval() == 0):
@@ -639,33 +625,18 @@ class FastDropoutLayer(MergeLayer):
 	'''
 
 
-def _validate_activation_probability_for_logit_parameterization(activation_probability, clip_margin=1e-6):
+def _logit(x):
 	"""
-	Thanks to our logit parameterisation we can't accept p of smaller or equal
-	to 0.5 nor greater or equal to 1. So we'll just warn the user and
-	scale it down slightly.
+	Logit function in Numpy. Useful for parameterizing alpha.
 	"""
-	'''
-	if p == 0.5:
-		warnings.warn("Cannot set p to exactly 0.5, limits are: 0 < p < 0.5."
-				" Setting to 0.4999", RuntimeWarning)
-		return 0.4999
-	elif p > 0.5:
-		warnings.warn("Cannot set p to greater than 0.5, limits are: "
-				"0 < p < 0.5. Setting to 0.4999", RuntimeWarning)
-		return 0.4999
-	elif p <= 0.0:
-		warnings.warn("Cannot set p to less than or equal to 0.0, limits are: "
-				"0 < p < 0.5. Setting to 0.0001", RuntimeWarning)
-		return 0.0001
-	else:
-		return p
-	'''
+	return numpy.log(x / (1. - x))
 
-	if numpy.any(activation_probability <= 0.5) or numpy.any(activation_probability >= 1.0):
-		warnings.warn("Clipping p to the interval of (0.5, 1.0).", RuntimeWarning)
-		return numpy.clip(activation_probability, 0.5 + clip_margin, 1 - clip_margin)
-	return activation_probability
+
+def _sigmoid(x):
+	"""
+	Logit function in Numpy. Useful for parameterizing alpha.
+	"""
+	return 1. / (1 + numpy.exp(-x))
 
 
 class VariationalDropoutLayer(Layer):
@@ -821,6 +792,35 @@ class VariationalDropoutTypeBLayer(FastDropoutLayer, VariationalDropoutLayer):
 	def __init__(self, incoming, activation_probability=0.5, adaptive="elementwise", **kwargs):
 		FastDropoutLayer.__init__(self, incoming, activation_probability, **kwargs)
 		self.init_adaptive(activation_probability, adaptive)
+
+
+def _validate_activation_probability_for_logit_parameterization(activation_probability, clip_margin=1e-6):
+	"""
+	Thanks to our logit parameterisation we can't accept p of smaller or equal
+	to 0.5 nor greater or equal to 1. So we'll just warn the user and
+	scale it down slightly.
+	"""
+	'''
+	if p == 0.5:
+		warnings.warn("Cannot set p to exactly 0.5, limits are: 0 < p < 0.5."
+				" Setting to 0.4999", RuntimeWarning)
+		return 0.4999
+	elif p > 0.5:
+		warnings.warn("Cannot set p to greater than 0.5, limits are: "
+				"0 < p < 0.5. Setting to 0.4999", RuntimeWarning)
+		return 0.4999
+	elif p <= 0.0:
+		warnings.warn("Cannot set p to less than or equal to 0.0, limits are: "
+				"0 < p < 0.5. Setting to 0.0001", RuntimeWarning)
+		return 0.0001
+	else:
+		return p
+	'''
+
+	if numpy.any(activation_probability <= 0.5) or numpy.any(activation_probability >= 1.0):
+		warnings.warn("Clipping p to the interval of (0.5, 1.0).", RuntimeWarning)
+		return numpy.clip(activation_probability, 0.5 + clip_margin, 1 - clip_margin)
+	return activation_probability
 
 
 class SparseVariationalDropoutLayer(Layer):

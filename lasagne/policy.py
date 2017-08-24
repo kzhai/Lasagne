@@ -115,7 +115,7 @@ def inverse_time_decay(learning_rate, global_step, decay_steps, decay_rate, deca
 
 def main():
 	for x in xrange(10):
-		print x, exponential_decay(1, x, 1, 0.9, 5)
+		print x, exponential_decay(1, x, 5, 0.1)
 
 
 if __name__ == '__main__':

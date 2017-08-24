@@ -16,12 +16,12 @@ __all__ = [
 def add_convpool_options(model_parser):
 	# model argument set 1
 	model_parser.add_argument("--convolution_filters", dest="convolution_filters", action='store', default=None,
-	                          help="number of convolution filters [None], example, '32;16' represents 32 and 16 filters for convolution layers respectively")
+	                          help="convolutional layer filter dimensions [None]")
 	model_parser.add_argument("--convolution_nonlinearities", dest="convolution_nonlinearities", action='store',
 	                          default=None,
-	                          help="activation functions of convolution layers [None], example, 'tanh;softmax' represents 2 layers with tanh and softmax activation function respectively")
+	                          help="convolutional layer activation functions [None]")
 	model_parser.add_argument("--pool_modes", dest="pool_modes", action='store', default="max",
-	                          help="pool modes after each convolution layers [max], set to none to omit, example, 'max;max;none;none;max'")
+	                          help="pooling layer modes [max], set to none to omit, example, 'max;max;none;none;max'")
 
 	return model_parser
 

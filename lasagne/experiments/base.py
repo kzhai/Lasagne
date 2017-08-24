@@ -11,7 +11,7 @@ import numpy
 from lasagne.experiments import debugger
 from .. import policy, objectives, regularization, updates
 
-logging.basicConfig()
+#logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -47,13 +47,13 @@ def construct_generic_parser():
 
 	# generic argument set 2
 	generic_parser.add_argument("--objective", dest="objective", action='store', default="categorical_crossentropy",
-	                            help="objective function [categorical_crossentropy], example, 'squared_error' represents the neural network optimizes squared error")
+	                            help="objective function [categorical_crossentropy] defined in objectives.py")
 	generic_parser.add_argument("--update", dest="update", action='store', default="nesterov_momentum",
-	                            help="update function to minimize [nesterov_momentum], example, 'sgd' represents the stochastic gradient descent")
+	                            help="update function [nesterov_momentum] defined updates.py")
 	generic_parser.add_argument("--regularizer", dest='regularizer', action='append', default=[],
-	                            help="regularizer function [None], example, " +
-	                                 "'l2:0.1'=l2-regularizer with lambda 0.1 applied over all layers, " +
-	                                 "'l1:0.1;0.2;0.3'=l1-regularizer with lambda 0.1, 0.2, 0.3 applied over three layers")
+	                            help="regularizer function [None] defined in regularization.py")
+	# "'l2:0.1'=l2-regularizer with lambda 0.1 applied over all layers, " +
+	# "'l1:0.1;0.2;0.3'=l1-regularizer with lambda 0.1, 0.2, 0.3 applied over three layers"
 
 	# generic argument set 3
 	generic_parser.add_argument("--minibatch_size", dest="minibatch_size", type=int, action='store', default=-1,
@@ -71,7 +71,7 @@ def construct_generic_parser():
 	                            help="learning rate decay [None], example, 'iteration,inverse_t,0.2,0.1', 'epoch,exponential,1.7,0.1', 'epoch,step,0.2,100'")
 	'''
 	generic_parser.add_argument("--learning_rate", dest="learning_rate", action='store', default="1e-2",
-	                            help="learning rate [1e-2], example, '1e-3', '1e-2,exponential_decay,0.2,0.1'")
+	                            help="learning policy [1e-2,constant] defined in policy.py with parameters")
 
 	generic_parser.add_argument("--max_norm_constraint", dest="max_norm_constraint", type=float, action='store',
 	                            default=0, help="max norm constraint [0 - None]")
@@ -106,7 +106,7 @@ def validate_decay_policy(decay_policy_tokens):
 			assert next_boundary > previous_boundary
 			previous_boundary = next_boundary
 		decay_policy_tokens[3] = [float(value_token) for value_token in decay_policy_tokens[3].split("-")]
-		assert len(decay_policy_tokens[2])==len(decay_policy_tokens[3]);
+		assert len(decay_policy_tokens[2]) == len(decay_policy_tokens[3]);
 		return decay_policy_tokens
 
 	assert decay_policy_tokens[1] is policy.inverse_time_decay \
@@ -378,8 +378,8 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 		train_dataset = load_data(input_directory, dataset="train")
 		validate_dataset = load_data(input_directory, dataset="validate")
 
-	# train_dataset = (train_dataset[0][:80], train_dataset[1][:80])
-	# test_dataset = (test_dataset[0][:2], test_dataset[1][:2])
+	if debugger.subsample_dataset in settings.debug:
+		train_dataset, validate_dataset, test_dataset = debugger.subsample_dataset(train_dataset, validate_dataset, test_dataset)
 
 	if dataset_preprocessing_function is not None:
 		train_dataset = dataset_preprocessing_function(train_dataset)
@@ -405,8 +405,8 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	# START MODEL TRAINING #
 	########################
 
-	if debugger.print_dimension in settings.debug:
-		debugger.print_dimension(network)
+	if debugger.display_architecture in settings.debug:
+		debugger.display_architecture(network)
 	for snapshot_function in settings.snapshot:
 		snapshot_function(network, settings);
 

@@ -2,7 +2,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .. import layers, networks, nonlinearities, regularization
+from .. import layers, networks, nonlinearities, policy, regularization
 from . import layer_deliminator, param_deliminator
 
 __all__ = [
@@ -18,9 +18,9 @@ __all__ = [
 def add_dense_options(model_parser):
 	# model argument set 1
 	model_parser.add_argument("--dense_dimensions", dest="dense_dimensions", action='store', default=None,
-	                          help="dimension of different layer [None], example, '100,500,10' represents 3 layers contains 100, 500, and 10 neurons respectively")
+	                          help="dense layer dimensionalities [None]")
 	model_parser.add_argument("--dense_nonlinearities", dest="dense_nonlinearities", action='store', default=None,
-	                          help="activation functions of different layer [None], example, 'tanh,softmax' represents 2 layers with tanh and softmax activation function respectively")
+	                          help="dense layer activation functions [None]")
 
 	return model_parser
 
@@ -45,12 +45,12 @@ def add_dropout_options(model_parser):
 	# model argument set 2
 	model_parser.add_argument("--layer_activation_types", dest="layer_activation_types", action='store', default=None,
 	                          help="dropout type [None]")
-	model_parser.add_argument("--layer_activation_parameters", dest="layer_activation_parameters", action='store',
-	                          default="1.0",
-	                          help="dropout probability of different layer [1], either one number of a list of numbers, example, '0.2' represents 0.2 dropout rate for all input+hidden layers, or '0.2;0.5' represents 0.2 dropout rate for input layer and 0.5 dropout rate for first hidden layer respectively")
 	model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store',
 	                          default="bernoulli",
-	                          help="dropout style different layer [bernoulli], example, 'bernoulli;beta-bernoulli' represents 2 layers with bernoulli and beta-bernoulli dropout respectively")
+	                          help="layer activation styles [bernoulli]")
+	model_parser.add_argument("--layer_activation_parameters", dest="layer_activation_parameters", action='store',
+	                          default="1.0",
+	                          help="layer activation parameters [1] for layer activation styles respectively")
 
 	return model_parser
 
@@ -75,11 +75,11 @@ def validate_dropout_arguments(arguments, number_of_layers):
 		elif layer_activation_types[layer_activation_type_index] in set(
 				["VariationalDropoutLayer", "VariationalDropoutTypeALayer", "VariationalDropoutTypeBLayer"]):
 			if regularization.kl_divergence_kingma not in arguments.regularizer:
-				arguments.regularizer[regularization.kl_divergence_kingma] = 1.0
+				arguments.regularizer[regularization.kl_divergence_kingma] = [1.0, policy.constant]
 			assert regularization.kl_divergence_kingma in arguments.regularizer
 		elif layer_activation_types[layer_activation_type_index] in set(["SparseVariationalDropoutLayer"]):
 			if regularization.kl_divergence_sparse not in arguments.regularizer:
-				arguments.regularizer[regularization.kl_divergence_sparse] = 1.0
+				arguments.regularizer[regularization.kl_divergence_sparse] = [1.0, policy.constant]
 			assert regularization.kl_divergence_sparse in arguments.regularizer
 		else:
 			logger.error("unrecognized dropout type %s..." % (layer_activation_types[layer_activation_type_index]))

@@ -4,10 +4,9 @@ import re
 import numpy
 import numpy.random
 
+retain_rates_file_name_pattern = re.compile(r'noise\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
 
 def plot_retain_rates(model_directory, snapshot_interval=1, plot_directory=None):
-	retain_rates_file_name_pattern = re.compile(r'layer\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
-
 	epoch_indices = set()
 	layer_dimensions = {}
 	for file_name in os.listdir(model_directory):
@@ -190,7 +189,7 @@ def plot_3D_bars():
 
 
 def plot_feature_map(model_directory, feature_map_size, layer_index=0, snapshot_interval=100, plot_directory=None):
-	retain_rates_file_name_pattern = re.compile(r'layer\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
+	#retain_rates_file_name_pattern = re.compile(r'layer\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
 
 	for file_name in os.listdir(model_directory):
 		matcher = re.match(retain_rates_file_name_pattern, file_name)
@@ -207,7 +206,7 @@ def plot_feature_map(model_directory, feature_map_size, layer_index=0, snapshot_
 
 		retain_rates = numpy.load(os.path.join(model_directory, file_name))
 		retain_rates = numpy.reshape(retain_rates, feature_map_size)
-		output_file_path = None if plot_directory is None else os.path.join(model_directory, "layer.%d.epoch.%d.pdf" % (temp_layer_index, temp_epoch_index))
+		output_file_path = None if plot_directory is None else os.path.join(model_directory, "noise.%d.epoch.%d.pdf" % (temp_layer_index, temp_epoch_index))
 		plot_image(retain_rates, output_file_path)
 
 
