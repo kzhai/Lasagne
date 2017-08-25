@@ -4,17 +4,19 @@ import numpy
 import numpy.random
 
 
-def plot_accuracy_loss(model_directory, maximum_iteration=0):
+def plot_accuracy_loss(model_directory, maximum_iteration=0, plot_directory=None):
 	model_log_file = os.path.join(model_directory, "model.log")
 	from ParseModelOutputs import parse_model
 	model_settings, train_logs, valid_logs, test_logs, best_model_logs = parse_model(model_log_file)
 	if maximum_iteration>0:
 		train_logs = train_logs[:maximum_iteration]
 		test_logs = test_logs[:maximum_iteration]
-	plot_multiple_yaxis(train_logs, valid_logs, test_logs)
+
+	output_file_path = None if plot_directory is None else os.path.join(plot_directory, "performance.pdf")
+	plot_multiple_yaxis(train_logs, valid_logs, test_logs, output_file_path)
 
 
-def plot_multiple_yaxis(train_logs, valid_logs, test_logs):
+def plot_multiple_yaxis(train_logs, valid_logs, test_logs, output_file_path=None):
 	import matplotlib.pyplot as plt
 
 	# assert len(train_logs) == len(valid_logs)
@@ -93,7 +95,10 @@ def plot_multiple_yaxis(train_logs, valid_logs, test_logs):
 
 	primary_panel.legend(lines, [l.get_label() for l in lines])
 
-	plt.show()
+	if output_file_path is None:
+		plt.show()
+	else:
+		plt.savefig(output_file_path, bbox_inches='tight')
 
 
 if __name__ == '__main__':
@@ -104,6 +109,8 @@ if __name__ == '__main__':
 	                             help="model directory [None]")
 	# argument_parser.add_argument("--output", dest="select_settings", action='store', default="None",
 	# help="select settings to display [None]")
+	argument_parser.add_argument("--plot_directory", dest="plot_directory", action='store', default=None,
+	                             help="plot directory [None]")
 	argument_parser.add_argument("--maximum_iteration", dest="maximum_iteration", action='store', type=int, default=0,
 	                             help="maximum iteration [0]")
 
@@ -116,5 +123,6 @@ if __name__ == '__main__':
 
 	model_directory = arguments.model_directory
 	maximum_iteration = arguments.maximum_iteration
+	plot_directory= arguments.plot_directory
 
-	plot_accuracy_loss(model_directory, maximum_iteration)
+	plot_accuracy_loss(model_directory, maximum_iteration, plot_directory)

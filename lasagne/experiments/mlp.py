@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from .. import layers, networks, nonlinearities, policy, regularization
-from . import layer_deliminator, param_deliminator
+from . import layer_deliminator
 
 __all__ = [
 	"add_dense_options",
@@ -195,7 +195,7 @@ def train_mlp():
 	settings = config_model(construct_mlp_parser, validate_mlp_arguments)
 	settings = validate_config(settings)
 
-	network = networks.NewMultiLayerPerceptron(
+	network = networks.MultiLayerPerceptron(
 		incoming=settings.input_shape,
 
 		dense_dimensions=settings.dense_dimensions,

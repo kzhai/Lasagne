@@ -251,7 +251,6 @@ def __find_input_layer(network):
 
 find_input_layer = __find_pre_dropout_layer
 
-
 # find_input_layer = __find_input_layer
 
 def rademacher_p_2_q_2(network, **kwargs):

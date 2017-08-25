@@ -44,7 +44,7 @@ def plot_retain_rates(model_directory, snapshot_interval=1, plot_directory=None)
 		layer_epoch_retain_rates[layer_index][epoch_index / snapshot_interval, :] = retain_rates
 
 	for layer_index in layer_dimensions:
-		output_file_path = None if plot_directory is None else os.path.join(plot_directory, "layer.%d.pdf" % layer_index)
+		output_file_path = None if plot_directory is None else os.path.join(plot_directory, "noise.%d.pdf" % layer_index)
 		# plot_3D_hist(layer_epoch_retain_rates[layer_index], snapshot_interval)
 		plot_3D_wires(layer_epoch_retain_rates[layer_index], snapshot_interval, output_file_path)
 
@@ -235,6 +235,8 @@ if __name__ == '__main__':
 	argument_parser.add_argument("--snapshot_interval", dest="snapshot_interval", action='store', type=int, default=1,
 	                             help="snapshot interval [1]")
 
+	argument_parser.add_argument("--feature_map_size", dest="feature_map_size", action='store', default=None,
+	                             help="feature map dimensions [None]")
 	argument_parser.add_argument("--feature_map_size", dest="feature_map_size", action='store', default=None,
 	                             help="feature map dimensions [None]")
 	argument_parser.add_argument("--layer_index", dest="layer_index", action='store', type=int, default=0,

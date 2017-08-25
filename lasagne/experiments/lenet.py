@@ -220,7 +220,7 @@ def train_lenet():
 	settings = config_model(construct_lenet_parser, validate_lenet_arguments)
 	settings = validate_config(settings)
 
-	network = networks.NewLeNet(
+	network = networks.LeNet(
 		incoming=settings.input_shape,
 
 		convolution_filters=settings.convolution_filters,

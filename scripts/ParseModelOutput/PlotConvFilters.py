@@ -29,11 +29,11 @@ def plot_feature_map(model_directory, feature_map_size, layer_index=0, snapshot_
 		           'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 		'''
 
-		plot_image(conv_filters, feature_map_size)
+		plot_images(conv_filters, feature_map_size)
 	# grid = np.random.rand(4, 4)
 
 
-def plot_image(conv_filters, feature_map_size, output_file_path=None, interpolation='bilinear'):
+def plot_images(conv_filters, feature_map_size, output_file_path=None, interpolation='bilinear'):
 	import matplotlib.pyplot as plt
 
 	assert conv_filters.shape[0] * conv_filters.shape[1] == feature_map_size[0] * feature_map_size[1];

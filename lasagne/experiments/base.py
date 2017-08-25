@@ -365,8 +365,11 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	output_directory = settings.output_directory
 	assert not os.path.exists(output_directory)
 	os.mkdir(output_directory)
-	validation_data = settings.validation_data
 
+	logging.basicConfig(filename=os.path.join(settings.output_directory, "model.log"), level=logging.DEBUG,
+	                    format='%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+
+	validation_data = settings.validation_data
 	test_dataset = load_data(input_directory, dataset="test")
 	if validation_data >= 0:
 		train_dataset_info, validate_dataset_info = load_and_split_data(input_directory, validation_data)
@@ -385,9 +388,6 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 		train_dataset = dataset_preprocessing_function(train_dataset)
 		validate_dataset = dataset_preprocessing_function(validate_dataset)
 		test_dataset = dataset_preprocessing_function(test_dataset)
-
-	logging.basicConfig(filename=os.path.join(settings.output_directory, "model.log"), level=logging.DEBUG,
-	                    format='%(asctime)s | %(name)s | %(levelname)s | %(message)s')
 
 	print("========== ==========", "parameters", "========== ==========")
 	for key, value in list(vars(settings).items()):

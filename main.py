@@ -23,12 +23,6 @@ def main():
 	elif arguments.model == "snn":
 		from lasagne.experiments.snn import train_snn
 		train_snn()
-	elif arguments.model == "fdn":
-		from lasagne.experiments.fdn import train_fdn
-		train_fdn()
-	elif arguments.model == "vdn":
-		from lasagne.experiments.vdn import train_vdn
-		train_vdn()
 	elif arguments.model == "lenet":
 		from lasagne.experiments.lenet import train_lenet
 		train_lenet()
@@ -41,12 +35,21 @@ def main():
 	elif arguments.model == "dalexnet":
 		from lasagne.experiments.alexnetd import train_dalexnet
 		train_dalexnet()
-	elif arguments.model=="elman":
+	elif arguments.model == "elman":
 		from lasagne.experiments.elman import train_elman
 		train_elman()
 	elif arguments.model == "delman":
 		from lasagne.experiments.elmand import train_delman
 		train_delman()
+	'''
+	elif arguments.model == "fdn":
+		from lasagne.experiments.fdn import train_fdn
+		train_fdn()
+	elif arguments.model == "vdn":
+		from lasagne.experiments.vdn import train_vdn
+		train_vdn()
+	'''
+
 
 if __name__ == '__main__':
 	main();
