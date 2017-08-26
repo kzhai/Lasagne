@@ -629,14 +629,14 @@ def _logit(x):
 	"""
 	Logit function in Numpy. Useful for parameterizing alpha.
 	"""
-	return numpy.log(x / (1. - x))
+	return numpy.log(x / (1. - x)).astype(theano.config.floatX)
 
 
 def _sigmoid(x):
 	"""
 	Logit function in Numpy. Useful for parameterizing alpha.
 	"""
-	return 1. / (1 + numpy.exp(-x))
+	return 1. / (1 + numpy.exp(-x)).astype(theano.config.floatX)
 
 
 class VariationalDropoutLayer(Layer):
@@ -820,7 +820,7 @@ def _validate_activation_probability_for_logit_parameterization(activation_proba
 	if numpy.any(activation_probability <= 0.5) or numpy.any(activation_probability >= 1.0):
 		warnings.warn("Clipping p to the interval of (0.5, 1.0).", RuntimeWarning)
 		return numpy.clip(activation_probability, 0.5 + clip_margin, 1 - clip_margin)
-	return activation_probability
+	return numpy.asarray(activation_probability).astype(theano.config.floatX)
 
 
 class SparseVariationalDropoutLayer(Layer):
