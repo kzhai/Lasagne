@@ -251,6 +251,7 @@ def __find_input_layer(network):
 
 find_input_layer = __find_pre_dropout_layer
 
+
 # find_input_layer = __find_input_layer
 
 def rademacher_p_2_q_2(network, **kwargs):
@@ -378,8 +379,8 @@ def kl_divergence_kingma(network, **kwargs):
 	c3 = 0.586299206427007
 
 	# will get taken apart again in the autodiff
-	return T.sum([0.5 * T.sum(T.log(alpha)) + c1 * T.sum(alpha) + c2 * T.sum(T.pow(alpha, 2))
-	              + c3 * T.sum(T.pow(alpha, 3)) for alpha in alphas])
+	return -T.sum([0.5 * T.sum(T.log(alpha)) + c1 * T.sum(alpha) + c2 * T.sum(T.pow(alpha, 2))
+	               + c3 * T.sum(T.pow(alpha, 3)) for alpha in alphas])
 
 
 def kl_divergence_sparse(network, **kwargs):
