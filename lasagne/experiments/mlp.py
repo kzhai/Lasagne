@@ -81,6 +81,14 @@ def validate_dropout_arguments(arguments, number_of_layers):
 			if regularization.kl_divergence_sparse not in arguments.regularizer:
 				arguments.regularizer[regularization.kl_divergence_sparse] = [1.0, policy.constant]
 			assert regularization.kl_divergence_sparse in arguments.regularizer
+		elif layer_activation_types[layer_activation_type_index] in set(["AdaptiveDropoutLayer"]):
+			if (regularization.rademacher_p_1_q_inf not in arguments.regularizer) and \
+					(regularization.rademacher_p_2_q_2 not in arguments.regularizer) and \
+					(regularization.rademacher_p_inf_q_1 not in arguments.regularizer):
+				arguments.regularizer[regularization.rademacher_p_2_q_2] = [1.0, policy.constant]
+			assert (regularization.rademacher_p_1_q_inf in arguments.regularizer) or \
+			       (regularization.rademacher_p_2_q_2 in arguments.regularizer) or \
+			       (regularization.rademacher_p_inf_q_1 in arguments.regularizer)
 		else:
 			logger.error("unrecognized dropout type %s..." % (layer_activation_types[layer_activation_type_index]))
 		layer_activation_types[layer_activation_type_index] = getattr(layers.noise, layer_activation_types[
@@ -153,7 +161,7 @@ def construct_mlp_parser():
 
 
 def validate_mlp_arguments(arguments):
-	from . import validate_discriminative_arguments, validate_dense_arguments, validate_dropout_arguments
+	from . import validate_discriminative_arguments, validate_dense_arguments
 	arguments = validate_discriminative_arguments(arguments)
 
 	arguments = validate_dense_arguments(arguments)

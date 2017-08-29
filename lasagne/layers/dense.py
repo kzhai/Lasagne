@@ -238,6 +238,85 @@ class NINLayer(Layer):
 #
 #
 
+class ElasticDenseLayer(DenseLayer):
+	def __init__(self, incoming, num_units, W=init.GlorotUniform(),
+	             b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
+	             num_leading_axes=1, **kwargs):
+		super(ElasticDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes, **kwargs)
+
+	# self.set_output(num_units, W=init.GlorotUniform(), b=init.Constant(0.), nonlinearity=nonlinearities.rectify)
+
+	def set_input(self, incoming, W=init.GlorotUniform(), num_leading_axes=1):
+		if isinstance(incoming, tuple):
+			self.input_shape = incoming
+			self.input_layer = None
+		else:
+			self.input_shape = incoming.output_shape
+			self.input_layer = incoming
+
+		'''
+		if num_leading_axes >= len(self.input_shape):
+			raise ValueError(
+				"Got num_leading_axes=%d for a %d-dimensional input, "
+				"leaving no trailing axes for the dot product." %
+				(num_leading_axes, len(self.input_shape)))
+		elif num_leading_axes < -len(self.input_shape):
+			raise ValueError(
+				"Got num_leading_axes=%d for a %d-dimensional input, "
+				"requesting more trailing axes than there are input "
+				"dimensions." % (num_leading_axes, len(self.input_shape)))
+		self.num_leading_axes = num_leading_axes
+
+		if any(d is not None and d <= 0 for d in self.input_shape):
+			raise ValueError((
+				                 "Cannot create Layer with a non-positive input_shape "
+				                 "dimension. input_shape=%r, self.name=%r") % (
+				                 self.input_shape, self.name))
+		'''
+
+		self.set_W(W)
+
+	def set_output(self, num_units, W=init.GlorotUniform(), b=init.Constant(0.)):
+		self.num_units = num_units
+
+		self.set_W(W)
+		self.set_b(b)
+
+	def set_W(self, W=init.GlorotUniform()):
+		old_W = self.W.eval()
+		self.params.pop(self.W);
+
+		num_inputs = int(np.prod(self.input_shape[self.num_leading_axes:]))
+		self.W = self.add_param(W, (num_inputs, self.num_units), name="W")
+		return old_W
+
+	def set_b(self, b=init.Constant(0.)):
+		old_b = self.b.eval();
+		self.params.pop(self.b);
+
+		if b is None:
+			self.b = None
+		else:
+			self.b = self.add_param(b, (self.num_units,), name="b", regularizable=False)
+		return old_b
+
+	'''
+	def del_param(self, spec, shape, name=None, **tags):
+		# prefix the param name with the layer name if it exists
+		if name is not None:
+			if self.name is not None:
+				name = "%s.%s" % (self.name, name)
+		# create shared variable, or pass through given variable/expression
+		param = utils.create_param(spec, shape, name)
+		# parameters should be trainable and regularizable by default
+		tags['trainable'] = tags.get('trainable', True)
+		tags['regularizable'] = tags.get('regularizable', True)
+		self.params[param] = set(tag for tag, value in tags.items() if value)
+
+		return param
+	'''
+
+
 '''
 class DenseLayer(Layer):
     def __init__(self, incoming, num_units, Wfc, nonlinearity=rectify, mnc=False, b=Constant(0.), **kwargs):
@@ -385,82 +464,3 @@ class DenseVarDropOutARD(DenseLayer):
 	def get_reg(self):
 		log_alpha = self.log_sigma2.get_value() - 2 * np.log(np.abs(self.W.get_value()))
 		return '%.1f, %.1f' % (log_alpha.min(), log_alpha.max())
-
-
-class ElasticDenseLayer(DenseLayer):
-	def __init__(self, incoming, num_units, W=init.GlorotUniform(),
-	             b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
-	             num_leading_axes=1, **kwargs):
-		super(ElasticDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes, **kwargs)
-
-	# self.set_output(num_units, W=init.GlorotUniform(), b=init.Constant(0.), nonlinearity=nonlinearities.rectify)
-
-	def set_input(self, incoming, W=init.GlorotUniform(), num_leading_axes=1):
-		if isinstance(incoming, tuple):
-			self.input_shape = incoming
-			self.input_layer = None
-		else:
-			self.input_shape = incoming.output_shape
-			self.input_layer = incoming
-
-		'''
-		if num_leading_axes >= len(self.input_shape):
-			raise ValueError(
-				"Got num_leading_axes=%d for a %d-dimensional input, "
-				"leaving no trailing axes for the dot product." %
-				(num_leading_axes, len(self.input_shape)))
-		elif num_leading_axes < -len(self.input_shape):
-			raise ValueError(
-				"Got num_leading_axes=%d for a %d-dimensional input, "
-				"requesting more trailing axes than there are input "
-				"dimensions." % (num_leading_axes, len(self.input_shape)))
-		self.num_leading_axes = num_leading_axes
-
-		if any(d is not None and d <= 0 for d in self.input_shape):
-			raise ValueError((
-				                 "Cannot create Layer with a non-positive input_shape "
-				                 "dimension. input_shape=%r, self.name=%r") % (
-				                 self.input_shape, self.name))
-		'''
-
-		self.set_W(W)
-
-	def set_output(self, num_units, W=init.GlorotUniform(), b=init.Constant(0.)):
-		self.num_units = num_units
-
-		self.set_W(W)
-		self.set_b(b)
-
-	def set_W(self, W=init.GlorotUniform()):
-		old_W = self.W.eval()
-		self.params.pop(self.W);
-
-		num_inputs = int(np.prod(self.input_shape[self.num_leading_axes:]))
-		self.W = self.add_param(W, (num_inputs, self.num_units), name="W")
-		return old_W
-
-	def set_b(self, b=init.Constant(0.)):
-		old_b = self.b.eval();
-		self.params.pop(self.b);
-
-		if b is None:
-			self.b = None
-		else:
-			self.b = self.add_param(b, (self.num_units,), name="b", regularizable=False)
-		return old_b
-
-	'''
-	def del_param(self, spec, shape, name=None, **tags):
-		# prefix the param name with the layer name if it exists
-		if name is not None:
-			if self.name is not None:
-				name = "%s.%s" % (self.name, name)
-		# create shared variable, or pass through given variable/expression
-		param = utils.create_param(spec, shape, name)
-		# parameters should be trainable and regularizable by default
-		tags['trainable'] = tags.get('trainable', True)
-		tags['regularizable'] = tags.get('regularizable', True)
-		self.params[param] = set(tag for tag, value in tags.items() if value)
-
-		return param
-	'''

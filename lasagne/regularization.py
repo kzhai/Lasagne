@@ -370,6 +370,8 @@ def kl_divergence_kingma(network, **kwargs):
 	# gather up all the alphas
 
 	# params = get_all_params(network)
+	# params = network.get_network_params(name="variational.dropout.logit_sigma");
+	# alphas = [T.nnet.sigmoid(p) for p in params]
 	params = network.get_network_params();
 	alphas = [T.nnet.sigmoid(p) for p in params if p.name == "variational.dropout.logit_sigma"]
 
@@ -394,7 +396,8 @@ def kl_divergence_sparse(network, **kwargs):
 		alpha values out of all the layers
 	"""
 	# gather up all the alphas
-	# params = get_all_params(network)
+	# params = network.get_network_params(name="variational.dropout.log_alpha");
+	# alphas = [T.exp(p) for p in params]
 	params = network.get_network_params();
 	alphas = [T.exp(p) for p in params if p.name == "variational.dropout.log_alpha"]
 

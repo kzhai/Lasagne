@@ -364,7 +364,8 @@ class FeedForwardNetwork(Network):
 			# inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
 			inputs=[self._input_variable, self._output_variable],
 			outputs=[train_objective, train_accuracy],
-			updates=trainable_params_updates
+			updates=trainable_params_updates,
+			on_unused_input='warn'
 		)
 
 		# Create a train_loss expression for validation/testing. The crucial difference here is that we do a deterministic forward pass through the networks, disabling dropout layers.
@@ -380,6 +381,7 @@ class FeedForwardNetwork(Network):
 		self._test_function = theano.function(
 			inputs=[self._input_variable, self._output_variable],
 			outputs=[test_objective, test_accuracy],
+			on_unused_input='warn'
 		)
 
 		#
@@ -583,7 +585,8 @@ class DynamicFeedForwardNetwork(FeedForwardNetwork):
 		self.dropout_learning_rate_change_stack.append((self.epoch_index, self.dropout_learning_rate_policy))
 
 	def __update_dropout_learning_rate(self):
-		self._dropout_learning_rate_variable.set_value(decay_parameter(self.dropout_learning_rate_policy, self.epoch_index))
+		self._dropout_learning_rate_variable.set_value(
+			decay_parameter(self.dropout_learning_rate_policy, self.epoch_index))
 
 	def update_shared_variables(self):
 		super(DynamicFeedForwardNetwork, self).update_shared_variables();
@@ -600,6 +603,7 @@ class DynamicFeedForwardNetwork(FeedForwardNetwork):
 		                                       deterministic=True)
 
 		adaptable_params = self.get_network_params(adaptable=True)
+		#adaptable_params = self.get_network_params(name="adaptive.dropout.r");
 		adaptable_params_updates = self._update_function(dropout_loss, adaptable_params,
 		                                                 self._dropout_learning_rate_variable)
 
@@ -607,7 +611,8 @@ class DynamicFeedForwardNetwork(FeedForwardNetwork):
 		self._train_dropout_function = theano.function(
 			inputs=[self._input_variable, self._output_variable],
 			outputs=[dropout_objective, dropout_accuracy],
-			updates=adaptable_params_updates
+			updates=adaptable_params_updates,
+			on_unused_input='warn'
 		)
 
 		'''
@@ -641,7 +646,7 @@ class DynamicFeedForwardNetwork(FeedForwardNetwork):
 
 		minibatch_running_time_temp = timeit.default_timer()
 		if self._dropout_rate_update_interval > 0 and self.minibatch_index % self._dropout_rate_update_interval == 0:
-			#dropout_learning_rate = decay_parameter(self.dropout_learning_rate_policy, self.epoch_index)
+			# dropout_learning_rate = decay_parameter(self.dropout_learning_rate_policy, self.epoch_index)
 			train_dropout_function_outputs = self._train_dropout_function(minibatch_x, minibatch_y)
 
 		minibatch_running_time_temp = timeit.default_timer() - minibatch_running_time_temp

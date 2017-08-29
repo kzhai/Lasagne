@@ -3,8 +3,8 @@ import os
 
 import numpy
 
-from .. import layers
-from .. import networks
+from . import layer_deliminator, param_deliminator
+from .. import layers, networks, policy, regularization
 
 logger = logging.getLogger(__name__)
 
@@ -13,9 +13,89 @@ __all__ = [
 ]
 
 
+'''
+def validate_dropout_arguments(arguments, number_of_layers):
+	# model argument set
+	layer_activation_types = arguments.layer_activation_types
+	if layer_activation_types is None:
+		layer_activation_types = ["AdaptiveDropoutLayer"] * number_of_layers
+	else:
+		layer_activation_type_tokens = layer_activation_types.split(layer_deliminator)
+		if len(layer_activation_type_tokens) == 1:
+			layer_activation_types = layer_activation_type_tokens * number_of_layers
+		else:
+			layer_activation_types = layer_activation_type_tokens
+		assert len(layer_activation_types) == number_of_layers
+	assert layer_activation_types[0] in set(["AdaptiveDropoutLayer", "BernoulliDropoutLayer"])
+	for layer_activation_type_index in xrange(len(layer_activation_types)):
+		if layer_activation_types[layer_activation_type_index] in set(
+				["BernoulliDropoutLayer", "GaussianDropoutLayer", "FastDropoutLayer", "AdaptiveDropoutLayer"]):
+			pass
+		elif layer_activation_types[layer_activation_type_index] in set(
+				["VariationalDropoutLayer", "VariationalDropoutTypeALayer", "VariationalDropoutTypeBLayer"]):
+			if regularization.kl_divergence_kingma not in arguments.regularizer:
+				arguments.regularizer[regularization.kl_divergence_kingma] = [1.0, policy.constant]
+			assert regularization.kl_divergence_kingma in arguments.regularizer
+		elif layer_activation_types[layer_activation_type_index] in set(["SparseVariationalDropoutLayer"]):
+			if regularization.kl_divergence_sparse not in arguments.regularizer:
+				arguments.regularizer[regularization.kl_divergence_sparse] = [1.0, policy.constant]
+			assert regularization.kl_divergence_sparse in arguments.regularizer
+		else:
+			logger.error("unrecognized dropout type %s..." % (layer_activation_types[layer_activation_type_index]))
+		layer_activation_types[layer_activation_type_index] = getattr(layers.noise, layer_activation_types[
+			layer_activation_type_index])
+	arguments.layer_activation_types = layer_activation_types
+
+	layer_activation_styles = arguments.layer_activation_styles
+	layer_activation_style_tokens = layer_activation_styles.split(layer_deliminator)
+	if len(layer_activation_style_tokens) == 1:
+		layer_activation_styles = [layer_activation_styles for layer_index in range(number_of_layers)]
+	elif len(layer_activation_style_tokens) == number_of_layers:
+		layer_activation_styles = layer_activation_style_tokens
+	# [float(layer_activation_parameter) for layer_activation_parameter in layer_activation_parameter_tokens]
+	assert len(layer_activation_styles) == number_of_layers
+	assert (layer_activation_style in set(
+		["uniform", "bernoulli", "beta_bernoulli", "reciprocal_beta_bernoulli", "reverse_reciprocal_beta_bernoulli",
+		 "mixed_beta_bernoulli"]) for layer_activation_style in layer_activation_styles)
+	arguments.layer_activation_styles = layer_activation_styles
+
+	layer_activation_parameters = arguments.layer_activation_parameters
+	layer_activation_parameter_tokens = layer_activation_parameters.split(layer_deliminator)
+	if len(layer_activation_parameter_tokens) == 1:
+		layer_activation_parameters = [layer_activation_parameters for layer_index in range(number_of_layers)]
+	elif len(layer_activation_parameter_tokens) == number_of_layers:
+		layer_activation_parameters = layer_activation_parameter_tokens
+	assert len(layer_activation_parameters) == number_of_layers
+
+	for layer_index in range(number_of_layers):
+		if layer_activation_styles[layer_index] == "uniform":
+			layer_activation_parameters[layer_index] = float(layer_activation_parameters[layer_index])
+			assert layer_activation_parameters[layer_index] <= 1
+			assert layer_activation_parameters[layer_index] > 0
+		elif layer_activation_styles[layer_index] == "bernoulli":
+			layer_activation_parameters[layer_index] = float(layer_activation_parameters[layer_index])
+			assert layer_activation_parameters[layer_index] <= 1
+			assert layer_activation_parameters[layer_index] > 0
+		elif layer_activation_styles[layer_index] == "beta_bernoulli" \
+				or layer_activation_styles[layer_index] == "reciprocal_beta_bernoulli" \
+				or layer_activation_styles[layer_index] == "reverse_reciprocal_beta_bernoulli" \
+				or layer_activation_styles[layer_index] == "mixed_beta_bernoulli":
+			layer_activation_parameter_tokens = layer_activation_parameters[layer_index].split("+")
+			assert len(layer_activation_parameter_tokens) == 2, layer_activation_parameter_tokens
+			layer_activation_parameters[layer_index] = (float(layer_activation_parameter_tokens[0]),
+			                                            float(layer_activation_parameter_tokens[1]))
+			assert layer_activation_parameters[layer_index][0] > 0
+			assert layer_activation_parameters[layer_index][1] > 0
+			if layer_activation_styles[layer_index] == "mixed_beta_bernoulli":
+				assert layer_activation_parameters[layer_index][0] < 1
+	arguments.layer_activation_parameters = layer_activation_parameters
+
+	return arguments
+'''
+
 def construct_dmlp_parser():
 	from .mlp import construct_mlp_parser
-	model_parser = construct_mlp_parser()
+	model_parser = construct_mlp_parser();
 
 	model_parser.description = "dynamic multi-layer perceptron argument"
 
@@ -26,14 +106,14 @@ def construct_dmlp_parser():
 	model_parser.add_argument("--dropout_learning_rate_decay", dest="dropout_learning_rate_decay", action='store',
 	                          default=None, help="dropout learning rate decay [None = learning_rate_decay]")
 	'''
+
+	# model argument set 1
 	model_parser.add_argument("--dropout_learning_rate", dest="dropout_learning_rate", action='store',
 	                          default=None, help="dropout learning rate [None = learning_rate]")
-
-	# model argument set 2
 	model_parser.add_argument("--dropout_rate_update_interval", dest="dropout_rate_update_interval", type=int,
 	                          action='store', default=0, help="dropout rate update interval [1]")
-	model_parser.add_argument('--update_hidden_layer_dropout_only', dest="update_hidden_layer_dropout_only",
-	                          action='store_true', default=False, help="update hidden layer dropout only [False]")
+	# model_parser.add_argument('--update_hidden_layer_dropout_only', dest="update_hidden_layer_dropout_only",
+	# action='store_true', default=False, help="update hidden layer dropout only [False]")
 
 	return model_parser
 
@@ -42,41 +122,23 @@ def validate_dmlp_arguments(arguments):
 	from .mlp import validate_mlp_arguments
 	arguments = validate_mlp_arguments(arguments)
 
+	'''
+	from . import validate_discriminative_arguments, validate_dense_arguments
+	arguments = validate_discriminative_arguments(arguments)
+
+	arguments = validate_dense_arguments(arguments)
+	number_of_layers = len(arguments.dense_dimensions)
+	arguments = validate_dropout_arguments(arguments, number_of_layers)
+	'''
+
 	# model argument set 1
+	from . import validate_decay_policy
 	if arguments.dropout_learning_rate is None:
 		arguments.dropout_learning_rate = arguments.learning_rate;
 	else:
-		dropout_learning_rate_tokens = arguments.dropout_learning_rate.split(",")
-		dropout_learning_rate_tokens[0] = float(dropout_learning_rate_tokens[0]);
-		assert dropout_learning_rate_tokens[0] > 0
-		if len(dropout_learning_rate_tokens) == 1:
-			pass
-		elif len(dropout_learning_rate_tokens) == 5:
-			assert dropout_learning_rate_tokens[1] in ["iteration", "epoch"]
-			assert dropout_learning_rate_tokens[2] in ["inverse_t", "exponential", "step"]
-			dropout_learning_rate_tokens[3] = float(dropout_learning_rate_tokens[3])
-			dropout_learning_rate_tokens[4] = float(dropout_learning_rate_tokens[4])
-		else:
-			logger.error("unrecognized dropout learning rate %s..." % (arguments.dropout_learning_rate))
-		arguments.dropout_learning_rate = dropout_learning_rate_tokens
+		dropout_learning_rate_tokens = arguments.dropout_learning_rate.split(param_deliminator)
+		arguments.dropout_learning_rate = validate_decay_policy(dropout_learning_rate_tokens)
 
-	'''
-	if arguments.dropout_learning_rate == 0:
-		arguments.dropout_learning_rate = arguments.learning_rate;
-	assert arguments.dropout_learning_rate > 0
-	if arguments.dropout_learning_rate_decay is None:
-		arguments.dropout_learning_rate_decay = arguments.learning_rate_decay;
-	else:
-		dropout_learning_rate_decay_tokens = arguments.dropout_learning_rate_decay.split(",")
-		assert len(dropout_learning_rate_decay_tokens) == 4
-		assert dropout_learning_rate_decay_tokens[0] in ["iteration", "epoch"]
-		assert dropout_learning_rate_decay_tokens[1] in ["inverse_t", "exponential", "step"]
-		dropout_learning_rate_decay_tokens[2] = float(dropout_learning_rate_decay_tokens[2])
-		dropout_learning_rate_decay_tokens[3] = float(dropout_learning_rate_decay_tokens[3])
-		arguments.dropout_learning_rate_decay = dropout_learning_rate_decay_tokens
-	'''
-
-	# model argument set 2
 	assert (arguments.dropout_rate_update_interval >= 0)
 
 	return arguments
@@ -98,6 +160,7 @@ def train_dmlp():
 		dense_dimensions=settings.dense_dimensions,
 		dense_nonlinearities=settings.dense_nonlinearities,
 
+		layer_activation_types=settings.layer_activation_types,
 		layer_activation_parameters=settings.layer_activation_parameters,
 		layer_activation_styles=settings.layer_activation_styles,
 
@@ -106,12 +169,12 @@ def train_dmlp():
 		# pretrained_model=pretrained_model
 
 		learning_rate_policy=settings.learning_rate,
-		#learning_rate_decay=settings.learning_rate_decay,
+		# learning_rate_decay=settings.learning_rate_decay,
 
 		dropout_learning_rate_policy=settings.dropout_learning_rate,
-		#dropout_learning_rate_decay=settings.dropout_learning_rate_decay,
+		# dropout_learning_rate_decay=settings.dropout_learning_rate_decay,
 		dropout_rate_update_interval=settings.dropout_rate_update_interval,
-		update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
+		#update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
 
 		max_norm_constraint=settings.max_norm_constraint,
 		validation_interval=settings.validation_interval,
@@ -123,26 +186,6 @@ def train_dmlp():
 
 	from . import train_model
 	train_model(network, settings)
-
-
-def snapshot_retain_rates(network, output_directory):
-	dropout_layer_index = 0
-	for network_layer in network.get_network_layers():
-		if not isinstance(network_layer, layers.AdaptiveDropoutLayer):
-			continue
-
-		layer_retain_probability = network_layer.activation_probability.eval()
-		logger.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
-			network.epoch_index,
-			layer_retain_probability.shape,
-			numpy.mean(layer_retain_probability),
-			numpy.min(layer_retain_probability),
-			numpy.max(layer_retain_probability)))
-
-		retain_rate_file = os.path.join(output_directory,
-		                                "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
-		numpy.save(retain_rate_file, layer_retain_probability)
-		dropout_layer_index += 1
 
 
 def resume_dmlp():

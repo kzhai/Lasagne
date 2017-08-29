@@ -103,8 +103,9 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 	             dense_dimensions,
 	             dense_nonlinearities,
 
-	             layer_activation_parameters=None,
-	             layer_activation_styles=None,
+	             layer_activation_types,
+	             layer_activation_parameters,
+	             layer_activation_styles,
 
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
@@ -115,25 +116,26 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 	             dropout_learning_rate_policy=1e-3,
 	             # dropout_learning_rate_decay=None,
 	             dropout_rate_update_interval=1,
-	             update_hidden_layer_dropout_only=False,
+	             # update_hidden_layer_dropout_only=False,
 
 	             max_norm_constraint=0,
 	             # learning_rate_decay_style=None,
 	             # learning_rate_decay_parameter=0,
 	             validation_interval=-1,
 	             ):
-		super(DynamicMultiLayerPerceptron, self).__init__(incoming,
-		                                                  objective_functions,
-		                                                  update_function,
-		                                                  learning_rate_policy,
+		super(DynamicMultiLayerPerceptron, self).__init__(incoming=incoming,
+
+		                                                  objective_functions=objective_functions,
+		                                                  update_function=update_function,
+		                                                  learning_rate_policy=learning_rate_policy,
 		                                                  # learning_rate_decay,
 
-		                                                  dropout_learning_rate_policy,
+		                                                  dropout_learning_rate_policy=dropout_learning_rate_policy,
 		                                                  # dropout_learning_rate_decay,
-		                                                  dropout_rate_update_interval,
+		                                                  dropout_rate_update_interval=dropout_rate_update_interval,
 
-		                                                  max_norm_constraint,
-		                                                  validation_interval,
+		                                                  max_norm_constraint=max_norm_constraint,
+		                                                  validation_interval=validation_interval,
 		                                                  )
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
 		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
@@ -159,13 +161,17 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			                                                              layer_activation_styles[layer_index],
 			                                                              layer_activation_parameters[layer_index])
 
+			'''
 			if update_hidden_layer_dropout_only and layer_index == 0:
 				neural_network = layers.BernoulliDropoutLayer(neural_network,
 				                                              activation_probability=activation_probability)
 			else:
 				neural_network = layers.AdaptiveDropoutLayer(neural_network,
 				                                             activation_probability=activation_probability)
+			'''
 
+			neural_network = layer_activation_types[layer_index](neural_network,
+			                                                     activation_probability=activation_probability)
 			layer_dimension = dense_dimensions[layer_index]
 			layer_nonlinearity = dense_nonlinearities[layer_index]
 
@@ -492,90 +498,6 @@ class ElasticDynamicMultiLayerPerceptron(FeedForwardNetwork):
 
 		self._neural_network = neural_network
 		'''
-
-		self.build_functions()
-
-
-class VanillaMultiLayerPerceptron(FeedForwardNetwork):
-	def __init__(self,
-	             incoming,
-
-	             dense_dimensions,
-	             dense_nonlinearities,
-
-	             layer_activation_parameters=None,
-	             layer_activation_styles=None,
-
-	             objective_functions=objectives.categorical_crossentropy,
-	             update_function=updates.nesterov_momentum,
-	             learning_rate_policy=1e-3,
-	             # learning_rate_decay=None,
-	             max_norm_constraint=0,
-	             # learning_rate_decay_style=None,
-	             # learning_rate_decay_parameter=0,
-
-	             validation_interval=-1,
-	             ):
-		super(VanillaMultiLayerPerceptron, self).__init__(incoming,
-		                                                  objective_functions,
-		                                                  update_function,
-		                                                  learning_rate_policy,
-		                                                  # learning_rate_decay,
-		                                                  max_norm_constraint,
-		                                                  # learning_rate_decay_style,
-		                                                  # learning_rate_decay_parameter,
-		                                                  validation_interval,
-		                                                  )
-
-		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
-		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
-
-		# self._input_layer = layers.InputLayer(shape=input_shape)
-		# self._input_variable = self._input_layer.input_var
-
-		assert len(dense_dimensions) == len(dense_nonlinearities)
-		assert len(dense_dimensions) == len(layer_activation_parameters)
-		assert len(dense_dimensions) == len(layer_activation_styles)
-
-		'''
-		pretrained_network_layers = None
-		if pretrained_model != None:
-			pretrained_network_layers = lasagne.layers.get_all_layers(pretrained_model._neural_network)
-		'''
-
-		# neural_network = input_network
-		neural_network = self._input_layer
-		for layer_index in range(len(dense_dimensions)):
-			previous_layer_dimension = layers.get_output_shape(neural_network)[1:]
-			activation_probability = layers.sample_activation_probability(previous_layer_dimension,
-			                                                              layer_activation_styles[layer_index],
-			                                                              layer_activation_parameters[layer_index])
-
-			neural_network = layers.BernoulliDropoutLayer(neural_network, activation_probability=activation_probability)
-
-			layer_dimension = dense_dimensions[layer_index]
-			layer_nonlinearity = dense_nonlinearities[layer_index]
-
-			neural_network = layers.DenseLayer(neural_network, layer_dimension, W=init.GlorotUniform(
-				gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
-
-			'''
-			if pretrained_network_layers == None or len(pretrained_network_layers) <= layer_index:
-				_neural_network = lasagne.layers.DenseLayer(_neural_network, layer_dimension, nonlinearity=layer_nonlinearity)
-			else:
-				pretrained_layer = pretrained_network_layers[layer_index]
-				assert isinstance(pretrained_layer, lasagne.layers.DenseLayer)
-				assert pretrained_layer.nonlinearity == layer_nonlinearity, (pretrained_layer.nonlinearity, layer_nonlinearity)
-				assert pretrained_layer.num_units == layer_dimension
-
-				_neural_network = lasagne.layers.DenseLayer(_neural_network,
-													layer_dimension,
-													W=pretrained_layer.W,
-													b=pretrained_layer.b,
-													nonlinearity=layer_nonlinearity)
-			'''
-
-		self._neural_network = neural_network
 
 		self.build_functions()
 

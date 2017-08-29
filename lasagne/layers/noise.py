@@ -913,7 +913,9 @@ class AdaptiveDropoutLayer(Layer):
 		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
 		# num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
 		self.activation_probability = self.add_param(activation_probability, self.input_shape[self.num_leading_axes:],
-		                                             name="adaptive.dropout.r", trainable=False, regularizable=False, adaptable=True)
+		                                             name="adaptive.dropout.r", trainable=False, regularizable=False,
+		                                             adaptable=True)
+		# self.activation_probability = self.add_param(activation_probability, self.input_shape[self.num_leading_axes:], name="adaptive.dropout.r", regularizable=False)
 		# self.activation_probability = theano.shared(value=activation_probability, );
 		self.shared_axes = tuple(shared_axes)
 

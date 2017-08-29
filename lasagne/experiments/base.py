@@ -18,6 +18,8 @@ __all__ = [
 	"layer_deliminator",
 	"param_deliminator",
 	#
+	"validate_decay_policy",
+	#
 	"construct_discriminative_parser",
 	"validate_discriminative_arguments",
 	#

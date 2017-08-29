@@ -22,18 +22,18 @@ __all__ = [
 ]
 
 
-def _subsample_dataset(dataset, fraction=100):
+def _subsample_dataset(dataset, fraction=0.01):
 	if dataset is None:
 		return None
 	dataset_x, dataset_y = dataset
 	size = len(dataset_y)
-	indices = numpy.random.permutation(size)[:(size // fraction)]
+	indices = numpy.random.permutation(size)[:int(size * fraction)]
 	dataset_x = dataset_x[indices]
 	dataset_y = dataset_y[indices]
 	return dataset_x, dataset_y
 
 
-def subsample_dataset(train_dataset, validate_dataset, test_dataset, fraction=100, **kwargs):
+def subsample_dataset(train_dataset, validate_dataset, test_dataset, fraction=0.005, **kwargs):
 	if validate_dataset is None:
 		size_before = [len(train_dataset[1]), 0, len(test_dataset[1])]
 	else:
@@ -172,8 +172,7 @@ def snapshot_dropouts(network, settings=None):
 			numpy.max(layer_retain_probability)))
 
 		if settings is not None:
-			layer_retain_probability = numpy.reshape(layer_retain_probability,
-			                                         numpy.prod(layer_retain_probability.shape))
+			#layer_retain_probability = numpy.reshape(layer_retain_probability, numpy.prod(layer_retain_probability.shape))
 			retain_rate_file = os.path.join(settings.output_directory,
 			                                "noise.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
 			numpy.save(retain_rate_file, layer_retain_probability)

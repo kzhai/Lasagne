@@ -3,8 +3,8 @@ import os
 
 import numpy
 
-from .. import layers
-from .. import networks
+from .. import layers, networks
+from . import param_deliminator
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +28,10 @@ def construct_dlenet_parser():
 	'''
 	model_parser.add_argument("--dropout_learning_rate", dest="dropout_learning_rate", action='store',
 	                          default=None, help="dropout learning rate [None = learning_rate]")
-
-	# model argument set 2
 	model_parser.add_argument("--dropout_rate_update_interval", dest="dropout_rate_update_interval", type=int,
 	                          action='store', default=0, help="dropout rate update interval [1]")
-	model_parser.add_argument('--update_hidden_layer_dropout_only', dest="update_hidden_layer_dropout_only",
-	                          action='store_true', default=False, help="update hidden layer dropout only [False]")
+	#model_parser.add_argument('--update_hidden_layer_dropout_only', dest="update_hidden_layer_dropout_only",
+	                          #action='store_true', default=False, help="update hidden layer dropout only [False]")
 
 	return model_parser
 
@@ -42,25 +40,30 @@ def validate_dlenet_arguments(arguments):
 	from .lenet import validate_lenet_arguments
 	arguments = validate_lenet_arguments(arguments)
 
+	'''
+	from . import validate_discriminative_arguments, validate_dense_arguments, validate_convpool_arguments
+	from .mlpd import validate_dropout_arguments
+
+	arguments = validate_discriminative_arguments(arguments)
+
+	arguments = validate_convpool_arguments(arguments)
+	number_of_convolution_layers = len(arguments.convolution_filters)
+
+	arguments = validate_dense_arguments(arguments)
+	number_of_dense_layers = len(arguments.dense_dimensions)
+
+	number_of_layers = number_of_convolution_layers + number_of_dense_layers
+	arguments = validate_dropout_arguments(arguments, number_of_layers)
+	'''
+
 	# model argument set 1
+	from . import validate_decay_policy
 	if arguments.dropout_learning_rate is None:
 		arguments.dropout_learning_rate = arguments.learning_rate;
 	else:
-		dropout_learning_rate_tokens = arguments.dropout_learning_rate.split(",")
-		dropout_learning_rate_tokens[0] = float(dropout_learning_rate_tokens[0]);
-		assert dropout_learning_rate_tokens[0] > 0
-		if len(dropout_learning_rate_tokens) == 1:
-			pass
-		elif len(dropout_learning_rate_tokens) == 5:
-			assert dropout_learning_rate_tokens[1] in ["iteration", "epoch"]
-			assert dropout_learning_rate_tokens[2] in ["inverse_t", "exponential", "step"]
-			dropout_learning_rate_tokens[3] = float(dropout_learning_rate_tokens[3])
-			dropout_learning_rate_tokens[4] = float(dropout_learning_rate_tokens[4])
-		else:
-			logger.error("unrecognized dropout learning rate %s..." % (arguments.dropout_learning_rate))
-		arguments.dropout_learning_rate = dropout_learning_rate_tokens
+		dropout_learning_rate_tokens = arguments.dropout_learning_rate.split(param_deliminator)
+		arguments.dropout_learning_rate = validate_decay_policy(dropout_learning_rate_tokens)
 
-	# model argument set 2
 	assert (arguments.dropout_rate_update_interval >= 0)
 
 	return arguments
@@ -90,6 +93,7 @@ def train_dlenet():
 		dense_dimensions=settings.dense_dimensions,
 		dense_nonlinearities=settings.dense_nonlinearities,
 
+		layer_activation_types=settings.layer_activation_types,
 		layer_activation_parameters=settings.layer_activation_parameters,
 		layer_activation_styles=settings.layer_activation_styles,
 
@@ -102,7 +106,7 @@ def train_dlenet():
 		dropout_learning_rate_policy=settings.dropout_learning_rate,
 		#dropout_learning_rate_decay=settings.dropout_learning_rate_decay,
 		dropout_rate_update_interval=settings.dropout_rate_update_interval,
-		update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
+		#update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
 
 		max_norm_constraint=settings.max_norm_constraint,
 		validation_interval=settings.validation_interval,
@@ -125,26 +129,6 @@ def train_dlenet():
 
 	from . import train_model
 	train_model(network, settings)
-
-
-def snapshot_retain_rates(network, output_directory):
-	dropout_layer_index = 0
-	for network_layer in network.get_network_layers():
-		if not isinstance(network_layer, layers.AdaptiveDropoutLayer):
-			continue
-
-		layer_retain_probability = network_layer.activation_probability.eval()
-		logger.info("retain rates stats: epoch %i, shape %s, average %f, minimum %f, maximum %f" % (
-			network.epoch_index,
-			layer_retain_probability.shape,
-			numpy.mean(layer_retain_probability),
-			numpy.min(layer_retain_probability),
-			numpy.max(layer_retain_probability)))
-
-		retain_rate_file = os.path.join(output_directory,
-		                                "layer.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
-		numpy.save(retain_rate_file, layer_retain_probability)
-		dropout_layer_index += 1
 
 
 if __name__ == '__main__':

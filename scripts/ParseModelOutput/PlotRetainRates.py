@@ -159,6 +159,13 @@ def plot_3D_wires(matrix=None, rescale_x_interval=1, output_file_path=None):
 	# ax.plot_wireframe(X, Y, Z, rstride=1, cstride=10)
 	# ax.set_title("Row (y) stride set to 0")
 
+	#ax.set_xlim(0, 10)
+	#ax.set_ylim(0, 10)
+	#ax.set_zlim(0, 10)
+	ax.set_xlabel('epoch')
+	ax.set_ylabel('retain rate')
+	ax.set_zlabel('# of neurons')
+
 	plt.tight_layout()
 	if output_file_path is None:
 		plt.show()
@@ -235,8 +242,6 @@ if __name__ == '__main__':
 	argument_parser.add_argument("--snapshot_interval", dest="snapshot_interval", action='store', type=int, default=1,
 	                             help="snapshot interval [1]")
 
-	argument_parser.add_argument("--feature_map_size", dest="feature_map_size", action='store', default=None,
-	                             help="feature map dimensions [None]")
 	argument_parser.add_argument("--feature_map_size", dest="feature_map_size", action='store', default=None,
 	                             help="feature map dimensions [None]")
 	argument_parser.add_argument("--layer_index", dest="layer_index", action='store', type=int, default=0,
