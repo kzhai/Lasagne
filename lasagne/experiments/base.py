@@ -18,7 +18,7 @@ __all__ = [
 	"layer_deliminator",
 	"param_deliminator",
 	#
-	"validate_decay_policy",
+	"parse_parameter_policy",
 	#
 	"construct_discriminative_parser",
 	"validate_discriminative_arguments",
@@ -87,47 +87,49 @@ def construct_generic_parser():
 	return generic_parser
 
 
-def validate_decay_policy(decay_policy_tokens):
-	decay_policy_tokens[0] = float(decay_policy_tokens[0])
-	assert decay_policy_tokens[0] > 0
-	if len(decay_policy_tokens) == 1:
-		decay_policy_tokens.append(policy.constant);
-		return decay_policy_tokens
+def parse_parameter_policy(policy_string):
+	policy_tokens = policy_string.split(param_deliminator)
 
-	decay_policy_tokens[1] = getattr(policy, decay_policy_tokens[1])
-	if decay_policy_tokens[1] is policy.constant:
-		assert len(decay_policy_tokens) == 2
-		return decay_policy_tokens
+	policy_tokens[0] = float(policy_tokens[0])
+	assert policy_tokens[0] >= 0
+	if len(policy_tokens) == 1:
+		policy_tokens.append(policy.constant)
+		return policy_tokens
 
-	if decay_policy_tokens[1] is policy.piecewise_constant:
-		assert len(decay_policy_tokens) == 4
+	policy_tokens[1] = getattr(policy, policy_tokens[1])
+	if policy_tokens[1] is policy.constant:
+		assert len(policy_tokens) == 2
+		return policy_tokens
 
-		decay_policy_tokens[2] = [float(boundary_token) for boundary_token in decay_policy_tokens[2].split("-")]
+	if policy_tokens[1] is policy.piecewise_constant:
+		assert len(policy_tokens) == 4
+
+		policy_tokens[2] = [float(boundary_token) for boundary_token in policy_tokens[2].split("-")]
 		previous_boundary = 0
-		for next_boundary in decay_policy_tokens[2]:
+		for next_boundary in policy_tokens[2]:
 			assert next_boundary > previous_boundary
 			previous_boundary = next_boundary
-		decay_policy_tokens[3] = [float(value_token) for value_token in decay_policy_tokens[3].split("-")]
-		assert len(decay_policy_tokens[2]) == len(decay_policy_tokens[3]);
-		return decay_policy_tokens
+		policy_tokens[3] = [float(value_token) for value_token in policy_tokens[3].split("-")]
+		assert len(policy_tokens[2]) == len(policy_tokens[3])
+		return policy_tokens
 
-	assert decay_policy_tokens[1] is policy.inverse_time_decay \
-	       or decay_policy_tokens[1] is policy.natural_exp_decay \
-	       or decay_policy_tokens[1] is policy.exponential_decay
+	assert policy_tokens[1] is policy.inverse_time_decay \
+	       or policy_tokens[1] is policy.natural_exp_decay \
+	       or policy_tokens[1] is policy.exponential_decay
 
 	for x in xrange(2, 4):
-		decay_policy_tokens[x] = float(decay_policy_tokens[x])
-		assert decay_policy_tokens[x] > 0
+		policy_tokens[x] = float(policy_tokens[x])
+		assert policy_tokens[x] > 0
 
-	if len(decay_policy_tokens) == 4:
-		decay_policy_tokens.append(0)
-	elif len(decay_policy_tokens) == 5:
-		decay_policy_tokens[4] = float(decay_policy_tokens[4])
-		assert decay_policy_tokens[4] > 0
+	if len(policy_tokens) == 4:
+		policy_tokens.append(0)
+	elif len(policy_tokens) == 5:
+		policy_tokens[4] = float(policy_tokens[4])
+		assert policy_tokens[4] > 0
 	else:
-		logger.error("unrecognized parameter decay policy %s..." % (decay_policy_tokens))
+		logger.error("unrecognized parameter decay policy %s..." % (policy_tokens))
 
-	return decay_policy_tokens
+	return policy_tokens
 
 
 def validate_generic_arguments(arguments):
@@ -143,24 +145,23 @@ def validate_generic_arguments(arguments):
 		learning_rate_decay_tokens[3] = float(learning_rate_decay_tokens[3])
 		arguments.learning_rate_decay = learning_rate_decay_tokens
 	'''
-	learning_rate_tokens = arguments.learning_rate.split(param_deliminator)
-	arguments.learning_rate = validate_decay_policy(learning_rate_tokens)
+	arguments.learning_rate = parse_parameter_policy(arguments.learning_rate)
 	assert arguments.max_norm_constraint >= 0
 
 	# generic argument set snapshots
-	snapshots = {};
+	snapshots = {}
 	for snapshot_interval_mapping in arguments.snapshot:
 		fields = snapshot_interval_mapping.split(":")
 		snapshot_function = getattr(debugger, fields[0])
 		if len(fields) == 1:
-			interval = 1;
+			interval = 1
 		elif len(fields) == 2:
 			interval = int(fields[1])
 		else:
 			logger.error("unrecognized snapshot function setting %s..." % (snapshot_interval_mapping))
 		snapshots[snapshot_function] = interval
 	arguments.snapshot = snapshots
-	debugs = set();
+	debugs = set()
 	for debug in arguments.debug:
 		debug = getattr(debugger, debug)
 		debugs.add(debug)
@@ -182,7 +183,7 @@ def validate_generic_arguments(arguments):
 		if len(fields) == 1:
 			regularizers[regularizer_function] = [policy.constant, 1.0]
 		elif len(fields) == 2:
-			regularizers[regularizer_function] = validate_decay_policy(fields[1].split(param_deliminator));
+			regularizers[regularizer_function] = parse_parameter_policy(fields[1])
 			'''
 			tokens = fields[1].split(layer_deliminator)
 			if len(tokens) == 1:
@@ -410,13 +411,14 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	if debugger.display_architecture in settings.debug:
 		debugger.display_architecture(network)
 	for snapshot_function in settings.snapshot:
-		snapshot_function(network, settings);
+		snapshot_function(network, settings)
 
 	start_train = timeit.default_timer()
 	# Finally, launch the training loop.
 	# We iterate over epochs:
 	for epoch_index in range(settings.number_of_epochs):
 		network.train(train_dataset, settings.minibatch_size, validate_dataset, test_dataset, output_directory)
+		network.epoch_index += 1
 
 		# if settings.snapshot_interval > 0 and network.epoch_index % settings.snapshot_interval == 0:
 		# model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
@@ -424,7 +426,7 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 
 		for snapshot_function in settings.snapshot:
 			if network.epoch_index % settings.snapshot[snapshot_function] == 0:
-				snapshot_function(network, settings);
+				snapshot_function(network, settings)
 
 		print("PROGRESS: %f%%" % (100. * (epoch_index + 1) / settings.number_of_epochs))
 

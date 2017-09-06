@@ -1,10 +1,6 @@
 import logging
-import os
 
-import numpy
-
-from .. import layers, networks
-from . import param_deliminator
+from .. import networks
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +26,8 @@ def construct_dlenet_parser():
 	                          default=None, help="dropout learning rate [None = learning_rate]")
 	model_parser.add_argument("--dropout_rate_update_interval", dest="dropout_rate_update_interval", type=int,
 	                          action='store', default=0, help="dropout rate update interval [1]")
-	#model_parser.add_argument('--update_hidden_layer_dropout_only', dest="update_hidden_layer_dropout_only",
-	                          #action='store_true', default=False, help="update hidden layer dropout only [False]")
+	# model_parser.add_argument('--update_hidden_layer_dropout_only', dest="update_hidden_layer_dropout_only",
+	# action='store_true', default=False, help="update hidden layer dropout only [False]")
 
 	return model_parser
 
@@ -57,12 +53,11 @@ def validate_dlenet_arguments(arguments):
 	'''
 
 	# model argument set 1
-	from . import validate_decay_policy
+	from . import parse_parameter_policy
 	if arguments.dropout_learning_rate is None:
 		arguments.dropout_learning_rate = arguments.learning_rate;
 	else:
-		dropout_learning_rate_tokens = arguments.dropout_learning_rate.split(param_deliminator)
-		arguments.dropout_learning_rate = validate_decay_policy(dropout_learning_rate_tokens)
+		arguments.dropout_learning_rate = parse_parameter_policy(arguments.dropout_learning_rate)
 
 	assert (arguments.dropout_rate_update_interval >= 0)
 
@@ -101,12 +96,12 @@ def train_dlenet():
 		update_function=settings.update,
 
 		learning_rate_policy=settings.learning_rate,
-		#learning_rate_decay=settings.learning_rate_decay,
+		# learning_rate_decay=settings.learning_rate_decay,
 
 		dropout_learning_rate_policy=settings.dropout_learning_rate,
-		#dropout_learning_rate_decay=settings.dropout_learning_rate_decay,
+		# dropout_learning_rate_decay=settings.dropout_learning_rate_decay,
 		dropout_rate_update_interval=settings.dropout_rate_update_interval,
-		#update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
+		# update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
 
 		max_norm_constraint=settings.max_norm_constraint,
 		validation_interval=settings.validation_interval,

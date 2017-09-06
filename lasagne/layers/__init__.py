@@ -12,3 +12,10 @@ from .normalization import *
 from .embedding import *
 from .recurrent import *
 from .special import *
+
+try:
+	from .Xdense import *
+	from .Xnoise import *
+except ImportError:
+	print "Some of the XModules are not found..."
+	pass

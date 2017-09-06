@@ -8,6 +8,8 @@ from . import layer_deliminator
 __all__ = [
 	"add_dense_options",
 	"validate_dense_arguments",
+	"add_dropout_init_options",
+	"validate_dropout_init_arguments",
 	"add_dropout_options",
 	"validate_dropout_arguments",
 	#
@@ -41,10 +43,8 @@ def validate_dense_arguments(arguments):
 	return arguments
 
 
-def add_dropout_options(model_parser):
+def add_dropout_init_options(model_parser):
 	# model argument set 2
-	model_parser.add_argument("--layer_activation_types", dest="layer_activation_types", action='store', default=None,
-	                          help="dropout type [None]")
 	model_parser.add_argument("--layer_activation_styles", dest="layer_activation_styles", action='store',
 	                          default="bernoulli",
 	                          help="layer activation styles [bernoulli]")
@@ -55,46 +55,7 @@ def add_dropout_options(model_parser):
 	return model_parser
 
 
-def validate_dropout_arguments(arguments, number_of_layers):
-	# model argument set
-	layer_activation_types = arguments.layer_activation_types
-	if layer_activation_types is None:
-		layer_activation_types = ["BernoulliDropoutLayer"] * number_of_layers
-	else:
-		layer_activation_type_tokens = layer_activation_types.split(layer_deliminator)
-		if len(layer_activation_type_tokens) == 1:
-			layer_activation_types = layer_activation_type_tokens * number_of_layers
-		else:
-			layer_activation_types = layer_activation_type_tokens
-		assert len(layer_activation_types) == number_of_layers
-	assert layer_activation_types[0] not in set(["FastDropoutLayer", "VariationalDropoutTypeBLayer"])
-	for layer_activation_type_index in xrange(len(layer_activation_types)):
-		if layer_activation_types[layer_activation_type_index] in set(
-				["BernoulliDropoutLayer", "GaussianDropoutLayer", "FastDropoutLayer"]):
-			pass
-		elif layer_activation_types[layer_activation_type_index] in set(
-				["VariationalDropoutLayer", "VariationalDropoutTypeALayer", "VariationalDropoutTypeBLayer"]):
-			if regularization.kl_divergence_kingma not in arguments.regularizer:
-				arguments.regularizer[regularization.kl_divergence_kingma] = [1.0, policy.constant]
-			assert regularization.kl_divergence_kingma in arguments.regularizer
-		elif layer_activation_types[layer_activation_type_index] in set(["SparseVariationalDropoutLayer"]):
-			if regularization.kl_divergence_sparse not in arguments.regularizer:
-				arguments.regularizer[regularization.kl_divergence_sparse] = [1.0, policy.constant]
-			assert regularization.kl_divergence_sparse in arguments.regularizer
-		elif layer_activation_types[layer_activation_type_index] in set(["AdaptiveDropoutLayer"]):
-			if (regularization.rademacher_p_1_q_inf not in arguments.regularizer) and \
-					(regularization.rademacher_p_2_q_2 not in arguments.regularizer) and \
-					(regularization.rademacher_p_inf_q_1 not in arguments.regularizer):
-				arguments.regularizer[regularization.rademacher_p_2_q_2] = [1.0, policy.constant]
-			assert (regularization.rademacher_p_1_q_inf in arguments.regularizer) or \
-			       (regularization.rademacher_p_2_q_2 in arguments.regularizer) or \
-			       (regularization.rademacher_p_inf_q_1 in arguments.regularizer)
-		else:
-			logger.error("unrecognized dropout type %s..." % (layer_activation_types[layer_activation_type_index]))
-		layer_activation_types[layer_activation_type_index] = getattr(layers.noise, layer_activation_types[
-			layer_activation_type_index])
-	arguments.layer_activation_types = layer_activation_types
-
+def validate_dropout_init_arguments(arguments, number_of_layers):
 	layer_activation_styles = arguments.layer_activation_styles
 	layer_activation_style_tokens = layer_activation_styles.split(layer_deliminator)
 	if len(layer_activation_style_tokens) == 1:
@@ -139,6 +100,59 @@ def validate_dropout_arguments(arguments, number_of_layers):
 				assert layer_activation_parameters[layer_index][0] < 1
 	arguments.layer_activation_parameters = layer_activation_parameters
 
+	return arguments
+
+
+def add_dropout_options(model_parser):
+	# model argument set 2
+	model_parser.add_argument("--layer_activation_types", dest="layer_activation_types", action='store', default=None,
+	                          help="dropout type [None]")
+	model_parser = add_dropout_init_options(model_parser)
+
+	return model_parser
+
+
+def validate_dropout_arguments(arguments, number_of_layers):
+	# model argument set
+	layer_activation_types = arguments.layer_activation_types
+	if layer_activation_types is None:
+		layer_activation_types = ["BernoulliDropoutLayer"] * number_of_layers
+	else:
+		layer_activation_type_tokens = layer_activation_types.split(layer_deliminator)
+		if len(layer_activation_type_tokens) == 1:
+			layer_activation_types = layer_activation_type_tokens * number_of_layers
+		else:
+			layer_activation_types = layer_activation_type_tokens
+		assert len(layer_activation_types) == number_of_layers
+	assert layer_activation_types[0] not in set(["FastDropoutLayer", "VariationalDropoutTypeBLayer"])
+	for layer_activation_type_index in xrange(len(layer_activation_types)):
+		if layer_activation_types[layer_activation_type_index] in set(
+				["BernoulliDropoutLayer", "GaussianDropoutLayer", "FastDropoutLayer"]):
+			pass
+		elif layer_activation_types[layer_activation_type_index] in set(
+				["VariationalDropoutLayer", "VariationalDropoutTypeALayer", "VariationalDropoutTypeBLayer"]):
+			if regularization.kl_divergence_kingma not in arguments.regularizer:
+				arguments.regularizer[regularization.kl_divergence_kingma] = [1.0, policy.constant]
+			assert regularization.kl_divergence_kingma in arguments.regularizer
+		elif layer_activation_types[layer_activation_type_index] in set(["SparseVariationalDropoutLayer"]):
+			if regularization.kl_divergence_sparse not in arguments.regularizer:
+				arguments.regularizer[regularization.kl_divergence_sparse] = [1.0, policy.constant]
+			assert regularization.kl_divergence_sparse in arguments.regularizer
+		elif layer_activation_types[layer_activation_type_index] in set(["AdaptiveDropoutLayer"]):
+			if (regularization.rademacher_p_1_q_inf not in arguments.regularizer) and \
+					(regularization.rademacher_p_2_q_2 not in arguments.regularizer) and \
+					(regularization.rademacher_p_inf_q_1 not in arguments.regularizer):
+				arguments.regularizer[regularization.rademacher_p_2_q_2] = [1.0, policy.constant]
+			assert (regularization.rademacher_p_1_q_inf in arguments.regularizer) or \
+			       (regularization.rademacher_p_2_q_2 in arguments.regularizer) or \
+			       (regularization.rademacher_p_inf_q_1 in arguments.regularizer)
+		else:
+			logger.error("unrecognized dropout type %s..." % (layer_activation_types[layer_activation_type_index]))
+		layer_activation_types[layer_activation_type_index] = getattr(layers, layer_activation_types[
+			layer_activation_type_index])
+	arguments.layer_activation_types = layer_activation_types
+
+	arguments = validate_dropout_init_arguments(arguments, number_of_layers)
 	return arguments
 
 

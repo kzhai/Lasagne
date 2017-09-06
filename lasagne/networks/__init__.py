@@ -1,4 +1,17 @@
 from .base import *
+#
+#
+#
+try:
+	from .Xbase import *
+	from .Xlenet import *
+	from .Xmlp import *
+except ImportError:
+	print "Some of the XModules are not found..."
+	pass
+#
+#
+#
 #from .ctc import *
 #from .dae import *
 from .alexnet import *
