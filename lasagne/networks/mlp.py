@@ -4,7 +4,7 @@ import timeit
 import numpy
 
 from . import FeedForwardNetwork
-from .. import init, nonlinearities, objectives, policy, updates
+from .. import init, nonlinearities, objectives, updates, Xpolicy
 from .. import layers
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class MultiLayerPerceptron(FeedForwardNetwork):
 
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
-	             learning_rate_policy=[1e-3, policy.constant],
+	             learning_rate_policy=[1e-3, Xpolicy.constant],
 	             max_norm_constraint=0,
 
 	             validation_interval=-1,

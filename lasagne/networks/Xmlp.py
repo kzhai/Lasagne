@@ -5,7 +5,7 @@ import numpy
 
 from . import DynamicFeedForwardNetwork, ElasticFeedForwardNetwork
 from . import FeedForwardNetwork, adjust_parameter_according_to_policy
-from .. import init, nonlinearities, objectives, policy, updates
+from .. import init, nonlinearities, objectives, Xpolicy, updates
 from .. import layers
 
 logger = logging.getLogger(__name__)
@@ -31,10 +31,10 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 
-	             learning_rate_policy=[1e-3, policy.constant],
+	             learning_rate_policy=[1e-3, Xpolicy.constant],
 	             # learning_rate_decay=None,
 
-	             dropout_learning_rate_policy=[1e-3, policy.constant],
+	             dropout_learning_rate_policy=[1e-3, Xpolicy.constant],
 	             # dropout_learning_rate_decay=None,
 	             dropout_rate_update_interval=1,
 	             # update_hidden_layer_dropout_only=False,
@@ -270,7 +270,7 @@ class PrunableMultiLayerPerceptron(ElasticFeedForwardNetwork):
 
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
-	             learning_rate_policy=[1e-3, policy.constant],
+	             learning_rate_policy=[1e-3, Xpolicy.constant],
 	             max_norm_constraint=0,
 
 	             validation_interval=-1,

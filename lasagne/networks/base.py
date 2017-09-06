@@ -9,7 +9,7 @@ import theano
 import theano.tensor
 
 from .. import layers
-from .. import policy, objectives, regularization, updates, utils
+from .. import objectives, regularization, updates, utils, Xpolicy, Xregularization
 
 logger = logging.getLogger(__name__)
 
@@ -29,14 +29,16 @@ __all__ = [
 
 
 def adjust_parameter_according_to_policy(parameter_policy, epoch_index):
-	if parameter_policy[1] is policy.constant:
-		parameter_setting = policy.constant(parameter_policy[0])
-	elif parameter_policy[1] is policy.piecewise_constant:
-		parameter_setting = parameter_policy[1](parameter_policy[0], epoch_index, parameter_policy[2], parameter_policy[3])
-	elif parameter_policy[1] is policy.inverse_time_decay \
-			or parameter_policy[1] is policy.natural_exp_decay \
-			or parameter_policy[1] is policy.exponential_decay:
-		parameter_setting = parameter_policy[1](parameter_policy[0], epoch_index, parameter_policy[2], parameter_policy[3], parameter_policy[4])
+	if parameter_policy[1] is Xpolicy.constant:
+		parameter_setting = Xpolicy.constant(parameter_policy[0])
+	elif parameter_policy[1] is Xpolicy.piecewise_constant:
+		parameter_setting = parameter_policy[1](parameter_policy[0], epoch_index, parameter_policy[2],
+		                                        parameter_policy[3])
+	elif parameter_policy[1] is Xpolicy.inverse_time_decay \
+			or parameter_policy[1] is Xpolicy.natural_exp_decay \
+			or parameter_policy[1] is Xpolicy.exponential_decay:
+		parameter_setting = parameter_policy[1](parameter_policy[0], epoch_index, parameter_policy[2],
+		                                        parameter_policy[3], parameter_policy[4])
 
 	return parameter_setting.astype(theano.config.floatX)
 
@@ -46,7 +48,7 @@ class Network(object):
 	             incoming,
 	             objective_functions,
 	             update_function,
-	             learning_rate_policy=[1e-3, policy.constant],
+	             learning_rate_policy=[1e-3, Xpolicy.constant],
 	             # learning_rate_decay=None,
 	             max_norm_constraint=0,
 	             ):
@@ -153,12 +155,12 @@ class Network(object):
 		for regularizer_function, regularizer_weight_variable in regularizer_functions.items():
 			assert type(regularizer_function) is types.FunctionType
 			if regularizer_function in set(
-					[regularization.rademacher,
-					 regularization.rademacher_p_2_q_2,
-					 regularization.rademacher_p_1_q_inf,
-					 regularization.rademacher_p_inf_q_1,
-					 regularization.kl_divergence_kingma,
-					 regularization.kl_divergence_sparse]):
+					[Xregularization.rademacher,
+					 Xregularization.rademacher_p_2_q_2,
+					 Xregularization.rademacher_p_1_q_inf,
+					 Xregularization.rademacher_p_inf_q_1,
+					 Xregularization.kl_divergence_kingma,
+					 Xregularization.kl_divergence_sparse]):
 				# assert type(lambda_policy) is float
 				# decayed_lambda = decay_parameter(lambda_decay_policy, self.epoch_index)
 				# regularizer += decayed_lambda * regularizer_function(self, **kwargs)
@@ -271,14 +273,16 @@ class Network(object):
 		self.max_norm_constraint_change_stack.append((self.epoch_index, self.max_norm_constraint))
 
 	def __update_learning_rate(self):
-		self._learning_rate_variable.set_value(adjust_parameter_according_to_policy(self.learning_rate_policy, self.epoch_index))
+		self._learning_rate_variable.set_value(
+			adjust_parameter_according_to_policy(self.learning_rate_policy, self.epoch_index))
 
 	def __update_regularizer_weight(self):
 		if not hasattr(self, "_regularizer_lambda_policy"):
 			return
 
 		for regularizer_weight_variable, lambda_decay_policy in self._regularizer_lambda_policy.items():
-			regularizer_weight_variable.set_value(adjust_parameter_according_to_policy(lambda_decay_policy, self.epoch_index))
+			regularizer_weight_variable.set_value(
+				adjust_parameter_according_to_policy(lambda_decay_policy, self.epoch_index))
 
 	def update_shared_variables(self):
 		self.__update_learning_rate()
@@ -292,7 +296,7 @@ class FeedForwardNetwork(Network):
 	def __init__(self, incoming,
 	             objective_functions,
 	             update_function,
-	             learning_rate_policy=[1e-3, policy.constant],
+	             learning_rate_policy=[1e-3, Xpolicy.constant],
 	             # learning_rate_decay=None,
 	             max_norm_constraint=0,
 	             # learning_rate_decay_style=None,
@@ -1120,7 +1124,8 @@ class GenerativeNetwork(Network):
 			# minibatch_y = train_dataset_y[minibatch_indices]
 
 			learning_rate = adjust_parameter_according_to_policy(self.minibatch_index, self.learning_rate_policy,
-			                                                     self.learning_rate_decay_style, self.learning_rate_decay_parameter)
+			                                                     self.learning_rate_decay_style,
+			                                                     self.learning_rate_decay_parameter)
 
 			minibatch_running_time = timeit.default_timer()
 			minibatch_average_train_loss, = self._train_function(minibatch_x, learning_rate)

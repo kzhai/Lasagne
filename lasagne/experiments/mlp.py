@@ -2,7 +2,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .. import layers, networks, nonlinearities, policy, regularization
+from .. import layers, networks, nonlinearities, Xpolicy, Xregularization
 from . import layer_deliminator
 
 __all__ = [
@@ -131,21 +131,21 @@ def validate_dropout_arguments(arguments, number_of_layers):
 			pass
 		elif layer_activation_types[layer_activation_type_index] in set(
 				["VariationalDropoutLayer", "VariationalDropoutTypeALayer", "VariationalDropoutTypeBLayer"]):
-			if regularization.kl_divergence_kingma not in arguments.regularizer:
-				arguments.regularizer[regularization.kl_divergence_kingma] = [1.0, policy.constant]
-			assert regularization.kl_divergence_kingma in arguments.regularizer
+			if Xregularization.kl_divergence_kingma not in arguments.regularizer:
+				arguments.regularizer[Xregularization.kl_divergence_kingma] = [1.0, Xpolicy.constant]
+			assert Xregularization.kl_divergence_kingma in arguments.regularizer
 		elif layer_activation_types[layer_activation_type_index] in set(["SparseVariationalDropoutLayer"]):
-			if regularization.kl_divergence_sparse not in arguments.regularizer:
-				arguments.regularizer[regularization.kl_divergence_sparse] = [1.0, policy.constant]
-			assert regularization.kl_divergence_sparse in arguments.regularizer
+			if Xregularization.kl_divergence_sparse not in arguments.regularizer:
+				arguments.regularizer[Xregularization.kl_divergence_sparse] = [1.0, Xpolicy.constant]
+			assert Xregularization.kl_divergence_sparse in arguments.regularizer
 		elif layer_activation_types[layer_activation_type_index] in set(["AdaptiveDropoutLayer"]):
-			if (regularization.rademacher_p_1_q_inf not in arguments.regularizer) and \
-					(regularization.rademacher_p_2_q_2 not in arguments.regularizer) and \
-					(regularization.rademacher_p_inf_q_1 not in arguments.regularizer):
-				arguments.regularizer[regularization.rademacher_p_2_q_2] = [1.0, policy.constant]
-			assert (regularization.rademacher_p_1_q_inf in arguments.regularizer) or \
-			       (regularization.rademacher_p_2_q_2 in arguments.regularizer) or \
-			       (regularization.rademacher_p_inf_q_1 in arguments.regularizer)
+			if (Xregularization.rademacher_p_1_q_inf not in arguments.regularizer) and \
+					(Xregularization.rademacher_p_2_q_2 not in arguments.regularizer) and \
+					(Xregularization.rademacher_p_inf_q_1 not in arguments.regularizer):
+				arguments.regularizer[Xregularization.rademacher_p_2_q_2] = [1.0, Xpolicy.constant]
+			assert (Xregularization.rademacher_p_1_q_inf in arguments.regularizer) or \
+			       (Xregularization.rademacher_p_2_q_2 in arguments.regularizer) or \
+			       (Xregularization.rademacher_p_inf_q_1 in arguments.regularizer)
 		else:
 			logger.error("unrecognized dropout type %s..." % (layer_activation_types[layer_activation_type_index]))
 		layer_activation_types[layer_activation_type_index] = getattr(layers, layer_activation_types[

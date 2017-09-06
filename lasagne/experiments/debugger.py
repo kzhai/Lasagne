@@ -6,7 +6,7 @@ import numpy
 import theano.tensor as T
 
 from lasagne import layers
-from lasagne import nonlinearities, objectives, updates, regularization
+from lasagne import nonlinearities, objectives, updates, Xregularization
 from ..layers import DenseLayer, BernoulliDropoutLayer, AdaptiveDropoutLayer
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ def debug_rademacher(network, label, **kwargs):
 	#
 	#
 
-	input_layer = regularization.find_input_layer(network)
+	input_layer = Xregularization.find_input_layer(network)
 
 	input_shape = layers.get_output_shape(input_layer)
 	input_value = layers.get_output(input_layer)
@@ -117,7 +117,7 @@ def debug_regularizer(network, label, **kwargs):
 	#
 	#
 
-	input_layer = regularization.find_input_layer(network)
+	input_layer = Xregularization.find_input_layer(network)
 
 	input_shape = layers.get_output_shape(input_layer)
 	input_value = layers.get_output(input_layer)

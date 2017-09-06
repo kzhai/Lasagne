@@ -9,9 +9,9 @@ import timeit
 import numpy
 
 from lasagne.experiments import debugger
-from .. import policy, objectives, regularization, updates
+from .. import objectives, regularization, updates, Xpolicy, Xregularization
 
-#logging.basicConfig()
+# logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -93,15 +93,15 @@ def parse_parameter_policy(policy_string):
 	policy_tokens[0] = float(policy_tokens[0])
 	assert policy_tokens[0] >= 0
 	if len(policy_tokens) == 1:
-		policy_tokens.append(policy.constant)
+		policy_tokens.append(Xpolicy.constant)
 		return policy_tokens
 
-	policy_tokens[1] = getattr(policy, policy_tokens[1])
-	if policy_tokens[1] is policy.constant:
+	policy_tokens[1] = getattr(Xpolicy, policy_tokens[1])
+	if policy_tokens[1] is Xpolicy.constant:
 		assert len(policy_tokens) == 2
 		return policy_tokens
 
-	if policy_tokens[1] is policy.piecewise_constant:
+	if policy_tokens[1] is Xpolicy.piecewise_constant:
 		assert len(policy_tokens) == 4
 
 		policy_tokens[2] = [float(boundary_token) for boundary_token in policy_tokens[2].split("-")]
@@ -113,9 +113,9 @@ def parse_parameter_policy(policy_string):
 		assert len(policy_tokens[2]) == len(policy_tokens[3])
 		return policy_tokens
 
-	assert policy_tokens[1] is policy.inverse_time_decay \
-	       or policy_tokens[1] is policy.natural_exp_decay \
-	       or policy_tokens[1] is policy.exponential_decay
+	assert policy_tokens[1] is Xpolicy.inverse_time_decay \
+	       or policy_tokens[1] is Xpolicy.natural_exp_decay \
+	       or policy_tokens[1] is Xpolicy.exponential_decay
 
 	for x in xrange(2, 4):
 		policy_tokens[x] = float(policy_tokens[x])
@@ -179,9 +179,10 @@ def validate_generic_arguments(arguments):
 	regularizers = {}
 	for regularizer_weight_mapping in arguments.regularizer:
 		fields = regularizer_weight_mapping.split(":")
-		regularizer_function = getattr(regularization, fields[0])
+		#regularizer_function = getattr(regularization, fields[0])
+		regularizer_function = getattr(Xregularization, fields[0])
 		if len(fields) == 1:
-			regularizers[regularizer_function] = [policy.constant, 1.0]
+			regularizers[regularizer_function] = [Xpolicy.constant, 1.0]
 		elif len(fields) == 2:
 			regularizers[regularizer_function] = parse_parameter_policy(fields[1])
 			'''
@@ -385,7 +386,8 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 		validate_dataset = load_data(input_directory, dataset="validate")
 
 	if debugger.subsample_dataset in settings.debug:
-		train_dataset, validate_dataset, test_dataset = debugger.subsample_dataset(train_dataset, validate_dataset, test_dataset)
+		train_dataset, validate_dataset, test_dataset = debugger.subsample_dataset(train_dataset, validate_dataset,
+		                                                                           test_dataset)
 
 	if dataset_preprocessing_function is not None:
 		train_dataset = dataset_preprocessing_function(train_dataset)
