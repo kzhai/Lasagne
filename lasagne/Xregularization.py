@@ -87,9 +87,9 @@ def rademacher_p_2_q_2(network, **kwargs):
 			# compute B_l * p_l, with a layer-wise scale constant
 			d1, d2 = layer.W.shape
 			rademacher_regularization *= T.max(T.sqrt(T.sum(layer.W ** 2, axis=0)))
-			rademacher_regularization /= T.sqrt(d1 * T.log(d2))
+			rademacher_regularization /= d1 * T.sqrt(T.log(d2))
 			# this is to offset glorot initialization
-			rademacher_regularization *= T.sqrt((d1 + d2))
+			rademacher_regularization *= T.sqrt(d1 + d2)
 
 	return rademacher_regularization
 
@@ -109,7 +109,7 @@ def rademacher_p_inf_q_1(network, **kwargs):
 	# d = T.prod(network._input_variable.shape[1:])
 	# n, d = network._input_variable.shape
 	dummy, k = network.get_output_shape()
-	rademacher_regularization = k * T.sqrt(T.log(2 * d) / n)
+	rademacher_regularization = k * T.sqrt(T.log(d) / n)
 	# rademacher_regularization *= T.max(abs(network._input_variable))
 	rademacher_regularization *= T.max(abs(input_value))
 
@@ -122,8 +122,9 @@ def rademacher_p_inf_q_1(network, **kwargs):
 			# compute B_l * p_l, with a layer-wise scale constant
 			d1, d2 = layer.W.shape
 			rademacher_regularization *= T.max(abs(layer.W))
+			rademacher_regularization /= d1
 			# this is to offset glorot initialization
-			rademacher_regularization *= T.sqrt((d1 + d2))
+			rademacher_regularization *= T.sqrt(d1 + d2)
 
 	return rademacher_regularization
 
@@ -140,7 +141,7 @@ def rademacher_p_1_q_inf(network, **kwargs):
 	# d = T.prod(network._input_variable.shape[1:])
 	# n, d = network._input_variable.shape
 	dummy, k = network.get_output_shape()
-	rademacher_regularization = k * T.sqrt(T.log(2 * d) / n)
+	rademacher_regularization = k * T.sqrt(T.log(d) / n)
 	rademacher_regularization *= T.max(abs(input_value))
 	# rademacher_regularization *= T.max(abs(network._input_variable))
 
@@ -155,7 +156,7 @@ def rademacher_p_1_q_inf(network, **kwargs):
 			rademacher_regularization *= T.max(T.sum(abs(layer.W), axis=0))
 			rademacher_regularization /= d1 * T.sqrt(T.log(d2))
 			# this is to offset glorot initialization
-			rademacher_regularization *= T.sqrt((d1 + d2))
+			rademacher_regularization *= T.sqrt(d1 + d2)
 
 	return rademacher_regularization
 

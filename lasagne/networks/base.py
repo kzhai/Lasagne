@@ -164,6 +164,7 @@ class Network(object):
 				# assert type(lambda_policy) is float
 				# decayed_lambda = decay_parameter(lambda_decay_policy, self.epoch_index)
 				# regularizer += decayed_lambda * regularizer_function(self, **kwargs)
+
 				regularizer += regularizer_weight_variable * regularizer_function(self, **kwargs)
 			elif regularizer_function in set([regularization.l1, regularization.l2]):
 				regularizer += regularizer_weight_variable * regularization.regularize_network_params(
@@ -283,6 +284,7 @@ class Network(object):
 		for regularizer_weight_variable, lambda_decay_policy in self._regularizer_lambda_policy.items():
 			regularizer_weight_variable.set_value(
 				adjust_parameter_according_to_policy(lambda_decay_policy, self.epoch_index))
+			print("checkpoint:", regularizer_weight_variable.eval())
 
 	def update_shared_variables(self):
 		self.__update_learning_rate()
@@ -323,7 +325,7 @@ class FeedForwardNetwork(Network):
 
 	def get_objectives(self, label, objective_functions=None, threshold=1e-9, **kwargs):
 		output = self.get_output(**kwargs)
-		output = theano.tensor.clip(output, threshold, 1.0 - threshold)
+		#output = theano.tensor.clip(output, threshold, 1.0 - threshold)
 		if objective_functions is None:
 			# objective = theano.tensor.mean(self._objective_functions(output, label), dtype=theano.config.floatX)
 			objective = 0
@@ -399,9 +401,6 @@ class FeedForwardNetwork(Network):
 			updates=adaptable_params_deterministic_updates,
 			on_unused_input='warn'
 		)
-		#
-		#
-		#
 
 		# Compile a second function computing the validation train_loss and accuracy:
 		self._function_test = theano.function(
@@ -410,7 +409,13 @@ class FeedForwardNetwork(Network):
 			on_unused_input='warn'
 		)
 
-		self._debug_function = theano.function(
+		#
+		#
+		#
+		#
+		#
+
+		self._function_debugger = theano.function(
 			inputs=[self._input_variable, self._output_variable],
 			outputs=[nondeterministic_loss, nondeterministic_objective, deterministic_loss, deterministic_objective],
 		)

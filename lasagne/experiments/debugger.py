@@ -3,6 +3,7 @@ import os
 import timeit
 
 import numpy
+import theano
 import theano.tensor as T
 
 from lasagne import layers
@@ -12,10 +13,9 @@ from ..layers import DenseLayer, BernoulliDropoutLayer, AdaptiveDropoutLayer
 logger = logging.getLogger(__name__)
 
 __all__ = [
-	"debug_rademacher",
 	"subsample_dataset",
 	"display_architecture",
-
+	"debug_function_output",
 	#
 	"snapshot_dropouts",
 	"snapshot_conv_filters"
@@ -45,107 +45,159 @@ def subsample_dataset(train_dataset, validate_dataset, test_dataset, fraction=0.
 		size_after = [len(train_dataset[1]), 0, len(test_dataset[1])]
 	else:
 		size_after = [len(train_dataset[1]), len(validate_dataset[1]), len(test_dataset[1])]
-	logger.info("debug: subsample dataset from %s to %s instances for [train, validate, test] sets" % (size_before, size_after))
-	print("debug: subsample dataset from %s to %s instances for [train, validate, test] sets" % (size_before, size_after))
+	logger.info("debug: subsample [train, validate, test] sets from %s to %s instances" % (size_before, size_after))
+	print("debug: subsample [train, validate, test] sets from %s to %s instances" % (size_before, size_after))
 	return train_dataset, validate_dataset, test_dataset
 
 
-def display_architecture(network, settings=None):
+def display_architecture(network, **kwargs):
 	input_shape = network._input_shape
 	for layer in network.get_network_layers():
-		logger.info("output size after %s is %s" % (layer, layers.get_output_shape(layer, input_shape)))
-		print("output size after %s is %s" % (layer, layers.get_output_shape(layer, input_shape)))
+		logger.info("debug: output size after %s is %s" % (layer, layers.get_output_shape(layer, input_shape)))
+		print("debug: output size after %s is %s" % (layer, layers.get_output_shape(layer, input_shape)))
 
 
-def debug_rademacher(network, label, **kwargs):
-	#
-	#
-	#
-	#
-	#
+def debug_function_output(network, minibatch, **kwargs):
+	minibatch_x, minibatch_y = minibatch
+	debug_function_output = network._function_debugger(minibatch_x, minibatch_y)
 
-	output = [];
-	# output.append(network.get_output(**kwargs))
+	logger.info("debug: function output %s" % debug_function_output)
+	print("debug: function output %s" % debug_function_output)
 
-	#
-	#
-	#
-	#
-	#
 
+def debug_rademacher_p_2_q_2(network, minibatch, **kwargs):
 	input_layer = Xregularization.find_input_layer(network)
-
 	input_shape = layers.get_output_shape(input_layer)
 	input_value = layers.get_output(input_layer)
 	n = network._input_variable.shape[0]
 	d = T.prod(input_shape[1:])
-
 	dummy, k = network.get_output_shape()
+
+	output, mapping = [], []
+	mapping.append("k * sqrt(log(d) / n)")
 	output.append(k * T.sqrt(T.log(d) / n))
+	mapping.append("max(abs(input_value))")
 	output.append(T.max(abs(input_value)))
-	# rademacher_regularization *= T.max(abs(network._input_variable))
-	# rademacher_regularization *= T.max(abs(get_output(pseudo_input_layer)))
 
 	for layer in network.get_network_layers():
 		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
+			mapping.append("sqrt(mean(retain_probability ** 2))")
 			output.append(T.sqrt(T.mean(retain_probability ** 2)))
 		elif isinstance(layer, DenseLayer):
 			# compute B_l * p_l, with a layer-wise scale constant
 			d1, d2 = layer.W.shape
+			mapping.append("max(sqrt(sum(layer.W ** 2, axis=0)))")
 			output.append(T.max(T.sqrt(T.sum(layer.W ** 2, axis=0))))
-			output.append(T.sqrt(d1 * T.log(d2)))
+			mapping.append("1. / (d1 * sqrt(log(d2)))")
+			output.append(1. / (d1 * T.sqrt(T.log(d2))))
 			# this is to offset glorot initialization
-			output.append(T.sqrt((d1 + d2)))
+			mapping.append("sqrt(d1 + d2)")
+			output.append(T.sqrt(d1 + d2))
 
-	return output
+	debug_function = theano.function(
+		inputs=[network._input_variable, network._output_variable],
+		outputs=output,
+		on_unused_input='warn'
+	)
+
+	minibatch_x, minibatch_y = minibatch
+	debug_function_outputs = debug_function(minibatch_x, minibatch_y)
+
+	for token_mapping, token_output in zip(mapping, debug_function_outputs):
+		logger.info("debug: %s = %g" % (token_mapping, token_output))
+		print("debug: %s = %g" % (token_mapping, token_output))
 
 
-def debug_regularizer(network, label, **kwargs):
-	#
-	#
-	#
-	#
-	#
-
-	output = [];
-	# output.append(network.get_output(**kwargs))
-
-	#
-	#
-	#
-	#
-	#
-
+def debug_rademacher_p_1_q_inf(network, minibatch, **kwargs):
 	input_layer = Xregularization.find_input_layer(network)
-
 	input_shape = layers.get_output_shape(input_layer)
 	input_value = layers.get_output(input_layer)
 	n = network._input_variable.shape[0]
 	d = T.prod(input_shape[1:])
-
 	dummy, k = network.get_output_shape()
+
+	output, mapping = [], []
+	mapping.append("k * sqrt(log(d) / n)")
 	output.append(k * T.sqrt(T.log(d) / n))
+	mapping.append("max(abs(input_value))")
 	output.append(T.max(abs(input_value)))
-	# rademacher_regularization *= T.max(abs(network._input_variable))
-	# rademacher_regularization *= T.max(abs(get_output(pseudo_input_layer)))
 
 	for layer in network.get_network_layers():
 		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+			# retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1)
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
-			output.append(T.sqrt(T.mean(retain_probability ** 2)))
+			mapping.append("max(abs(retain_probability))")
+			output.append(T.max(abs(retain_probability)))
 		elif isinstance(layer, DenseLayer):
 			# compute B_l * p_l, with a layer-wise scale constant
 			d1, d2 = layer.W.shape
-			output.append(T.max(T.sqrt(T.sum(layer.W ** 2, axis=0))))
-			output.append(T.sqrt(d1 * T.log(d2)))
-			# this is to offset glorot initialization
-			output.append(T.sqrt((d1 + d2)))
+			mapping.append("max(sum(abs(layer.W), axis=0))")
+			output.append(T.max(T.sum(abs(layer.W), axis=0)))
+			mapping.append("1. / (d1 * sqrt(log(d2)))")
+			output.append(1. / (d1 * T.sqrt(T.log(d2))))
+			mapping.append("sqrt(d1 + d2)")
+			output.append(T.sqrt(d1 + d2))
 
-	return output
+	debug_function = theano.function(
+		inputs=[network._input_variable, network._output_variable],
+		outputs=output,
+		on_unused_input='warn'
+	)
+
+	minibatch_x, minibatch_y = minibatch
+	debug_function_outputs = debug_function(minibatch_x, minibatch_y)
+
+	for token_mapping, token_output in zip(mapping, debug_function_outputs):
+		logger.info("debug: %s = %g" % (token_mapping, token_output))
+		print("debug: %s = %g" % (token_mapping, token_output))
 
 
-def snapshot_dropouts(network, settings=None):
+def debug_rademacher_p_inf_q_1(network, minibatch, **kwargs):
+	input_layer = Xregularization.find_input_layer(network)
+	input_shape = layers.get_output_shape(input_layer)
+	input_value = layers.get_output(input_layer)
+	n = network._input_variable.shape[0]
+	d = T.prod(input_shape[1:])
+	dummy, k = network.get_output_shape()
+
+	output, mapping = [], []
+	mapping.append("k * sqrt(log(d) / n)")
+	output.append(k * T.sqrt(T.log(d) / n))
+	mapping.append("max(abs(input_value))")
+	output.append(T.max(abs(input_value)))
+
+	for layer in network.get_network_layers():
+		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
+			# retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1)
+			retain_probability = T.clip(layer.activation_probability, 0, 1)
+			mapping.append("mean(abs(retain_probability))")
+			output.append(T.mean(abs(retain_probability)))
+		elif isinstance(layer, DenseLayer):
+			# compute B_l * p_l, with a layer-wise scale constant
+			d1, d2 = layer.W.shape
+			mapping.append("max(abs(layer.W))")
+			output.append(T.max(abs(layer.W)))
+			mapping.append("1. / d1")
+			output.append(1. / d1)
+			mapping.append("sqrt(d1 + d2)")
+			output.append(T.sqrt(d1 + d2))
+
+	debug_function = theano.function(
+		inputs=[network._input_variable, network._output_variable],
+		outputs=output,
+		on_unused_input='warn'
+	)
+
+	minibatch_x, minibatch_y = minibatch
+	debug_function_outputs = debug_function(minibatch_x, minibatch_y)
+
+	for token_mapping, token_output in zip(mapping, debug_function_outputs):
+		logger.info("debug: %s = %g" % (token_mapping, token_output))
+		print("debug: %s = %g" % (token_mapping, token_output))
+
+
+def snapshot_dropouts(network, settings=None, **kwargs):
 	dropout_layer_index = 0
 	for network_layer in network.get_network_layers():
 		if isinstance(network_layer, layers.BernoulliDropoutLayer) or \
@@ -172,14 +224,14 @@ def snapshot_dropouts(network, settings=None):
 			numpy.max(layer_retain_probability)))
 
 		if settings is not None:
-			#layer_retain_probability = numpy.reshape(layer_retain_probability, numpy.prod(layer_retain_probability.shape))
+			# layer_retain_probability = numpy.reshape(layer_retain_probability, numpy.prod(layer_retain_probability.shape))
 			retain_rate_file = os.path.join(settings.output_directory,
 			                                "noise.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
 			numpy.save(retain_rate_file, layer_retain_probability)
 		dropout_layer_index += 1
 
 
-def snapshot_conv_filters(network, settings=None):
+def snapshot_conv_filters(network, settings, **kwargs):
 	conv_layer_index = 0
 	for network_layer in network.get_network_layers():
 		if isinstance(network_layer, layers.Conv2DLayer):
@@ -187,11 +239,11 @@ def snapshot_conv_filters(network, settings=None):
 		else:
 			continue
 
-		if settings is not None:
-			# conv_filters = numpy.reshape(conv_filters, numpy.prod(conv_filters.shape))
-			conv_filter_file = os.path.join(settings.output_directory,
-			                                "conv.%d.epoch.%d.npy" % (conv_layer_index, network.epoch_index))
-			numpy.save(conv_filter_file, conv_filters)
+		# conv_filters = numpy.reshape(conv_filters, numpy.prod(conv_filters.shape))
+		conv_filter_file = os.path.join(settings.output_directory,
+		                                "conv.%d.epoch.%d.npy" % (conv_layer_index, network.epoch_index))
+		numpy.save(conv_filter_file, conv_filters)
+
 		conv_layer_index += 1
 
 

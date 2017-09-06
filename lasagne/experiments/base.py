@@ -9,7 +9,7 @@ import timeit
 import numpy
 
 from lasagne.experiments import debugger
-from .. import objectives, regularization, updates, Xpolicy, Xregularization
+from .. import objectives, updates, Xpolicy, Xregularization
 
 # logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -179,7 +179,7 @@ def validate_generic_arguments(arguments):
 	regularizers = {}
 	for regularizer_weight_mapping in arguments.regularizer:
 		fields = regularizer_weight_mapping.split(":")
-		#regularizer_function = getattr(regularization, fields[0])
+		# regularizer_function = getattr(regularization, fields[0])
 		regularizer_function = getattr(Xregularization, fields[0])
 		if len(fields) == 1:
 			regularizers[regularizer_function] = [Xpolicy.constant, 1.0]
@@ -419,6 +419,11 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	# Finally, launch the training loop.
 	# We iterate over epochs:
 	for epoch_index in range(settings.number_of_epochs):
+		if debugger.debug_function_output in settings.debug:
+			debugger.debug_function_output(network, train_dataset)
+		if debugger.debug_rademacher_p_inf_q_1 in settings.debug:
+			debugger.debug_rademacher_p_inf_q_1(network, train_dataset)
+
 		network.train(train_dataset, settings.minibatch_size, validate_dataset, test_dataset, output_directory)
 		network.epoch_index += 1
 
