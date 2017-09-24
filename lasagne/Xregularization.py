@@ -143,7 +143,6 @@ def rademacher_p_1_q_inf(network, **kwargs):
 	dummy, k = network.get_output_shape()
 	rademacher_regularization = k * T.sqrt(T.log(d) / n)
 	rademacher_regularization *= T.max(abs(input_value))
-	# rademacher_regularization *= T.max(abs(network._input_variable))
 
 	for layer in network.get_network_layers():
 		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
@@ -175,9 +174,9 @@ def kl_divergence_kingma(network, **kwargs):
 	# gather up all the alphas
 
 	# params = get_all_params(network)
-	# params = network.get_network_params(name="variational.dropout.logit_sigma");
+	# params = network.get_network_params(name="variational.dropout.logit_sigma")
 	# alphas = [T.nnet.sigmoid(p) for p in params]
-	params = network.get_network_params();
+	params = network.get_network_params()
 	alphas = [T.nnet.sigmoid(p) for p in params if p.name == "variational.dropout.logit_sigma"]
 
 	# I hope all these decimal places are important
@@ -201,9 +200,9 @@ def kl_divergence_sparse(network, **kwargs):
 		alpha values out of all the layers
 	"""
 	# gather up all the alphas
-	# params = network.get_network_params(name="variational.dropout.log_alpha");
+	# params = network.get_network_params(name="variational.dropout.log_alpha")
 	# alphas = [T.exp(p) for p in params]
-	params = network.get_network_params();
+	params = network.get_network_params()
 	alphas = [T.exp(p) for p in params if p.name == "variational.dropout.log_alpha"]
 
 	k1 = 0.63576

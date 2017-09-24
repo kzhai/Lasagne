@@ -284,7 +284,6 @@ class Network(object):
 		for regularizer_weight_variable, lambda_decay_policy in self._regularizer_lambda_policy.items():
 			regularizer_weight_variable.set_value(
 				adjust_parameter_according_to_policy(lambda_decay_policy, self.epoch_index))
-			print("checkpoint:", regularizer_weight_variable.eval())
 
 	def update_shared_variables(self):
 		self.__update_learning_rate()
@@ -325,7 +324,7 @@ class FeedForwardNetwork(Network):
 
 	def get_objectives(self, label, objective_functions=None, threshold=1e-9, **kwargs):
 		output = self.get_output(**kwargs)
-		#output = theano.tensor.clip(output, threshold, 1.0 - threshold)
+		# output = theano.tensor.clip(output, threshold, 1.0 - threshold)
 		if objective_functions is None:
 			# objective = theano.tensor.mean(self._objective_functions(output, label), dtype=theano.config.floatX)
 			objective = 0

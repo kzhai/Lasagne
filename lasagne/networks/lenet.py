@@ -117,6 +117,9 @@ class LeNet(FeedForwardNetwork):
 				neural_network = layers.Pool2DLayer(neural_network, pool_size=pool_kernel_size, stride=pool_stride,
 				                                    mode=pool_mode)
 
+		neural_network = layers.ReshapeLayer(neural_network,
+		                                     (-1, numpy.prod(layers.get_output_shape(neural_network)[1:])))
+
 		assert len(dense_dimensions) == len(dense_nonlinearities)
 		for dense_layer_index in range(len(dense_dimensions)):
 			input_layer_shape = layers.get_output_shape(neural_network)[1:]

@@ -29,7 +29,9 @@ def plot_feature_map(model_directory, feature_map_size, layer_index=0, snapshot_
 		           'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
 		'''
 
-		plot_images(conv_filters, feature_map_size)
+		output_file_path = None if plot_directory is None else os.path.join(plot_directory, "conv.%d.epoch.%d.pdf" % (
+			temp_layer_index, temp_epoch_index))
+		plot_images(conv_filters, feature_map_size, output_file_path)
 	# grid = np.random.rand(4, 4)
 
 
@@ -41,7 +43,7 @@ def plot_images(conv_filters, feature_map_size, output_file_path=None, interpola
 		feature_map_size[0], feature_map_size[1], conv_filters.shape[2], conv_filters.shape[3]))
 
 	fig, axes = plt.subplots(feature_map_size[0], feature_map_size[1],
-	                         figsize=(feature_map_size[1]*2, feature_map_size[0]*2),
+	                         figsize=(feature_map_size[1] * 2, feature_map_size[0] * 2),
 	                         subplot_kw={'xticks': [], 'yticks': []})
 
 	fig.subplots_adjust(hspace=0.05, wspace=0.05)
@@ -54,8 +56,6 @@ def plot_images(conv_filters, feature_map_size, output_file_path=None, interpola
 
 	plt.grid(False)
 	plt.tight_layout()
-
-	plt.show()
 
 	if output_file_path is None:
 		plt.show()

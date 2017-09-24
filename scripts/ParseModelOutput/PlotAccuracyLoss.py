@@ -8,7 +8,7 @@ def plot_accuracy_loss(model_directory, maximum_iteration=0, plot_directory=None
 	model_log_file = os.path.join(model_directory, "model.log")
 	from ParseModelOutputs import parse_model
 	model_settings, train_logs, valid_logs, test_logs, best_model_logs = parse_model(model_log_file)
-	if maximum_iteration>0:
+	if maximum_iteration > 0:
 		train_logs = train_logs[:maximum_iteration]
 		test_logs = test_logs[:maximum_iteration]
 
@@ -17,8 +17,6 @@ def plot_accuracy_loss(model_directory, maximum_iteration=0, plot_directory=None
 
 
 def plot_multiple_yaxis(train_logs, valid_logs, test_logs, output_file_path=None):
-	import matplotlib.pyplot as plt
-
 	# assert len(train_logs) == len(valid_logs)
 	# assert len(train_logs) == len(test_logs)
 
@@ -123,6 +121,6 @@ if __name__ == '__main__':
 
 	model_directory = arguments.model_directory
 	maximum_iteration = arguments.maximum_iteration
-	plot_directory= arguments.plot_directory
+	plot_directory = arguments.plot_directory
 
 	plot_accuracy_loss(model_directory, maximum_iteration, plot_directory)
