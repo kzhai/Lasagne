@@ -138,7 +138,8 @@ def validate_dropout_arguments(arguments, number_of_layers):
 			if Xregularization.kl_divergence_sparse not in arguments.regularizer:
 				arguments.regularizer[Xregularization.kl_divergence_sparse] = [1.0, Xpolicy.constant]
 			assert Xregularization.kl_divergence_sparse in arguments.regularizer
-		elif layer_activation_types[layer_activation_type_index] in set(["AdaptiveDropoutLayer"]):
+		elif layer_activation_types[layer_activation_type_index] in set(
+				["AdaptiveDropoutLayer", "DynamicDropoutLayer"]):
 			if (Xregularization.rademacher_p_1_q_inf not in arguments.regularizer) and \
 					(Xregularization.rademacher_p_2_q_2 not in arguments.regularizer) and \
 					(Xregularization.rademacher_p_inf_q_1 not in arguments.regularizer):

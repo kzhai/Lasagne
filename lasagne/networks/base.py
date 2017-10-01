@@ -386,9 +386,15 @@ class FeedForwardNetwork(Network):
 			on_unused_input='warn'
 		)
 
-		#
-		#
-		#
+		# Compile a second function computing the validation train_loss and accuracy:
+		self._function_test = theano.function(
+			inputs=[self._input_variable, self._output_variable],
+			outputs=[deterministic_objective, deterministic_accuracy],
+			on_unused_input='warn'
+		)
+
+		'''
+		# TODO: begin{this is only for adaptive dropout layers}
 		adaptable_params = self.get_network_params(adaptable=True)
 		adaptable_params_deterministic_updates = self._update_function(deterministic_loss, adaptable_params,
 		                                                               self._learning_rate_variable)
@@ -400,19 +406,8 @@ class FeedForwardNetwork(Network):
 			updates=adaptable_params_deterministic_updates,
 			on_unused_input='warn'
 		)
-
-		# Compile a second function computing the validation train_loss and accuracy:
-		self._function_test = theano.function(
-			inputs=[self._input_variable, self._output_variable],
-			outputs=[deterministic_objective, deterministic_accuracy],
-			on_unused_input='warn'
-		)
-
-		#
-		#
-		#
-		#
-		#
+		# TODO: end{this is only for adaptive dropout layers}
+		'''
 
 		self._function_debugger = theano.function(
 			inputs=[self._input_variable, self._output_variable],
@@ -536,8 +531,14 @@ class FeedForwardNetwork(Network):
 		train_trainable_params_function_outputs = self._function_train_trainable_params_nondeterministic(minibatch_x,
 		                                                                                                 minibatch_y)
 		minibatch_average_train_objective, minibatch_average_train_accuracy = train_trainable_params_function_outputs
+
+		'''
+		# TODO: begin{this is only for adaptive dropout layers}
 		train_adaptable_params_function_outputs = self._function_train_adaptable_params_deterministic(minibatch_x,
 		                                                                                              minibatch_y)
+		# TODO: end{this is only for adaptive dropout layers}
+		'''
+
 		minibatch_running_time = timeit.default_timer() - minibatch_running_time
 
 		return minibatch_running_time, minibatch_average_train_objective, minibatch_average_train_accuracy

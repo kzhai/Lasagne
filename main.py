@@ -17,21 +17,22 @@ def main():
 	if arguments.model == "mlp":
 		from lasagne.experiments.mlp import train_mlp
 		train_mlp()
-	elif arguments.model == "dmlp":
-		from lasagne.experiments.Xdmlp import train_dmlp
-		train_dmlp()
-	elif arguments.model == "pmlp":
-		from lasagne.experiments.Xpmlp import train_pmlp
-		train_pmlp()
+	elif arguments.model == "mlpA":
+		from lasagne.experiments.mlpA import train_mlpA
+		train_mlpA()
+	elif arguments.model == "mlpP":
+		from lasagne.experiments.mlpP import train_mlpP
+		train_mlpP()
 	elif arguments.model == "snn":
 		from lasagne.experiments.snn import train_snn
 		train_snn()
 	elif arguments.model == "lenet":
 		from lasagne.experiments.lenet import train_lenet
 		train_lenet()
-	elif arguments.model == "dlenet":
-		from lasagne.experiments.Xdlenet import train_dlenet
-		train_dlenet()
+	elif arguments.model == "lenetA":
+		from lasagne.experiments.lenetA import train_lenetA
+		train_lenetA()
+
 	elif arguments.model == "alexnet":
 		from lasagne.experiments.alexnet import train_alexnet
 		train_alexnet()

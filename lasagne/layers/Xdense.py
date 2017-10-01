@@ -10,60 +10,20 @@ from .. import nonlinearities
 logger = logging.getLogger(__name__)
 
 __all__ = [
-	"ElasticDenseLayer",
-	"PrunableDenseLayer",
+	"AdaptableDenseLayer",
+	# "PrunableDynamicDenseLayer",
+	# "SplitableDynamicDenseLayer",
+	"DynamicDenseLayer",
+
+	"WeightPruningDenseLayer",
 ]
 
 
-class ElasticDenseLayer(DenseLayer):
+class AdaptableDenseLayer(DenseLayer):
 	def __init__(self, incoming, num_units, W=init.GlorotUniform(),
 	             b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
 	             num_leading_axes=1, **kwargs):
-		super(ElasticDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes, **kwargs)
-
-	# self.set_output(num_units, W=init.GlorotUniform(), b=init.Constant(0.), nonlinearity=nonlinearities.rectify)
-
-	'''
-	def prune_input(self, input_indices_to_keep):
-		W = self.W.eval()[input_indices_to_keep, :]
-		old_W = self.adjust_input(W, self.num_leading_axes);
-		print('adjusting layer %s input size' % (self))
-
-		return old_W
-
-	def prune_output(self, output_indices_to_keep):
-		W = self.W.eval()[:, output_indices_to_keep]
-		b = self.b.eval()[output_indices_to_keep]
-
-		print('adjusting layer %s from size %d to %d' % (self, self.num_units, len(output_indices_to_keep)))
-		old_W, old_b = self.adjust_output(len(output_indices_to_keep), W, b);
-
-		return old_W, old_b
-	'''
-
-	def prune_input(self, input_indices_to_keep):
-		#print('prune input of layer %s from %d to %d' % (self, int(np.prod(self.input_shape[self.num_leading_axes:])), len(input_indices_to_keep)))
-
-		self.input_shape = self.input_layer.output_shape
-		assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_keep);
-
-		W = self.W.eval()[input_indices_to_keep, :]
-		old_W = self._set_W(W)
-
-		return old_W
-
-	def prune_output(self, output_indices_to_keep):
-		#print('prune output of layer %s from size %d to %d' % (self, self.num_units, len(output_indices_to_keep)))
-
-		self.num_units = len(output_indices_to_keep)
-
-		W = self.W.eval()[:, output_indices_to_keep]
-		b = self.b.eval()[output_indices_to_keep]
-
-		old_W = self._set_W(W)
-		old_b = self._set_b(b)
-
-		return old_W, old_b
+		super(AdaptableDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes, **kwargs)
 
 	def _set_W(self, W=init.GlorotUniform()):
 		old_W = self.W.eval()
@@ -80,8 +40,8 @@ class ElasticDenseLayer(DenseLayer):
 		return old_W
 
 	def _set_b(self, b=init.Constant(0.)):
-		old_b = self.b.eval();
-		self.params.pop(self.b);
+		old_b = self.b.eval()
+		self.params.pop(self.b)
 
 		if b is None:
 			self.b = None
@@ -93,6 +53,17 @@ class ElasticDenseLayer(DenseLayer):
 			raise ValueError("Unrecognized parameter type %s." % type(b))
 
 		return old_b
+
+
+class DynamicDenseLayer(AdaptableDenseLayer):
+	def __init__(self, incoming, num_units, W=init.GlorotUniform(),
+	             b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
+	             num_leading_axes=1, **kwargs):
+		super(DynamicDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity,
+		                                        num_leading_axes,
+		                                        **kwargs)
+
+	# self.set_output(num_units, W=init.GlorotUniform(), b=init.Constant(0.), nonlinearity=nonlinearities.rectify)
 
 	'''
 	def del_param(self, spec, shape, name=None, **tags):
@@ -110,35 +81,155 @@ class ElasticDenseLayer(DenseLayer):
 		return param
 	'''
 
+	def prune_input(self, input_indices_to_keep):
+		# print('prune input of layer %s from %d to %d' % (self, int(np.prod(self.input_shape[self.num_leading_axes:])), len(input_indices_to_keep)))
 
-class PrunableDenseLayer(ElasticDenseLayer):
+		self.input_shape = self.input_layer.output_shape
+		assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_keep)
+
+		W = self.W.eval()[input_indices_to_keep, :]
+		old_W = self._set_W(W)
+
+		return old_W
+
+	def prune_output(self, output_indices_to_keep):
+		# print('prune output of layer %s from size %d to %d' % (self, self.num_units, len(output_indices_to_keep)))
+
+		W = self.W.eval()[:, output_indices_to_keep]
+		b = self.b.eval()[output_indices_to_keep]
+
+		self.num_units = len(output_indices_to_keep)
+
+		old_W = self._set_W(W)
+		old_b = self._set_b(b)
+
+		return old_W, old_b
+
+	def split_input(self, input_indices_to_split):
+		self.input_shape = self.input_layer.output_shape
+		# assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_split)
+
+		W = self.W.eval()
+		W = numpy.vstack((W, W[input_indices_to_split, :]));
+		old_W = self._set_W(W)
+
+		return old_W
+
+	def split_output(self, output_indices_to_split):
+		W = self.W.eval()
+		W = numpy.hstack((W, W[:, output_indices_to_split]))
+		b = self.b.eval()
+		b = numpy.hstack((b, b[output_indices_to_split]))
+
+		self.num_units += len(output_indices_to_split)
+
+		old_W = self._set_W(W)
+		old_b = self._set_b(b)
+
+		return old_W, old_b
+
+
+#
+#
+#
+#
+#
+
+
+class PrunableDynamicDenseLayer(AdaptableDenseLayer):
 	def __init__(self, incoming, num_units, W=init.GlorotUniform(),
 	             b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
 	             num_leading_axes=1, **kwargs):
-		super(PrunableDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes, **kwargs)
+		super(PrunableDynamicDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes,
+		                                                **kwargs)
+
+	def prune_input(self, input_indices_to_keep):
+		# print('prune input of layer %s from %d to %d' % (self, int(np.prod(self.input_shape[self.num_leading_axes:])), len(input_indices_to_keep)))
+
+		self.input_shape = self.input_layer.output_shape
+		assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_keep)
+
+		W = self.W.eval()[input_indices_to_keep, :]
+		old_W = self._set_W(W)
+
+		return old_W
+
+	def prune_output(self, output_indices_to_keep):
+		# print('prune output of layer %s from size %d to %d' % (self, self.num_units, len(output_indices_to_keep)))
+
+		self.num_units = len(output_indices_to_keep)
+
+		W = self.W.eval()[:, output_indices_to_keep]
+		b = self.b.eval()[output_indices_to_keep]
+
+		old_W = self._set_W(W)
+		old_b = self._set_b(b)
+
+		return old_W, old_b
+
+
+class SplitableDynamicDenseLayer(AdaptableDenseLayer):
+	def __init__(self, incoming, num_units, W=init.GlorotUniform(),
+	             b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
+	             num_leading_axes=1, **kwargs):
+		super(SplitableDynamicDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes,
+		                                                 **kwargs)
+
+	# TODO:
+	def split_input(self, input_indices_to_keep):
+		self.input_shape = self.input_layer.output_shape
+		assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_keep);
+
+		W = self.W.eval()[input_indices_to_keep, :]
+		old_W = self._set_W(W)
+
+		return old_W
+
+	# TODO:
+	def split_output(self, output_indices_to_keep):
+		self.num_units = len(output_indices_to_keep)
+
+		W = self.W.eval()[:, output_indices_to_keep]
+		b = self.b.eval()[output_indices_to_keep]
+
+		old_W = self._set_W(W)
+		old_b = self._set_b(b)
+
+		return old_W, old_b
+
+
+class WeightPruningDenseLayer(PrunableDynamicDenseLayer):
+	def __init__(self, incoming, num_units, W=init.GlorotUniform(),
+	             b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
+	             num_leading_axes=1, **kwargs):
+		super(WeightPruningDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes,
+		                                              **kwargs)
 		num_inputs = int(numpy.prod(self.input_shape[self.num_leading_axes:]))
 		self.mask = numpy.ones((num_inputs, self.num_units))
 
 	def prune_weight(self, threshold=1e-3):
 		# threshold = numpy.min(numpy.max(numpy.abs(self.W.eval()), axis=0))
-		#print("number of connections: %d" % np.sum(self.mask == 1))
+		# print("number of connections: %d" % np.sum(self.mask == 1))
 
 		self.mask *= (numpy.abs(self.W.eval()) > threshold)
+		return self.find_neuron_indices_to_prune()
+
+	def find_neuron_indices_to_prune(self):
 		number_of_active_synapses_per_neuron = numpy.sum(self.mask, axis=0)
 
-		neuron_indices_to_keep = numpy.argwhere(number_of_active_synapses_per_neuron > 0)
-		neuron_indices_to_keep = neuron_indices_to_keep.flatten()
-		return neuron_indices_to_keep
+		neuron_indices_to_prune = numpy.argwhere(number_of_active_synapses_per_neuron <= 0).flatten()
+		neuron_indices_to_keep = numpy.setdiff1d(numpy.arange(0, len(self.mask)), neuron_indices_to_prune)
+		return neuron_indices_to_prune, neuron_indices_to_keep
 
 	def prune_input(self, input_indices_to_keep):
-		old_W = super(PrunableDenseLayer, self).prune_input(input_indices_to_keep)
+		old_W = super(WeightPruningDenseLayer, self).prune_input(input_indices_to_keep)
 		old_mask = numpy.copy(self.mask)
 		self.mask = self.mask[input_indices_to_keep, :]
 
 		return old_W, old_mask
 
 	def prune_output(self, output_indices_to_keep):
-		old_W, old_b = super(PrunableDenseLayer, self).prune_output(output_indices_to_keep)
+		old_W, old_b = super(WeightPruningDenseLayer, self).prune_output(output_indices_to_keep)
 		old_mask = numpy.copy(self.mask)
 		self.mask = self.mask[:, output_indices_to_keep]
 

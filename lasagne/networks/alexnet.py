@@ -2,7 +2,7 @@ import logging
 
 import numpy
 
-from . import FeedForwardNetwork, DynamicFeedForwardNetwork
+from . import FeedForwardNetwork, AdaptiveFeedForwardNetwork
 from .. import init, objectives, updates
 from .. import layers
 
@@ -169,7 +169,7 @@ class AlexNet(FeedForwardNetwork):
 		self.build_functions()
 
 
-class DynamicAlexNet(DynamicFeedForwardNetwork):
+class DynamicAlexNet(AdaptiveFeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 
@@ -194,9 +194,9 @@ class DynamicAlexNet(DynamicFeedForwardNetwork):
 	             learning_rate_policy=1e-3,
 	             #learning_rate_decay=None,
 
-	             dropout_learning_rate_policy=1e-3,
+	             adaptable_learning_rate_policy=1e-3,
 	             #dropout_learning_rate_decay=None,
-	             dropout_rate_update_interval=1,
+	             adaptable_update_interval=1,
 	             update_hidden_layer_dropout_only=False,
 
 	             max_norm_constraint=0,
@@ -220,9 +220,9 @@ class DynamicAlexNet(DynamicFeedForwardNetwork):
 		                                     learning_rate_policy,
 		                                     #learning_rate_decay,
 
-		                                     dropout_learning_rate_policy,
+		                                     adaptable_learning_rate_policy,
 		                                     #dropout_learning_rate_decay,
-		                                     dropout_rate_update_interval,
+		                                     adaptable_update_interval,
 
 		                                     max_norm_constraint,
 		                                     validation_interval)

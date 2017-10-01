@@ -6,7 +6,7 @@ from .. import networks
 logger = logging.getLogger(__name__)
 
 __all__ = [
-	"train_pmlp",
+	"train_mlpP",
 ]
 
 
@@ -34,7 +34,7 @@ def parse_prune_policy(prune_policy_string):
 	logger.error("unrecognized parameter prune policy %s..." % (prune_policy_tokens))
 
 
-def construct_pmlp_parser():
+def construct_mlpP_parser():
 	from . import construct_discriminative_parser, add_dense_options, add_dropout_init_options
 	model_parser = construct_discriminative_parser()
 	model_parser = add_dense_options(model_parser)
@@ -60,7 +60,7 @@ def construct_pmlp_parser():
 	return model_parser
 
 
-def validate_pmlp_arguments(arguments):
+def validate_mlpP_arguments(arguments):
 	from . import validate_discriminative_arguments, validate_dense_arguments, validate_dropout_init_arguments
 	arguments = validate_discriminative_arguments(arguments)
 	arguments = validate_dense_arguments(arguments)
@@ -77,26 +77,26 @@ def validate_pmlp_arguments(arguments):
 	return arguments
 
 
-def train_pmlp():
+def train_mlpP():
 	"""
 	Demonstrate stochastic gradient descent optimization for a multilayer perceptron
 	This is demonstrated on MNIST.
 	"""
 
 	from . import config_model, validate_config
-	settings = config_model(construct_pmlp_parser, validate_pmlp_arguments)
+	settings = config_model(construct_mlpP_parser, validate_mlpP_arguments)
 	settings = validate_config(settings)
 
-	network = networks.PrunableMultiLayerPerceptron(
+	network = networks.WeightPruningMultiLayerPerceptron(
 		incoming=settings.input_shape,
 
 		dense_dimensions=settings.dense_dimensions,
 		dense_nonlinearities=settings.dense_nonlinearities,
 
 		prune_policy=settings.prune_policy,
-		#prune_synapses_after=settings.prune_synapses_after,
-		#prune_synapses_interval=settings.prune_synapses_interval,
-		#prune_synapses_threshold=settings.prune_synapses_threshold,
+		# prune_synapses_after=settings.prune_synapses_after,
+		# prune_synapses_interval=settings.prune_synapses_interval,
+		# prune_synapses_threshold=settings.prune_synapses_threshold,
 
 		# layer_activation_types=settings.layer_activation_types,
 		layer_activation_parameters=settings.layer_activation_parameters,
@@ -122,4 +122,4 @@ def train_pmlp():
 
 
 if __name__ == '__main__':
-	train_pmlp()
+	train_mlpP()

@@ -6,7 +6,7 @@ import numpy
 import theano
 import theano.tensor
 
-from . import RecurrentNetwork, DynamicRecurrentNetwork
+from . import RecurrentNetwork, AdaptiveRecurrentNetwork
 from .. import init, nonlinearities, objectives, updates
 from .. import layers
 
@@ -195,7 +195,7 @@ class ElmanNetwork(RecurrentNetwork):
 		self.build_functions()
 
 
-class DynamicElmanNetwork(DynamicRecurrentNetwork):
+class DynamicElmanNetwork(AdaptiveRecurrentNetwork):
 	def __init__(self,
 	             sequence_length,
 

@@ -11,7 +11,6 @@ import numpy
 from lasagne.experiments import debugger
 from .. import objectives, updates, Xpolicy, Xregularization
 
-# logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -32,8 +31,9 @@ __all__ = [
 	"load_mnist",
 ]
 
-layer_deliminator = ","
+layer_deliminator = "^"
 param_deliminator = ","
+specs_deliminator = ":"
 
 
 def construct_generic_parser():
@@ -44,8 +44,6 @@ def construct_generic_parser():
 	                            help="input directory [None]")
 	generic_parser.add_argument("--output_directory", dest="output_directory", action='store', default=None,
 	                            help="output directory [None]")
-	# generic_parser.add_argument("--logging_file", dest="logging_file", action='store', default=None,
-	# help="logging file [None]")
 
 	# generic argument set 2
 	generic_parser.add_argument("--objective", dest="objective", action='store', default="categorical_crossentropy",
@@ -73,7 +71,7 @@ def construct_generic_parser():
 	                            help="learning rate decay [None], example, 'iteration,inverse_t,0.2,0.1', 'epoch,exponential,1.7,0.1', 'epoch,step,0.2,100'")
 	'''
 	generic_parser.add_argument("--learning_rate", dest="learning_rate", action='store', default="1e-2",
-	                            help="learning policy [1e-2,constant] defined in policy.py with parameters")
+	                            help="learning policy [1e-2,constant]")
 
 	generic_parser.add_argument("--max_norm_constraint", dest="max_norm_constraint", type=float, action='store',
 	                            default=0, help="max norm constraint [0 - None]")
@@ -151,7 +149,7 @@ def validate_generic_arguments(arguments):
 	# generic argument set snapshots
 	snapshots = {}
 	for snapshot_interval_mapping in arguments.snapshot:
-		fields = snapshot_interval_mapping.split(":")
+		fields = snapshot_interval_mapping.split(specs_deliminator)
 		snapshot_function = getattr(debugger, fields[0])
 		if len(fields) == 1:
 			interval = 1
@@ -178,7 +176,7 @@ def validate_generic_arguments(arguments):
 
 	regularizers = {}
 	for regularizer_weight_mapping in arguments.regularizer:
-		fields = regularizer_weight_mapping.split(":")
+		fields = regularizer_weight_mapping.split(specs_deliminator)
 		# regularizer_function = getattr(regularization, fields[0])
 		regularizer_function = getattr(Xregularization, fields[0])
 		if len(fields) == 1:

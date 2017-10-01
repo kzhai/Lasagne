@@ -10,8 +10,8 @@ from .snn import *
 # from .vdn import *
 
 try:
-	from .Xdlenet import *
-	from .Xdmlp import *
+	from .lenetA import *
+	from .mlpA import *
 except ImportError:
 	print "Some of the XModules are not found..."
 	pass

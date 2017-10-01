@@ -16,6 +16,7 @@ from .special import *
 try:
 	from .Xdense import *
 	from .Xnoise import *
+	from .XnoiseA import *
 except ImportError:
 	print "Some of the XModules are not found..."
 	pass

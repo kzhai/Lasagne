@@ -201,7 +201,8 @@ def snapshot_dropouts(network, settings=None, **kwargs):
 	dropout_layer_index = 0
 	for network_layer in network.get_network_layers():
 		if isinstance(network_layer, layers.BernoulliDropoutLayer) or \
-				isinstance(network_layer, layers.AdaptiveDropoutLayer):
+				isinstance(network_layer, layers.AdaptiveDropoutLayer) or \
+				isinstance(network_layer, layers.DynamicDropoutLayer):
 			layer_retain_probability = network_layer.activation_probability.eval()
 		elif isinstance(network_layer, layers.SparseVariationalDropoutLayer):
 			alpha = T.exp(network_layer.log_alpha).eval()

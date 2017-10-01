@@ -5,34 +5,26 @@ from .. import networks
 logger = logging.getLogger(__name__)
 
 __all__ = [
-	"train_dlenet",
+	"train_lenetA",
 ]
 
 
-def construct_dlenet_parser():
+def construct_lenetA_parser():
 	from .lenet import construct_lenet_parser
 	model_parser = construct_lenet_parser()
 
-	model_parser.description = "convolutional dynamic le net argument"
+	model_parser.description = "adaptive convolutional le net argument"
 
 	# model argument set 1
-	'''
-	model_parser.add_argument("--dropout_learning_rate", dest="dropout_learning_rate", type=float, action='store',
-	                          default=0, help="dropout learning rate [0 = learning_rate]")
-	model_parser.add_argument("--dropout_learning_rate_decay", dest="dropout_learning_rate_decay", action='store',
-	                          default=None, help="dropout learning rate decay [None = learning_rate_decay]")
-	'''
-	model_parser.add_argument("--dropout_learning_rate", dest="dropout_learning_rate", action='store',
-	                          default=None, help="dropout learning rate [None = learning_rate]")
-	model_parser.add_argument("--dropout_rate_update_interval", dest="dropout_rate_update_interval", type=int,
-	                          action='store', default=0, help="dropout rate update interval [1]")
-	# model_parser.add_argument('--update_hidden_layer_dropout_only', dest="update_hidden_layer_dropout_only",
-	# action='store_true', default=False, help="update hidden layer dropout only [False]")
+	model_parser.add_argument("--adaptable_learning_rate", dest="adaptable_learning_rate", action='store',
+	                          default=None, help="adaptable learning rate [None - learning_rate]")
+	model_parser.add_argument("--adaptable_update_interval", dest="adaptable_update_interval", type=int,
+	                          action='store', default=1, help="adatable update interval [1]")
 
 	return model_parser
 
 
-def validate_dlenet_arguments(arguments):
+def validate_lenetA_arguments(arguments):
 	from .lenet import validate_lenet_arguments
 	arguments = validate_lenet_arguments(arguments)
 
@@ -54,27 +46,28 @@ def validate_dlenet_arguments(arguments):
 
 	# model argument set 1
 	from . import parse_parameter_policy
-	if arguments.dropout_learning_rate is None:
-		arguments.dropout_learning_rate = arguments.learning_rate;
+	#arguments.adaptable_learning_rate = parse_parameter_policy(arguments.adaptable_learning_rate)
+	if arguments.adaptable_learning_rate is None:
+		arguments.adaptable_learning_rate = arguments.learning_rate
 	else:
-		arguments.dropout_learning_rate = parse_parameter_policy(arguments.dropout_learning_rate)
+		arguments.adaptable_learning_rate = parse_parameter_policy(arguments.adaptable_learning_rate)
 
-	assert (arguments.dropout_rate_update_interval >= 0)
+	assert (arguments.adaptable_update_interval >= 0)
 
 	return arguments
 
 
-def train_dlenet():
+def train_lenetA():
 	"""
 	Demonstrate stochastic gradient descent optimization for a multilayer perceptron
 	This is demonstrated on MNIST.
 	"""
 
 	from . import config_model, validate_config
-	settings = config_model(construct_dlenet_parser, validate_dlenet_arguments)
+	settings = config_model(construct_lenetA_parser, validate_lenetA_arguments)
 	settings = validate_config(settings)
 
-	network = networks.DynamicLeNet(
+	network = networks.AdaptiveLeNet(
 		incoming=settings.input_shape,
 
 		convolution_filters=settings.convolution_filters,
@@ -96,12 +89,9 @@ def train_dlenet():
 		update_function=settings.update,
 
 		learning_rate_policy=settings.learning_rate,
-		# learning_rate_decay=settings.learning_rate_decay,
 
-		dropout_learning_rate_policy=settings.dropout_learning_rate,
-		# dropout_learning_rate_decay=settings.dropout_learning_rate_decay,
-		dropout_rate_update_interval=settings.dropout_rate_update_interval,
-		# update_hidden_layer_dropout_only=settings.update_hidden_layer_dropout_only,
+		adaptable_learning_rate_policy=settings.adaptable_learning_rate,
+		adaptable_update_interval=settings.adaptable_update_interval,
 
 		max_norm_constraint=settings.max_norm_constraint,
 		validation_interval=settings.validation_interval,
@@ -127,4 +117,4 @@ def train_dlenet():
 
 
 if __name__ == '__main__':
-	train_dlenet()
+	train_lenetA()
