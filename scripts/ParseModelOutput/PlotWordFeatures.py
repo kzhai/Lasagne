@@ -12,7 +12,7 @@ retain_rates_file_name_pattern = re.compile(r'noise\.(?P<layer>[\d]+?)\.epoch\.(
 random.seed(time.time())
 
 
-def plot_feature_map(model_directory, feature_mapping, layer_index=0, snapshot_interval=[0, 1000, 100],
+def plot_feature_map(model_directory, feature_mapping, layer_index=0, snapshot_interval=[0, 1000, 1],
                      thresholds=20, plot_directory=None):
 	# retain_rates_file_name_pattern = re.compile(r'layer\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
 	word_features = []
@@ -62,6 +62,8 @@ def plot_feature_map(model_directory, feature_mapping, layer_index=0, snapshot_i
 		retain_rates_argsort = numpy.argsort(retain_rates[:, -1]).tolist()
 		interesting_feature_indices_1 = retain_rates_argsort[:thresholds[0]]
 		interesting_feature_indices_2 = retain_rates_argsort[-thresholds[0]:]
+		print sorted(itemgetter(*interesting_feature_indices_1)(word_features))
+		print sorted(itemgetter(*interesting_feature_indices_2)(word_features))
 		interesting_feature_indices = list(set(interesting_feature_indices_1 + interesting_feature_indices_2))
 	elif len(thresholds) == 2:
 		# interesting_feature_indices = numpy.argwhere(numpy.min(retain_rates, axis=1) <= 0)[:, 0].tolist()
@@ -70,6 +72,8 @@ def plot_feature_map(model_directory, feature_mapping, layer_index=0, snapshot_i
 
 		interesting_feature_indices_1 = numpy.argwhere(retain_rates[:, -1] <= thresholds[0])[:, 0].tolist()
 		interesting_feature_indices_2 = numpy.argwhere(retain_rates[:, -1] >= thresholds[1])[:, 0].tolist()
+		print sorted(itemgetter(*interesting_feature_indices_1)(word_features))
+		print sorted(itemgetter(*interesting_feature_indices_2)(word_features))
 		interesting_feature_indices = list(set(interesting_feature_indices_1 + interesting_feature_indices_2))
 
 	#print interesting_feature_indices
@@ -77,7 +81,7 @@ def plot_feature_map(model_directory, feature_mapping, layer_index=0, snapshot_i
 	#print range(snapshot_interval[0], snapshot_interval[1]),
 	#print retain_rates[interesting_feature_indices, :]
 
-	# retain_rates = numpy.clip(retain_rates, 0, 1.0)
+	retain_rates = numpy.clip(retain_rates, 0, 1)
 	output_file_path = None if plot_directory is None else os.path.join(plot_directory, "noise.%d.epoch.%d.pdf" % (
 		layer_index, snapshot_interval[1]))
 	plot_lines(itemgetter(*interesting_feature_indices)(word_features),
@@ -86,7 +90,7 @@ def plot_feature_map(model_directory, feature_mapping, layer_index=0, snapshot_i
 	           output_file_path)
 
 
-def plot_lines(features, indices, matrix, output_file_path=None, exclusive_radius=[50, 0.4]):
+def plot_lines(features, indices, matrix, output_file_path=None, exclusive_radius=[4.5, 0.5]):
 	import matplotlib.pyplot as plt
 
 	# assert len(features) == len(indices)
@@ -103,19 +107,19 @@ def plot_lines(features, indices, matrix, output_file_path=None, exclusive_radiu
 
 		possible_text_x_pos = list(set(indices))
 
-		# temp_possible_text_x_pos = numpy.argwhere(matrix[index, :] < 1)[:, 0].tolist()
-		# possible_text_x_pos = list(set(possible_text_x_pos) & set(temp_possible_text_x_pos))
+		temp_possible_text_x_pos = numpy.argwhere(matrix[index, :] < 1)[:, 0].tolist()
+		possible_text_x_pos = list(set(possible_text_x_pos) & set(temp_possible_text_x_pos))
 
-		# temp_possible_text_x_pos = numpy.argwhere(matrix[index, :] > 0)[:, 0].tolist()
-		# possible_text_x_pos = list(set(possible_text_x_pos) & set(temp_possible_text_x_pos))
+		temp_possible_text_x_pos = numpy.argwhere(matrix[index, :] >= 0)[:, 0].tolist()
+		possible_text_x_pos = list(set(possible_text_x_pos) & set(temp_possible_text_x_pos))
 
 		# print "indices before:", len(possible_text_x_pos)
-		possible_text_x_pos_3 = numpy.arange(100, 901).tolist()
-		possible_text_x_pos = list(set(possible_text_x_pos) & set(possible_text_x_pos_3))
+		#temp_possible_text_x_pos = numpy.arange(0, 200).tolist()
+		#possible_text_x_pos = list(set(possible_text_x_pos) & set(temp_possible_text_x_pos))
 		# print "indices after:", len(possible_text_x_pos)
 
 		#text_x_pos = random.sample(possible_text_x_pos, 1)[0]
-		#random.shuffle(possible_text_x_pos)
+		random.shuffle(possible_text_x_pos)
 		text_x_pos = possible_text_x_pos.pop()
 		# numpy.random.randint(indices[0], len(indices))
 		text_y_pos = matrix[index, text_x_pos]
@@ -144,7 +148,7 @@ def plot_lines(features, indices, matrix, output_file_path=None, exclusive_radiu
 
 		#print text_x_pos, text_y_pos, feature
 		plt.text(text_x_pos, text_y_pos, feature, color=colors[index % len(colors)], va="bottom", ha="left",
-		         rotation=30, alpha=.75)
+		         rotation=0, alpha=.75)
 
 	# line1.set_dashes(dashes)
 	ax.grid(True, which='minor')
@@ -279,7 +283,7 @@ if __name__ == '__main__':
 	argument_parser.add_argument("--snapshot_interval", dest="snapshot_interval", action='store', default="1",
 	                             help="snapshot interval [1]")
 
-	argument_parser.add_argument("--thresholds", dest="thresholds", action='store', default="20",
+	argument_parser.add_argument("--display_thresholds", dest="display_thresholds", action='store', default="20",
 	                             help="threshold [int or list of floats]")
 
 	argument_parser.add_argument("--feature_mapping", dest="feature_mapping", action='store', default=None,
@@ -306,14 +310,14 @@ if __name__ == '__main__':
 	elif len(snapshot_interval_tokens) == 3:
 		snapshot_interval = snapshot_interval_tokens
 
-	thresholds = arguments.thresholds
-	threshold_tokens = [float(x) for x in thresholds.split(",")]
+	display_thresholds = arguments.display_thresholds
+	threshold_tokens = [float(x) for x in display_thresholds.split(",")]
 	if len(threshold_tokens) == 1:
-		thresholds = [int(threshold_tokens[0])]
+		display_thresholds = [int(threshold_tokens[0])]
 	elif len(threshold_tokens) == 2:
-		thresholds = threshold_tokens
+		display_thresholds = threshold_tokens
 
 	feature_mapping = arguments.feature_mapping
 	layer_index = arguments.layer_index
 
-	plot_feature_map(model_directory, feature_mapping, layer_index, snapshot_interval, thresholds, plot_directory)
+	plot_feature_map(model_directory, feature_mapping, layer_index, snapshot_interval, display_thresholds, plot_directory)
