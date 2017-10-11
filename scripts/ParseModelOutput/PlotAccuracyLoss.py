@@ -12,11 +12,14 @@ def plot_accuracy_loss(model_directory, maximum_iteration=0, plot_directory=None
 		train_logs = train_logs[:maximum_iteration]
 		test_logs = test_logs[:maximum_iteration]
 
-	output_file_path = None if plot_directory is None else os.path.join(plot_directory, "performance.pdf")
+	output_file_path = None if plot_directory is None else os.path.join(plot_directory,
+	                                                                    "objective.%d.pdf" % maximum_iteration)
 	plot_multiple_yaxis(train_logs, valid_logs, test_logs, output_file_path)
 
 
 def plot_multiple_yaxis(train_logs, valid_logs, test_logs, output_file_path=None):
+	import matplotlib.pyplot as plt
+
 	# assert len(train_logs) == len(valid_logs)
 	# assert len(train_logs) == len(test_logs)
 

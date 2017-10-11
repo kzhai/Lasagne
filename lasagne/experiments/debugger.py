@@ -27,13 +27,14 @@ def _subsample_dataset(dataset, fraction=0.01):
 		return None
 	dataset_x, dataset_y = dataset
 	size = len(dataset_y)
-	indices = numpy.random.permutation(size)[:int(size * fraction)]
+	#indices = numpy.random.permutation(size)[:int(size * fraction)]
+	indices = numpy.arange(size)[:int(size * fraction)]
 	dataset_x = dataset_x[indices]
 	dataset_y = dataset_y[indices]
 	return dataset_x, dataset_y
 
 
-def subsample_dataset(train_dataset, validate_dataset, test_dataset, fraction=0.005, **kwargs):
+def subsample_dataset(train_dataset, validate_dataset, test_dataset, fraction=0.01, **kwargs):
 	if validate_dataset is None:
 		size_before = [len(train_dataset[1]), 0, len(test_dataset[1])]
 	else:

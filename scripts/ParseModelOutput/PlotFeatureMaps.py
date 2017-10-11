@@ -26,26 +26,29 @@ def plot_feature_map(model_directory, feature_map_size, layer_index=0, snapshot_
 
 		retain_rates = numpy.load(os.path.join(model_directory, file_name))
 		retain_rates = numpy.reshape(retain_rates, feature_map_size)
-		# retain_rates = numpy.clip(retain_rates, 0, 1.0)
+		retain_rates = numpy.clip(retain_rates, 0, 1.0)
 
 		output_file_path = None if plot_directory is None else os.path.join(plot_directory, "noise.%d.epoch.%d.pdf" % (
 			temp_layer_index, temp_epoch_index))
 		if len(feature_map_size) == 2:
+			'''
 			retain_rates -= numpy.min(retain_rates)
 			if numpy.max(retain_rates) == 0:
 				retain_rates += 1
 			else:
 				retain_rates /= numpy.max(retain_rates)
+			'''
 			plot_image(retain_rates, output_file_path)
 		elif len(feature_map_size) == 3:
 			# retain_rates = retain_rates[:, 13:17, 14:16]
+			'''
 			for x in xrange(3):
 				retain_rates[x, :, :] -= numpy.min(retain_rates[x, :, :])
 				if numpy.max(retain_rates[x, :, :]) == 0:
 					retain_rates[x, :, :] += 1
 				else:
 					retain_rates[x, :, :] /= numpy.max(retain_rates[x, :, :])
-
+			'''
 			plot_image_rgb(retain_rates, output_file_path)
 
 
