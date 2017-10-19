@@ -27,7 +27,7 @@ def _subsample_dataset(dataset, fraction=0.01):
 		return None
 	dataset_x, dataset_y = dataset
 	size = len(dataset_y)
-	#indices = numpy.random.permutation(size)[:int(size * fraction)]
+	# indices = numpy.random.permutation(size)[:int(size * fraction)]
 	indices = numpy.arange(size)[:int(size * fraction)]
 	dataset_x = dataset_x[indices]
 	dataset_y = dataset_y[indices]
@@ -62,8 +62,10 @@ def debug_function_output(network, minibatch, **kwargs):
 	minibatch_x, minibatch_y = minibatch
 	debug_function_output = network._function_debugger(minibatch_x, minibatch_y)
 
-	logger.info("debug: function output %s" % debug_function_output)
-	print("debug: function output %s" % debug_function_output)
+	debug_function_output_string = ["%g" % debug_function_output_token for debug_function_output_token in
+	                                numpy.asarray(debug_function_output).tolist()]
+	logger.debug("debug: function output: %s" % " ".join(debug_function_output_string))
+	print("debug: function output: %s" % " ".join(debug_function_output_string))
 
 
 def debug_rademacher_p_2_q_2(network, minibatch, **kwargs):

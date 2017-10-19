@@ -159,10 +159,18 @@ def validate_generic_arguments(arguments):
 			logger.error("unrecognized snapshot function setting %s..." % (snapshot_interval_mapping))
 		snapshots[snapshot_function] = interval
 	arguments.snapshot = snapshots
-	debugs = set()
-	for debug in arguments.debug:
-		debug = getattr(debugger, debug)
-		debugs.add(debug)
+
+	debugs = {}
+	for debug_interval_mapping in arguments.debug:
+		fields = debug_interval_mapping.split(specs_deliminator)
+		debug_function = getattr(debugger, fields[0])
+		if len(fields) == 1:
+			interval = 1
+		elif len(fields) == 2:
+			interval = int(fields[1])
+		else:
+			logger.error("unrecognized debug function setting %s..." % (debug_interval_mapping))
+		debugs[debug_function] = interval
 	arguments.debug = debugs
 
 	# generic argument set 3
@@ -418,9 +426,11 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	# We iterate over epochs:
 	for epoch_index in range(settings.number_of_epochs):
 		if debugger.debug_function_output in settings.debug:
-			debugger.debug_function_output(network, train_dataset)
-		if debugger.debug_rademacher_p_inf_q_1 in settings.debug:
-			debugger.debug_rademacher_p_inf_q_1(network, train_dataset)
+			if network.epoch_index % settings.debug[debugger.debug_function_output] == 0:
+				debugger.debug_function_output(network, train_dataset)
+				debugger.debug_function_output(network, test_dataset)
+		#if debugger.debug_rademacher_p_inf_q_1 in settings.debug:
+			#debugger.debug_rademacher_p_inf_q_1(network, train_dataset)
 
 		network.train(train_dataset, settings.minibatch_size, validate_dataset, test_dataset, output_directory)
 		network.epoch_index += 1

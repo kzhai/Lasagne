@@ -17,7 +17,7 @@ __all__ = [
 	#
 	#
 	#
-	"WeightPruningMultiLayerPerceptron",
+	"DynamicMultiLayerPerceptronSurgery",
 ]
 
 
@@ -321,18 +321,18 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 
 		return
 
+#
+#
+#
+#
+#
 
-class WeightPruningMultiLayerPerceptron(FeedForwardNetwork):
+class DynamicMultiLayerPerceptronSurgery(FeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 
 	             dense_dimensions,
 	             dense_nonlinearities,
-
-	             prune_policy,
-	             # prune_synapses_after,
-	             # prune_synapses_interval,
-	             # prune_synapses_threshold,
 
 	             # layer_activation_types,
 	             layer_activation_parameters,
@@ -341,20 +341,31 @@ class WeightPruningMultiLayerPerceptron(FeedForwardNetwork):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 	             learning_rate_policy=[1e-3, Xpolicy.constant],
-	             max_norm_constraint=0,
 
+	             #
+	             #
+	             #
+	             #
+	             #
+
+	             prune_threshold_policies=None,
+	             splice_threshold_policies=None,
+	             prune_split_interval=[0, 0],
+
+	             max_norm_constraint=0,
 	             validation_interval=-1,
 	             ):
-		super(WeightPruningMultiLayerPerceptron, self).__init__(incoming,
-		                                                        objective_functions=objective_functions,
-		                                                        update_function=update_function,
-		                                                        learning_rate_policy=learning_rate_policy,
-		                                                        # prune_policy=prune_policy,
-		                                                        max_norm_constraint=max_norm_constraint,
-		                                                        validation_interval=validation_interval,
-		                                                        )
+		super(DynamicMultiLayerPerceptronSurgery, self).__init__(incoming,
+		                                                         objective_functions=objective_functions,
+		                                                         update_function=update_function,
+		                                                         learning_rate_policy=learning_rate_policy,
+		                                                         # prune_policy=prune_policy,
+		                                                         max_norm_constraint=max_norm_constraint,
+		                                                         validation_interval=validation_interval,
+		                                                         )
 
-		self._prune_policy = prune_policy
+		self._prune_threshold_policies = prune_threshold_policies
+		self._splice_threshold_policies = splice_threshold_policies
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
 		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
@@ -387,9 +398,9 @@ class WeightPruningMultiLayerPerceptron(FeedForwardNetwork):
 		self.build_functions()
 
 	def train(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None, output_directory=None):
-		epoch_running_time = super(WeightPruningMultiLayerPerceptron, self).train(train_dataset, minibatch_size,
-		                                                                          validate_dataset, test_dataset,
-		                                                                          output_directory)
+		epoch_running_time = super(DynamicMultiLayerPerceptronSurgery, self).train(train_dataset, minibatch_size,
+		                                                                           validate_dataset, test_dataset,
+		                                                                           output_directory)
 
 		# if self.epoch_index >= self._prune_policy[2] and self.epoch_index % self._prune_policy[1] == 0:
 		epoch_running_time_temp = timeit.default_timer()
@@ -400,11 +411,28 @@ class WeightPruningMultiLayerPerceptron(FeedForwardNetwork):
 		return epoch_running_time
 
 	def adjust_network(self, train_dataset=None, validate_dataset=None, test_dataset=None):
+		if self.epoch_index < self.prune_split_interval[0] \
+				or self.prune_split_interval[1] <= 0 \
+				or self.epoch_index % self.prune_split_interval[1] != 0:
+			return
+
+		if self._prune_threshold_policies is not None:
+			prune_thresholds = [adjust_parameter_according_to_policy(prune_threshold_policy, self.epoch_index) for
+			                    prune_threshold_policy in self._prune_threshold_policies]
+			self.prune_network(prune_thresholds=prune_thresholds, validate_dataset=validate_dataset,
+			                   test_dataset=test_dataset)
+		if self._splice_threshold_policies is not None:
+			splice_thresholds = [adjust_parameter_according_to_policy(splice_threshold_policy, self.epoch_index) for
+			                    splice_threshold_policy in self._splice_threshold_policies]
+			self.splice_network(splice_thresholds=splice_thresholds, validate_dataset=validate_dataset,
+			                    test_dataset=test_dataset)
+
+
 		self.prune_synapses(train_dataset, validate_dataset, test_dataset)
 
 	def prune_synapses(self, train_dataset=None, validate_dataset=None, test_dataset=None,
 	                   dropout_decay_style="elementwise"):
-		connection_threshold = adjust_parameter_according_to_policy(self._prune_policy, self.epoch_index)
+		connection_threshold = adjust_parameter_according_to_policy(self._prune_threshold_policies, self.epoch_index)
 
 		layer_info_list = []
 		for layer_0, layer_1 in zip(self.get_network_layers()[:-1], self.get_network_layers()[1:]):
@@ -503,7 +531,7 @@ def main():
 	)
 	'''
 
-	network = WeightPruningMultiLayerPerceptron(
+	network = DynamicMultiLayerPerceptronSurgery(
 		incoming=input_shape,
 
 		dense_dimensions=[1024, 10],
