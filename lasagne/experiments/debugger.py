@@ -1,10 +1,9 @@
 import logging
-import os
-import timeit
-
 import numpy
+import os
 import theano
 import theano.tensor as T
+import timeit
 
 from lasagne import layers
 from lasagne import nonlinearities, objectives, updates, Xregularization
@@ -46,7 +45,7 @@ def subsample_dataset(train_dataset, validate_dataset, test_dataset, fraction=0.
 		size_after = [len(train_dataset[1]), 0, len(test_dataset[1])]
 	else:
 		size_after = [len(train_dataset[1]), len(validate_dataset[1]), len(test_dataset[1])]
-	logger.info("debug: subsample [train, validate, test] sets from %s to %s instances" % (size_before, size_after))
+	logger.debug("debug: subsample [train, validate, test] sets from %s to %s instances" % (size_before, size_after))
 	print("debug: subsample [train, validate, test] sets from %s to %s instances" % (size_before, size_after))
 	return train_dataset, validate_dataset, test_dataset
 
@@ -54,18 +53,45 @@ def subsample_dataset(train_dataset, validate_dataset, test_dataset, fraction=0.
 def display_architecture(network, **kwargs):
 	input_shape = network._input_shape
 	for layer in network.get_network_layers():
-		logger.info("debug: output size after %s is %s" % (layer, layers.get_output_shape(layer, input_shape)))
+		logger.debug("debug: output size after %s is %s" % (layer, layers.get_output_shape(layer, input_shape)))
 		print("debug: output size after %s is %s" % (layer, layers.get_output_shape(layer, input_shape)))
 
 
 def debug_function_output(network, minibatch, **kwargs):
-	minibatch_x, minibatch_y = minibatch
-	debug_function_output = network._function_debugger(minibatch_x, minibatch_y)
+	# Create a train_loss expression for training, i.e., a scalar objective we want to minimize (for our multi-class problem, it is the cross-entropy train_loss):
+	nondeterministic_loss = network.get_loss(network._output_variable)
+	nondeterministic_objective = network.get_objectives(network._output_variable)
+	nondeterministic_accuracy = network.get_objectives(network._output_variable,
+													   objective_functions="categorical_accuracy")
 
-	debug_function_output_string = ["%g" % debug_function_output_token for debug_function_output_token in
-	                                numpy.asarray(debug_function_output).tolist()]
-	logger.debug("debug: function output: %s" % " ".join(debug_function_output_string))
-	print("debug: function output: %s" % " ".join(debug_function_output_string))
+	# Create a train_loss expression for validation/testing. The crucial difference here is that we do a deterministic forward pass through the networks, disabling dropout layers.
+	deterministic_loss = network.get_loss(network._output_variable, deterministic=True)
+	deterministic_objective = network.get_objectives(network._output_variable, deterministic=True)
+	deterministic_accuracy = network.get_objectives(network._output_variable,
+													objective_functions="categorical_accuracy", deterministic=True)
+
+	function_debugger = theano.function(
+		inputs=[network._input_variable, network._output_variable],
+		outputs=[nondeterministic_loss, nondeterministic_objective, nondeterministic_accuracy,
+				 deterministic_loss, deterministic_objective, deterministic_accuracy],
+	)
+
+	minibatch_x, minibatch_y = minibatch
+	debugger_function_output = function_debugger(minibatch_x, minibatch_y)
+
+	logger.debug("stochastic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
+				 (debugger_function_output[0], debugger_function_output[1],
+				  debugger_function_output[0] - debugger_function_output[1], debugger_function_output[2] * 100))
+	print("debug: stochastic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
+		  (debugger_function_output[0], debugger_function_output[1],
+		   debugger_function_output[0] - debugger_function_output[1], debugger_function_output[2] * 100))
+
+	logger.debug("deterministic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
+				 (debugger_function_output[3], debugger_function_output[4],
+				  debugger_function_output[3] - debugger_function_output[4], debugger_function_output[5] * 100))
+	print("debug: deterministic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
+		  (debugger_function_output[3], debugger_function_output[4],
+		   debugger_function_output[3] - debugger_function_output[4], debugger_function_output[5] * 100))
 
 
 def debug_rademacher_p_2_q_2(network, minibatch, **kwargs):
@@ -98,18 +124,23 @@ def debug_rademacher_p_2_q_2(network, minibatch, **kwargs):
 			mapping.append("sqrt(d1 + d2)")
 			output.append(T.sqrt(d1 + d2))
 
-	debug_function = theano.function(
+	function_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
 		outputs=output,
 		on_unused_input='warn'
 	)
 
 	minibatch_x, minibatch_y = minibatch
-	debug_function_outputs = debug_function(minibatch_x, minibatch_y)
-
-	for token_mapping, token_output in zip(mapping, debug_function_outputs):
-		logger.info("debug: %s = %g" % (token_mapping, token_output))
+	debugger_function_outputs = function_debugger(minibatch_x, minibatch_y)
+	'''
+	for token_mapping, token_output in zip(mapping, debugger_function_outputs):
 		print("debug: %s = %g" % (token_mapping, token_output))
+	'''
+	logger.debug("Rademacher (p=2, q=2) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
+	print("debug: Rademacher (p=2, q=2) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
+
+
+debug_rademacher = debug_rademacher_p_2_q_2
 
 
 def debug_rademacher_p_1_q_inf(network, minibatch, **kwargs):
@@ -142,18 +173,20 @@ def debug_rademacher_p_1_q_inf(network, minibatch, **kwargs):
 			mapping.append("sqrt(d1 + d2)")
 			output.append(T.sqrt(d1 + d2))
 
-	debug_function = theano.function(
+	function_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
 		outputs=output,
 		on_unused_input='warn'
 	)
 
 	minibatch_x, minibatch_y = minibatch
-	debug_function_outputs = debug_function(minibatch_x, minibatch_y)
-
-	for token_mapping, token_output in zip(mapping, debug_function_outputs):
-		logger.info("debug: %s = %g" % (token_mapping, token_output))
+	debugger_function_outputs = function_debugger(minibatch_x, minibatch_y)
+	'''
+	for token_mapping, token_output in zip(mapping, debugger_function_outputs):
 		print("debug: %s = %g" % (token_mapping, token_output))
+	'''
+	logger.debug("Rademacher (p=1, q=inf) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
+	print("debug: Rademacher (p=1, q=inf) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
 
 
 def debug_rademacher_p_inf_q_1(network, minibatch, **kwargs):
@@ -186,18 +219,20 @@ def debug_rademacher_p_inf_q_1(network, minibatch, **kwargs):
 			mapping.append("sqrt(d1 + d2)")
 			output.append(T.sqrt(d1 + d2))
 
-	debug_function = theano.function(
+	function_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
 		outputs=output,
 		on_unused_input='warn'
 	)
 
 	minibatch_x, minibatch_y = minibatch
-	debug_function_outputs = debug_function(minibatch_x, minibatch_y)
-
-	for token_mapping, token_output in zip(mapping, debug_function_outputs):
-		logger.info("debug: %s = %g" % (token_mapping, token_output))
+	debugger_function_outputs = function_debugger(minibatch_x, minibatch_y)
+	'''
+	for token_mapping, token_output in zip(mapping, debugger_function_outputs):
 		print("debug: %s = %g" % (token_mapping, token_output))
+	'''
+	logger.debug("Rademacher (p=inf, q=1) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
+	print("debug: Rademacher (p=inf, q=1) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
 
 
 def snapshot_dropouts(network, settings=None, **kwargs):
@@ -230,7 +265,7 @@ def snapshot_dropouts(network, settings=None, **kwargs):
 		if settings is not None:
 			# layer_retain_probability = numpy.reshape(layer_retain_probability, numpy.prod(layer_retain_probability.shape))
 			retain_rate_file = os.path.join(settings.output_directory,
-			                                "noise.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
+											"noise.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
 			numpy.save(retain_rate_file, layer_retain_probability)
 		dropout_layer_index += 1
 
@@ -245,7 +280,7 @@ def snapshot_conv_filters(network, settings, **kwargs):
 
 		# conv_filters = numpy.reshape(conv_filters, numpy.prod(conv_filters.shape))
 		conv_filter_file = os.path.join(settings.output_directory,
-		                                "conv.%d.epoch.%d.npy" % (conv_layer_index, network.epoch_index))
+										"conv.%d.epoch.%d.npy" % (conv_layer_index, network.epoch_index))
 		numpy.save(conv_filter_file, conv_filters)
 
 		conv_layer_index += 1

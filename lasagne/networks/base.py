@@ -409,10 +409,12 @@ class FeedForwardNetwork(Network):
 		# TODO: end{this is only for adaptive dropout layers}
 		'''
 
+		'''
 		self._function_debugger = theano.function(
 			inputs=[self._input_variable, self._output_variable],
 			outputs=[nondeterministic_loss, nondeterministic_objective, deterministic_loss, deterministic_objective],
 		)
+		'''
 
 	def test(self, test_dataset):
 		test_dataset_x, test_dataset_y = test_dataset

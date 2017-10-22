@@ -426,11 +426,17 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	# We iterate over epochs:
 	for epoch_index in range(settings.number_of_epochs):
 		if debugger.debug_function_output in settings.debug:
-			if network.epoch_index % settings.debug[debugger.debug_function_output] == 0:
-				debugger.debug_function_output(network, train_dataset)
-				debugger.debug_function_output(network, test_dataset)
-		#if debugger.debug_rademacher_p_inf_q_1 in settings.debug:
-			#debugger.debug_rademacher_p_inf_q_1(network, train_dataset)
+			debugger.debug_function_output(network, train_dataset)
+			debugger.debug_function_output(network, test_dataset)
+		if debugger.debug_rademacher_p_2_q_2 in settings.debug:
+			debugger.debug_rademacher_p_2_q_2(network, train_dataset)
+			debugger.debug_rademacher_p_2_q_2(network, test_dataset)
+		if debugger.debug_rademacher_p_1_q_inf in settings.debug:
+			debugger.debug_rademacher_p_1_q_inf(network, train_dataset)
+			debugger.debug_rademacher_p_1_q_inf(network, test_dataset)
+		if debugger.debug_rademacher_p_inf_q_1 in settings.debug:
+			debugger.debug_rademacher_p_inf_q_1(network, train_dataset)
+			debugger.debug_rademacher_p_inf_q_1(network, test_dataset)
 
 		network.train(train_dataset, settings.minibatch_size, validate_dataset, test_dataset, output_directory)
 		network.epoch_index += 1
@@ -449,6 +455,15 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	# pickle.dump(network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
 	end_train = timeit.default_timer()
+
+	debugger.debug_function_output(network, train_dataset)
+	debugger.debug_function_output(network, test_dataset)
+	debugger.debug_rademacher_p_2_q_2(network, train_dataset)
+	debugger.debug_rademacher_p_2_q_2(network, test_dataset)
+	debugger.debug_rademacher_p_1_q_inf(network, train_dataset)
+	debugger.debug_rademacher_p_1_q_inf(network, test_dataset)
+	debugger.debug_rademacher_p_inf_q_1(network, train_dataset)
+	debugger.debug_rademacher_p_inf_q_1(network, test_dataset)
 
 	print("Optimization complete...")
 	logger.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
