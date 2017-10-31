@@ -55,6 +55,44 @@ class AdaptableDenseLayer(DenseLayer):
 		return old_b
 
 
+class ObstructedDenseLayer(DenseLayer):
+	def __init__(self, incoming, num_units, W=init.GlorotUniform(),
+	             b=init.Constant(0.), num_obstructed_unts=0, W_obstructed=init.GlorotUniform(),
+	             b_obstructed=init.Constant(0.), nonlinearity=nonlinearities.rectify,
+	             num_leading_axes=1, **kwargs):
+		super(ObstructedDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes, **kwargs)
+
+	def _set_W(self, W=init.GlorotUniform()):
+		old_W = self.W.eval()
+		self.params.pop(self.W);
+
+		if isinstance(W, init.Initializer):
+			num_inputs = int(numpy.prod(self.input_shape[self.num_leading_axes:]))
+			self.W = self.add_param(W, (num_inputs, self.num_units), name="W")
+		elif isinstance(W, numpy.ndarray):
+			self.W = self.add_param(W, W.shape, name="W")
+		else:
+			raise ValueError("Unrecognized parameter type %s." % type(W))
+
+		return old_W
+
+	def _set_b(self, b=init.Constant(0.)):
+		old_b = self.b.eval()
+		self.params.pop(self.b)
+
+		if b is None:
+			self.b = None
+		elif isinstance(b, init.Initializer):
+			self.b = self.add_param(b, (self.num_units,), name="b", regularizable=False)
+		elif isinstance(b, numpy.ndarray):
+			self.b = self.add_param(b, b.shape, name="b", regularizable=False)
+		else:
+			raise ValueError("Unrecognized parameter type %s." % type(b))
+
+		return old_b
+
+
+
 class DynamicDenseLayer(AdaptableDenseLayer):
 	def __init__(self, incoming, num_units, W=init.GlorotUniform(),
 	             b=init.Constant(0.), nonlinearity=nonlinearities.rectify,

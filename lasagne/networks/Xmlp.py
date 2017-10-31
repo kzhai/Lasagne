@@ -13,6 +13,10 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
 	"AdaptiveMultiLayerPerceptron",
+	"AdaptiveMultiLayerPerceptronDebugger",
+	#
+	#
+	#
 	"DynamicMultiLayerPerceptron",
 	#
 	#
@@ -117,6 +121,138 @@ class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
 		self._neural_network = neural_network
 
 		self.build_functions()
+
+
+class AdaptiveMultiLayerPerceptronDebugger(AdaptiveMultiLayerPerceptron):
+	def __init__(self,
+	             incoming,
+
+	             dense_dimensions,
+	             dense_nonlinearities,
+
+	             layer_activation_types,
+	             layer_activation_parameters,
+	             layer_activation_styles,
+
+	             objective_functions=objectives.categorical_crossentropy,
+	             update_function=updates.nesterov_momentum,
+
+	             learning_rate_policy=[1e-3, Xpolicy.constant],
+	             # learning_rate_decay=None,
+
+	             adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
+	             # dropout_learning_rate_decay=None,
+	             adaptable_update_interval=1,
+	             # update_hidden_layer_dropout_only=False,
+
+	             obstruct_percentage=0,
+
+	             max_norm_constraint=0,
+	             # learning_rate_decay_style=None,
+	             # learning_rate_decay_parameter=0,
+	             validation_interval=-1,
+	             ):
+		super(AdaptiveMultiLayerPerceptronDebugger, self).__init__(incoming,
+		                                                           dense_dimensions,
+		                                                           dense_nonlinearities,
+		                                                           layer_activation_types,
+		                                                           layer_activation_parameters,
+		                                                           layer_activation_styles,
+		                                                           objective_functions,
+		                                                           update_function,
+		                                                           learning_rate_policy,
+		                                                           adaptable_learning_rate_policy,
+		                                                           adaptable_update_interval,
+		                                                           max_norm_constraint,
+		                                                           validation_interval
+		                                                           )
+
+		assert obstruct_percentage >= 0 and obstruct_percentage <= 1
+		self._obstruct_dimensions = [int(dense_dimension * obstruct_percentage) for dense_dimension in
+		                             dense_dimensions[:-1]]
+
+		self._obstruct_W_matrices = []
+		self._obstruct_b_vectors = []
+		dense_layer_index = 0
+		for layer in self.get_network_layers():
+			if not isinstance(layer, layers.DenseLayer):
+				continue;
+
+			if dense_layer_index == len(self._obstruct_dimensions):
+				break
+
+			obstruct_W = layer.W.eval()[:, :self._obstruct_dimensions[dense_layer_index]]
+			self._obstruct_W_matrices.append(obstruct_W)
+
+			obstruct_b = layer.b.eval()[:self._obstruct_dimensions[dense_layer_index]]
+			self._obstruct_b_vectors.append(obstruct_b)
+
+			dense_layer_index += 1
+
+		assert len(self._obstruct_dimensions) == dense_layer_index
+		assert len(self._obstruct_dimensions) == len(self._obstruct_W_matrices)
+		assert len(self._obstruct_dimensions) == len(self._obstruct_b_vectors)
+
+	def train_minibatch(self, minibatch_x, minibatch_y):
+		minibatch_running_time, minibatch_average_train_objective, minibatch_average_train_accuracy = super(
+			AdaptiveFeedForwardNetwork, self).train_minibatch(minibatch_x, minibatch_y)
+
+		minibatch_running_time_temp = timeit.default_timer()
+		if self._adaptable_update_interval > 0 and self.minibatch_index % self._adaptable_update_interval == 0:
+			train_adaptable_params_function_outputs = self._function_train_adaptable_params_deterministic(minibatch_x,
+			                                                                                              minibatch_y)
+		minibatch_running_time_temp = timeit.default_timer() - minibatch_running_time_temp
+		minibatch_running_time += minibatch_running_time_temp
+
+		return minibatch_running_time, minibatch_average_train_objective, minibatch_average_train_accuracy
+
+	def train(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None, output_directory=None):
+		epoch_running_time = super(AdaptiveMultiLayerPerceptronDebugger, self).train(train_dataset,
+		                                                        minibatch_size,
+		                                                        validate_dataset,
+		                                                        test_dataset,
+		                                                        output_directory)
+
+		self.obstruct_layers()
+
+		return epoch_running_time
+
+	def obstruct_layers(self):
+		dense_layer_index = 0
+		for layer in self.get_network_layers():
+			if not isinstance(layer, layers.DenseLayer):
+				continue;
+
+			if dense_layer_index == len(self._obstruct_dimensions):
+				break
+
+			W = layer.W.eval()
+			W[:, :self._obstruct_dimensions[dense_layer_index]] = self._obstruct_W_matrices[dense_layer_index]
+			b = layer.b.eval()
+			b[:self._obstruct_dimensions[dense_layer_index]] = self._obstruct_b_vectors[dense_layer_index]
+
+			old_W = layer.W.eval()
+			layer.params.pop(layer.W)
+			layer.W = layer.add_param(W, W.shape, name="W")
+
+			old_b = layer.b.eval()
+			layer.params.pop(layer.b)
+			layer.b = layer.add_param(b, b.shape, name="b", regularizable=False)
+
+			#new_W = layer.W.eval()
+			#print numpy.max(new_W - old_W), numpy.min(new_W - old_W)
+			#new_b = layer.b.eval()
+			#print new_b - old_b
+
+			dense_layer_index += 1
+
+		assert len(self._obstruct_dimensions) == dense_layer_index
+		assert len(self._obstruct_dimensions) == len(self._obstruct_W_matrices)
+		assert len(self._obstruct_dimensions) == len(self._obstruct_b_vectors)
+
+		self.build_functions()
+
+		return
 
 
 class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
@@ -321,6 +457,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 
 		return
 
+
 #
 #
 #
@@ -423,10 +560,9 @@ class DynamicMultiLayerPerceptronSurgery(FeedForwardNetwork):
 			                   test_dataset=test_dataset)
 		if self._splice_threshold_policies is not None:
 			splice_thresholds = [adjust_parameter_according_to_policy(splice_threshold_policy, self.epoch_index) for
-			                    splice_threshold_policy in self._splice_threshold_policies]
+			                     splice_threshold_policy in self._splice_threshold_policies]
 			self.splice_network(splice_thresholds=splice_thresholds, validate_dataset=validate_dataset,
 			                    test_dataset=test_dataset)
-
 
 		self.prune_synapses(train_dataset, validate_dataset, test_dataset)
 

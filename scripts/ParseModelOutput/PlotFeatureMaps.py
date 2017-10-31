@@ -25,6 +25,8 @@ def plot_feature_map(model_directory, feature_map_size, layer_index=0, snapshot_
 			continue
 
 		retain_rates = numpy.load(os.path.join(model_directory, file_name))
+		#print numpy.mean(retain_rates[:512]), numpy.max(retain_rates[:512]), numpy.min(retain_rates[:512])
+		#print numpy.mean(retain_rates[512:]), numpy.max(retain_rates[512:]), numpy.min(retain_rates[512:])
 		retain_rates = numpy.reshape(retain_rates, feature_map_size)
 		retain_rates = numpy.clip(retain_rates, 0, 1.0)
 

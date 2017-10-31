@@ -456,6 +456,7 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 
 	end_train = timeit.default_timer()
 
+	'''
 	debugger.debug_function_output(network, train_dataset)
 	debugger.debug_function_output(network, test_dataset)
 	debugger.debug_rademacher_p_2_q_2(network, train_dataset)
@@ -464,6 +465,7 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	debugger.debug_rademacher_p_1_q_inf(network, test_dataset)
 	debugger.debug_rademacher_p_inf_q_1(network, train_dataset)
 	debugger.debug_rademacher_p_inf_q_1(network, test_dataset)
+	'''
 
 	print("Optimization complete...")
 	logger.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
