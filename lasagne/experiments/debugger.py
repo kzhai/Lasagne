@@ -94,7 +94,7 @@ def debug_function_output(network, minibatch, **kwargs):
 		   debugger_function_output[3] - debugger_function_output[4], debugger_function_output[5] * 100))
 
 
-def debug_rademacher_p_2_q_2(network, minibatch, **kwargs):
+def debug_rademacher_p_2_q_2(network, minibatch, rescale=False, **kwargs):
 	input_layer = Xregularization.find_input_layer(network)
 	input_shape = layers.get_output_shape(input_layer)
 	input_value = layers.get_output(input_layer)
@@ -115,14 +115,16 @@ def debug_rademacher_p_2_q_2(network, minibatch, **kwargs):
 			output.append(T.sqrt(T.mean(retain_probability ** 2)))
 		elif isinstance(layer, DenseLayer):
 			# compute B_l * p_l, with a layer-wise scale constant
-			d1, d2 = layer.W.shape
 			mapping.append("max(sqrt(sum(layer.W ** 2, axis=0)))")
 			output.append(T.max(T.sqrt(T.sum(layer.W ** 2, axis=0))))
-			mapping.append("1. / (d1 * sqrt(log(d2)))")
-			output.append(1. / (d1 * T.sqrt(T.log(d2))))
-			# this is to offset glorot initialization
-			mapping.append("sqrt(d1 + d2)")
-			output.append(T.sqrt(d1 + d2))
+
+			if rescale:
+				d1, d2 = layer.W.shape
+				mapping.append("1. / (d1 * sqrt(log(d2)))")
+				output.append(1. / (d1 * T.sqrt(T.log(d2))))
+				# this is to offset glorot initialization
+				mapping.append("sqrt(d1 + d2)")
+				output.append(T.sqrt(d1 + d2))
 
 	function_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
@@ -143,7 +145,7 @@ def debug_rademacher_p_2_q_2(network, minibatch, **kwargs):
 debug_rademacher = debug_rademacher_p_2_q_2
 
 
-def debug_rademacher_p_1_q_inf(network, minibatch, **kwargs):
+def debug_rademacher_p_1_q_inf(network, minibatch, rescale=False, **kwargs):
 	input_layer = Xregularization.find_input_layer(network)
 	input_shape = layers.get_output_shape(input_layer)
 	input_value = layers.get_output(input_layer)
@@ -165,13 +167,15 @@ def debug_rademacher_p_1_q_inf(network, minibatch, **kwargs):
 			output.append(T.max(abs(retain_probability)))
 		elif isinstance(layer, DenseLayer):
 			# compute B_l * p_l, with a layer-wise scale constant
-			d1, d2 = layer.W.shape
 			mapping.append("max(sum(abs(layer.W), axis=0))")
 			output.append(T.max(T.sum(abs(layer.W), axis=0)))
-			mapping.append("1. / (d1 * sqrt(log(d2)))")
-			output.append(1. / (d1 * T.sqrt(T.log(d2))))
-			mapping.append("sqrt(d1 + d2)")
-			output.append(T.sqrt(d1 + d2))
+
+			if rescale:
+				d1, d2 = layer.W.shape
+				mapping.append("1. / (d1 * sqrt(log(d2)))")
+				output.append(1. / (d1 * T.sqrt(T.log(d2))))
+				mapping.append("sqrt(d1 + d2)")
+				output.append(T.sqrt(d1 + d2))
 
 	function_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
@@ -189,7 +193,7 @@ def debug_rademacher_p_1_q_inf(network, minibatch, **kwargs):
 	print("debug: Rademacher (p=1, q=inf) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
 
 
-def debug_rademacher_p_inf_q_1(network, minibatch, **kwargs):
+def debug_rademacher_p_inf_q_1(network, minibatch, rescale=False, **kwargs):
 	input_layer = Xregularization.find_input_layer(network)
 	input_shape = layers.get_output_shape(input_layer)
 	input_value = layers.get_output(input_layer)
@@ -211,13 +215,15 @@ def debug_rademacher_p_inf_q_1(network, minibatch, **kwargs):
 			output.append(T.mean(abs(retain_probability)))
 		elif isinstance(layer, DenseLayer):
 			# compute B_l * p_l, with a layer-wise scale constant
-			d1, d2 = layer.W.shape
 			mapping.append("max(abs(layer.W))")
 			output.append(T.max(abs(layer.W)))
-			mapping.append("1. / d1")
-			output.append(1. / d1)
-			mapping.append("sqrt(d1 + d2)")
-			output.append(T.sqrt(d1 + d2))
+
+			if rescale:
+				d1, d2 = layer.W.shape
+				mapping.append("1. / d1")
+				output.append(1. / d1)
+				mapping.append("sqrt(d1 + d2)")
+				output.append(T.sqrt(d1 + d2))
 
 	function_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
