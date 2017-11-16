@@ -294,7 +294,8 @@ class Network(object):
 
 
 class FeedForwardNetwork(Network):
-	def __init__(self, incoming,
+	def __init__(self,
+				 incoming,
 	             objective_functions,
 	             update_function,
 	             learning_rate_policy=[1e-3, Xpolicy.constant],
@@ -337,7 +338,7 @@ class FeedForwardNetwork(Network):
 		return objective
 
 	def get_loss(self, label, **kwargs):
-		loss = self.get_objectives(label, **kwargs) + self.get_regularizers()
+		loss = self.get_objectives(label, **kwargs) + self.get_regularizers(**kwargs)
 		return loss
 
 	def build_functions(self):

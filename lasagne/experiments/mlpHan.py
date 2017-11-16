@@ -6,7 +6,7 @@ from .. import networks
 logger = logging.getLogger(__name__)
 
 __all__ = [
-	"train_mlpDS",
+	"train_mlpHan",
 ]
 
 
@@ -34,7 +34,7 @@ def parse_prune_policy(prune_policy_string):
 	logger.error("unrecognized parameter prune policy %s..." % (prune_policy_tokens))
 
 
-def construct_mlpDS_parser():
+def construct_mlpHan_parser():
 	from . import construct_discriminative_parser, add_dense_options, add_dropout_init_options
 	model_parser = construct_discriminative_parser()
 	model_parser = add_dense_options(model_parser)
@@ -60,7 +60,7 @@ def construct_mlpDS_parser():
 	return model_parser
 
 
-def validate_mlpDS_arguments(arguments):
+def validate_mlpHan_arguments(arguments):
 	from . import validate_discriminative_arguments, validate_dense_arguments, validate_dropout_init_arguments
 	arguments = validate_discriminative_arguments(arguments)
 	arguments = validate_dense_arguments(arguments)
@@ -77,17 +77,17 @@ def validate_mlpDS_arguments(arguments):
 	return arguments
 
 
-def train_mlpDS():
+def train_mlpHan():
 	"""
 	Demonstrate stochastic gradient descent optimization for a multilayer perceptron
 	This is demonstrated on MNIST.
 	"""
 
 	from . import config_model, validate_config
-	settings = config_model(construct_mlpDS_parser, validate_mlpDS_arguments)
+	settings = config_model(construct_mlpHan_parser, validate_mlpHan_arguments)
 	settings = validate_config(settings)
 
-	network = networks.DynamicMultiLayerPerceptronSurgery(
+	network = networks.MultiLayerPerceptronHanPrunable(
 		incoming=settings.input_shape,
 
 		dense_dimensions=settings.dense_dimensions,
@@ -122,4 +122,4 @@ def train_mlpDS():
 
 
 if __name__ == '__main__':
-	train_mlpDS()
+	train_mlpHan()

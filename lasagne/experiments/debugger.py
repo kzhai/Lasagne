@@ -111,8 +111,8 @@ def debug_rademacher_p_2_q_2(network, minibatch, rescale=False, **kwargs):
 	for layer in network.get_network_layers():
 		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
-			mapping.append("sqrt(mean(retain_probability ** 2))")
-			output.append(T.sqrt(T.mean(retain_probability ** 2)))
+			mapping.append("sqrt(sum(retain_probability ** 2))")
+			output.append(T.sqrt(T.sum(retain_probability ** 2)))
 		elif isinstance(layer, DenseLayer):
 			# compute B_l * p_l, with a layer-wise scale constant
 			mapping.append("max(sqrt(sum(layer.W ** 2, axis=0)))")
@@ -211,8 +211,8 @@ def debug_rademacher_p_inf_q_1(network, minibatch, rescale=False, **kwargs):
 		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, AdaptiveDropoutLayer):
 			# retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1)
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
-			mapping.append("mean(abs(retain_probability))")
-			output.append(T.mean(abs(retain_probability)))
+			mapping.append("sum(abs(retain_probability))")
+			output.append(T.sum(abs(retain_probability)))
 		elif isinstance(layer, DenseLayer):
 			# compute B_l * p_l, with a layer-wise scale constant
 			mapping.append("max(abs(layer.W))")

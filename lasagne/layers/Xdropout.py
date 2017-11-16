@@ -10,7 +10,7 @@ __all__ = [
 	"AdaptiveDropoutLayer",
 	"DynamicDropoutLayer",
 	#
-	"WeightPruningDropoutLayer",
+	"PrunableBernoulliDropoutLayerHan",
 ]
 
 
@@ -18,9 +18,10 @@ class AdaptiveDropoutLayer(Layer):
 	"""Adaptive Dropout layer
 	"""
 
-	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)),
-	             num_leading_axes=1, shared_axes=(), **kwargs):
+	def __init__(self, incoming, activation_probability=0.5, rescale=True, shared_axes=(),
+	             num_leading_axes=1, **kwargs):
 		super(AdaptiveDropoutLayer, self).__init__(incoming, **kwargs)
+		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
 
 		if num_leading_axes >= len(self.input_shape):
 			raise ValueError(
@@ -33,24 +34,17 @@ class AdaptiveDropoutLayer(Layer):
 				"requesting more trailing axes than there are input "
 				"dimensions." % (num_leading_axes, len(self.input_shape)))
 		self.num_leading_axes = num_leading_axes
+		# self.activation_probability = activation_probability
 
-		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
-		# num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
 		self.activation_probability = self.add_param(activation_probability, self.input_shape[self.num_leading_axes:],
 		                                             name="adaptable.r", trainable=False, regularizable=False,
 		                                             adaptable=True)
 		# self.activation_probability = theano.shared(value=activation_probability, )
 		self.shared_axes = tuple(shared_axes)
 
-		'''
-		if b is None:
-			self.b = None
-		else:
-			self.b = self.add_param(b, (num_units,), name="b", regularizable=False)
-		'''
-
 	def get_output_for(self, input, deterministic=False, **kwargs):
 		if deterministic:
+			# return input * self.activation_probability
 			return T.mul(input, self.activation_probability)
 		else:
 			retain_prob = self.activation_probability.eval()
@@ -100,9 +94,9 @@ class PrunableAdaptiveDropoutLayer(AdaptiveDropoutLayer):
 	"""
 
 	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)),
-	             num_leading_axes=1, shared_axes=(), **kwargs):
+				 num_leading_axes=1, shared_axes=(), **kwargs):
 		super(PrunableAdaptiveDropoutLayer, self).__init__(incoming, activation_probability, num_leading_axes,
-		                                                   shared_axes, **kwargs)
+														   shared_axes, **kwargs)
 
 	def prune_activation_probability(self, input_indices_to_keep):
 		self.input_shape = self.input_layer.output_shape
@@ -160,25 +154,18 @@ class DynamicDropoutLayer(AdaptiveDropoutLayer):
 		activation_probability[input_indices_to_split] *= 1 - split_ratio
 		activation_probability = numpy.hstack((activation_probability, activation_probability_split))
 
-		# print "=========="
-		# print old_activation_probability
-		# print activation_probability[input_indices_to_split]
-		# print activation_probability_split
-		# print "=========="
-
 		old_activation_probability = self._set_r(activation_probability)
-
 		return old_activation_probability
 
 
-class WeightPruningDropoutLayer(BernoulliDropoutLayer):
+class PrunableBernoulliDropoutLayerHan(BernoulliDropoutLayer):
 	"""Prunable Dropout layer
 	"""
 
 	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)),
 	             num_leading_axes=1, shared_axes=(), **kwargs):
-		super(WeightPruningDropoutLayer, self).__init__(incoming, activation_probability, num_leading_axes,
-		                                                shared_axes, **kwargs)
+		super(PrunableBernoulliDropoutLayerHan, self).__init__(incoming, activation_probability, num_leading_axes,
+		                                                       shared_axes, **kwargs)
 
 	def prune_activation_probability(self, input_indices_to_keep):
 		self.input_shape = self.input_layer.output_shape
@@ -192,22 +179,6 @@ class WeightPruningDropoutLayer(BernoulliDropoutLayer):
 	def decay_activation_probability(self, decay_weight):
 		activation_probability = self.activation_probability.eval() * decay_weight
 		old_activation_probability = self._set_r(activation_probability)
-
-		return old_activation_probability
-
-	def _set_r(self, activation_probability=init.Uniform(range=(0, 1))):
-		old_activation_probability = self.activation_probability.eval()
-		self.params.pop(self.activation_probability)
-
-		if isinstance(activation_probability, init.Initializer):
-			self.activation_probability = self.add_param(activation_probability,
-			                                             self.input_shape[self.num_leading_axes:],
-			                                             name="r", trainable=False, regularizable=False)
-		elif isinstance(activation_probability, numpy.ndarray):
-			self.activation_probability = self.add_param(activation_probability, activation_probability.shape, name="r",
-			                                             trainable=False, regularizable=False)
-		else:
-			raise ValueError("Unrecognized parameter type %s." % type(activation_probability))
 
 		return old_activation_probability
 

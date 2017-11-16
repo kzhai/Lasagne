@@ -6,11 +6,11 @@ from .. import networks, layers
 logger = logging.getLogger(__name__)
 
 __all__ = [
-	"train_mlpAD",
+	"train_mlpD",
 ]
 
 
-def construct_mlpAD_parser():
+def construct_mlpD_parser():
 	from .mlpA import construct_mlpA_parser
 	model_parser = construct_mlpA_parser()
 
@@ -43,7 +43,7 @@ def construct_mlpAD_parser():
 	return model_parser
 
 
-def validate_mlpAD_arguments(arguments):
+def validate_mlpD_arguments(arguments):
 	from .mlpA import validate_mlpA_arguments
 	arguments = validate_mlpA_arguments(arguments)
 
@@ -93,14 +93,14 @@ def validate_mlpAD_arguments(arguments):
 	return arguments
 
 
-def train_mlpAD():
+def train_mlpD():
 	"""
 	Demonstrate stochastic gradient descent optimization for a multilayer perceptron
 	This is demonstrated on MNIST.
 	"""
 
 	from . import config_model, validate_config
-	settings = config_model(construct_mlpAD_parser, validate_mlpAD_arguments)
+	settings = config_model(construct_mlpD_parser, validate_mlpD_arguments)
 	settings = validate_config(settings)
 
 	network = networks.DynamicMultiLayerPerceptron(
@@ -137,4 +137,4 @@ def train_mlpAD():
 
 
 if __name__ == '__main__':
-	train_mlpAD()
+	train_mlpD()

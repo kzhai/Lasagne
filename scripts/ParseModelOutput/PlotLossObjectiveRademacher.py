@@ -220,7 +220,7 @@ def parse_models_3d(model_directories, number_of_points=10, output_file_path=Non
         dense_dimensions_tokens = model_settings["dense_dimensions"].strip("[]").split(",")
         dense_dimension = int(dense_dimensions_tokens[0])
 
-        # print model_name, layer_activation_parameter, dense_dimension
+        print model_name, layer_activation_parameter, dense_dimension
 
         debug_output_logs_on_train = debug_output_logs_on_train[-number_of_points:]
         debug_rademacher_logs_on_train = debug_rademacher_logs_on_train[-number_of_points:]
@@ -243,12 +243,9 @@ def parse_models_3d(model_directories, number_of_points=10, output_file_path=Non
 
         temp_trace_to_plot = numpy.mean(temp_trace_to_plot, axis=0)[numpy.newaxis, :]
 
-        rademacher_scale = 1
-        rademacher_scale *= numpy.sqrt((784 + dense_dimension) / (numpy.log(dense_dimension)) * dense_dimension)
-        rademacher_scale *= numpy.sqrt((dense_dimension + 10) / (numpy.log(10)) * 10)
-        # rademacher_scale *= numpy.sqrt(784 + dense_dimension) / dense_dimension
-        # rademacher_scale *= numpy.sqrt(dense_dimension + 10) / 10
-
+        # rademacher_scale *= numpy.sqrt((784 + dense_dimension) / (numpy.log(dense_dimension)) * dense_dimension)
+        # rademacher_scale *= numpy.sqrt((dense_dimension + 10) / (numpy.log(10)) * 10)
+        rademacher_scale = 1. / numpy.sqrt(dense_dimension)
         temp_trace_to_plot[:, -1] /= rademacher_scale
 
         # if number_of_points > 0:
@@ -257,16 +254,20 @@ def parse_models_3d(model_directories, number_of_points=10, output_file_path=Non
 
     # trace_to_plot_coordinate = numpy.hstack((trace_to_plot_coordinate, (trace_to_plot_coordinate[:, 2] + 1000 * trace_to_plot_coordinate[:, 3])[:, numpy.newaxis]))
 
-    # ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-    plot_3D_triangular(trace_to_plot_coordinate, "triangular-" + output_file_path)
-    # print trace_to_plot_coordinate[:, :2]
+    if output_file_path == None:
+        plot_3D_triangular(trace_to_plot_coordinate, output_file_path)
+    else:
+        plot_3D_triangular(trace_to_plot_coordinate, "triangular-" + output_file_path)
 
     trace_to_plot_surface = transform_coordinate_to_surface(trace_to_plot_coordinate)
-
     for smooth in [1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1, 5e-1, 1, 5]:
         # for smooth in [1.5e-4, 2e-4, 2.5e-4, 3e-4, 3.5e-4, 4e-4, 4.5e-4]:
-        plot_3D_hillshaded(trace_to_plot_surface, "hillshaded-%f-%s" % (smooth, output_file_path), smooth=smooth)
-        plot_3D_wires(trace_to_plot_surface, "wires-%f-%s" % (smooth, output_file_path), smooth=smooth)
+        if output_file_path == None:
+            plot_3D_hillshaded(trace_to_plot_surface, output_file, smooth=smooth)
+            plot_3D_wires(trace_to_plot_surface, output_file_path, smooth=smooth)
+        else:
+            plot_3D_hillshaded(trace_to_plot_surface, "hillshaded-%f-%s" % (smooth, output_file_path), smooth=smooth)
+            plot_3D_wires(trace_to_plot_surface, "wires-%f-%s" % (smooth, output_file_path), smooth=smooth)
 
 
 def transform_coordinate_to_surface(matrix):

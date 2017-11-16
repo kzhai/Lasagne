@@ -20,9 +20,12 @@ def main():
 	elif arguments.model == "mlpA":
 		from lasagne.experiments.mlpA import train_mlpA
 		train_mlpA()
-	elif arguments.model == "mlpDS":
-		from lasagne.experiments.mlpDS import train_mlpDS
-		train_mlpDS()
+	elif arguments.model == "mlpD":
+		from lasagne.experiments.mlpD import train_mlpD
+		train_mlpD()
+	elif arguments.model == "mlpHan":
+		from lasagne.experiments.mlpHan import train_mlpHan
+		train_mlpHan()
 	elif arguments.model == "snn":
 		from lasagne.experiments.snn import train_snn
 		train_snn()
