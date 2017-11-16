@@ -1,9 +1,8 @@
+import numpy
+import numpy.random
 import os
 import re
 import sys
-
-import numpy
-import numpy.random
 
 valid_log_pattern = re.compile(
 	r'(?P<date>[\d-]+?) (?P<time>[\d:,]+?) \| (?P<name>[\w\.]+?) \| INFO \|\s+validate: epoch (?P<epoch>[\d]+?), minibatch (?P<minibatch>[\d]+?), duration (?P<duration>[\d.]+?)s, loss (?P<loss>([-\d.]+?|nan)), accuracy (?P<accuracy>[\d.]+?)%')
@@ -173,11 +172,11 @@ if __name__ == '__main__':
 
 	argument_parser = argparse.ArgumentParser()
 	argument_parser.add_argument("--model_directories", dest="model_directories", action='store', default=None,
-	                             help="directory contains model outputs [None]")
+								 help="directory contains model outputs [None]")
 	argument_parser.add_argument("--select_settings", dest="select_settings", action='store', default="None",
-	                             help="select settings to display [None]")
+								 help="select settings to display [None]")
 	argument_parser.add_argument("--output_result_file", dest="output_result_file", action='store', default=None,
-	                             help="output result file [None]")
+								 help="output result file [None]")
 
 	arguments, additionals = argument_parser.parse_known_args()
 
