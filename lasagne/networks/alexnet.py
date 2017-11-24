@@ -329,8 +329,8 @@ class DynamicAlexNet(AdaptiveFeedForwardNetwork):
 				                                              activation_probability=activation_probability)
 			else:
 				# neural_network = noise.TrainableDropoutLayer(neural_network, activation_probability=init.Constant(layer_activation_parameters[layer_index]))
-				neural_network = layers.AdaptiveDropoutLayer(neural_network,
-				                                             activation_probability=activation_probability)
+				neural_network = layers.BernoulliDropoutLayer(neural_network,
+				                                              activation_probability=activation_probability)
 			dropout_layer_index += 1
 
 			layer_shape = dense_dimensions[dense_layer_index]

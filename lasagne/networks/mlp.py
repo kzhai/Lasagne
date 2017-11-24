@@ -155,9 +155,9 @@ def main():
 	# Finally, launch the training loop.
 	# We iterate over epochs:
 	number_of_epochs = 10
-	minibatch_size = 1000
+	minibatch_size = 100
 	for epoch_index in range(number_of_epochs):
-		network.train(train_dataset, minibatch_size, validate_dataset, test_dataset)
+		network.train(train_dataset, validate_dataset, test_dataset, minibatch_size)
 		print("PROGRESS: %f%%" % (100. * epoch_index / number_of_epochs))
 	end_train = timeit.default_timer()
 

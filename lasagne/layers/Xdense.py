@@ -21,7 +21,8 @@ __all__ = [
 	#
 	#
 	#
-	"PrunableDenseLayerHan",
+	"DenseLayerHan",
+	"DenseLayerGuo",
 ]
 
 
@@ -251,11 +252,11 @@ class DynamicDenseLayer(PrunableDenseLayer, SplitableDenseLayer):
 #
 #
 
-class PrunableDenseLayerHan(PrunableDenseLayer):
+class DenseLayerHan(PrunableDenseLayer):
 	def __init__(self, incoming, num_units, W=init.GlorotUniform(), b=init.Constant(0.),
 	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, **kwargs):
-		super(PrunableDenseLayerHan, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes,
-		                                            **kwargs)
+		super(DenseLayerHan, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes,
+		                                    **kwargs)
 		num_inputs = int(numpy.prod(self.input_shape[self.num_leading_axes:]))
 		self.mask = numpy.ones((num_inputs, self.num_units))
 
@@ -274,14 +275,63 @@ class PrunableDenseLayerHan(PrunableDenseLayer):
 		return neuron_indices_to_prune, neuron_indices_to_keep
 
 	def prune_input(self, input_indices_to_keep):
-		old_W = super(PrunableDenseLayerHan, self).prune_input(input_indices_to_keep)
+		old_W = super(DenseLayerHan, self).prune_input(input_indices_to_keep)
 		old_mask = numpy.copy(self.mask)
 		self.mask = self.mask[input_indices_to_keep, :]
 
 		return old_W, old_mask
 
 	def prune_output(self, output_indices_to_keep):
-		old_W, old_b = super(PrunableDenseLayerHan, self).prune_output(output_indices_to_keep)
+		old_W, old_b = super(DenseLayerHan, self).prune_output(output_indices_to_keep)
+		old_mask = numpy.copy(self.mask)
+		self.mask = self.mask[:, output_indices_to_keep]
+
+		return old_W, old_b, old_mask
+
+	def get_output_for(self, input, **kwargs):
+		num_leading_axes = self.num_leading_axes
+		if num_leading_axes < 0:
+			num_leading_axes += input.ndim
+		if input.ndim > num_leading_axes + 1:
+			# flatten trailing axes (into (n+1)-tensor for num_leading_axes=n)
+			input = input.flatten(num_leading_axes + 1)
+
+		activation = T.dot(input, self.mask * self.W)
+		if self.b is not None:
+			activation = activation + self.b
+		return self.nonlinearity(activation)
+
+class DenseLayerGuo(PrunableDenseLayer):
+	def __init__(self, incoming, num_units, W=init.GlorotUniform(), b=init.Constant(0.),
+	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, **kwargs):
+		super(DenseLayerGuo, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes,
+		                                    **kwargs)
+		num_inputs = int(numpy.prod(self.input_shape[self.num_leading_axes:]))
+		self.mask = numpy.ones((num_inputs, self.num_units))
+
+	def prune_weight(self, threshold=1e-3):
+		# threshold = numpy.min(numpy.max(numpy.abs(self.W.eval()), axis=0))
+		# print("number of connections: %d" % np.sum(self.mask == 1))
+
+		self.mask *= (numpy.abs(self.W.eval()) > threshold)
+		return self.find_neuron_indices_to_prune()
+
+	def find_neuron_indices_to_prune(self):
+		number_of_active_synapses_per_neuron = numpy.sum(self.mask, axis=0)
+
+		neuron_indices_to_prune = numpy.argwhere(number_of_active_synapses_per_neuron <= 0).flatten()
+		neuron_indices_to_keep = numpy.setdiff1d(numpy.arange(0, len(self.mask)), neuron_indices_to_prune)
+		return neuron_indices_to_prune, neuron_indices_to_keep
+
+	def prune_input(self, input_indices_to_keep):
+		old_W = super(DenseLayerGuo, self).prune_input(input_indices_to_keep)
+		old_mask = numpy.copy(self.mask)
+		self.mask = self.mask[input_indices_to_keep, :]
+
+		return old_W, old_mask
+
+	def prune_output(self, output_indices_to_keep):
+		old_W, old_b = super(DenseLayerGuo, self).prune_output(output_indices_to_keep)
 		old_mask = numpy.copy(self.mask)
 		self.mask = self.mask[:, output_indices_to_keep]
 

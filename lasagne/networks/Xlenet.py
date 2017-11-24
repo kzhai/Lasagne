@@ -192,7 +192,7 @@ class AdaptiveLeNet(AdaptiveFeedForwardNetwork):
 		output_directory = settings.output_directory
 		dropout_layer_index = 0
 		for network_layer in self.get_network_layers():
-			if not isinstance(network_layer, layers.AdaptiveDropoutLayer):
+			if not isinstance(network_layer, layers.BernoulliDropoutLayer):
 				continue
 
 			layer_retain_probability = network_layer.activation_probability.eval()

@@ -295,7 +295,7 @@ class Network(object):
 
 class FeedForwardNetwork(Network):
 	def __init__(self,
-				 incoming,
+	             incoming,
 	             objective_functions,
 	             update_function,
 	             learning_rate_policy=[1e-3, Xpolicy.constant],
@@ -382,7 +382,7 @@ class FeedForwardNetwork(Network):
 		self._function_train_trainable_params_nondeterministic = theano.function(
 			# inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
 			inputs=[self._input_variable, self._output_variable],
-			outputs=[nondeterministic_objective, nondeterministic_accuracy],
+			outputs=[nondeterministic_loss, nondeterministic_objective, nondeterministic_accuracy],
 			updates=trainable_params_nondeterministic_updates,
 			on_unused_input='warn'
 		)
@@ -390,7 +390,7 @@ class FeedForwardNetwork(Network):
 		# Compile a second function computing the validation train_loss and accuracy:
 		self._function_test = theano.function(
 			inputs=[self._input_variable, self._output_variable],
-			outputs=[deterministic_objective, deterministic_accuracy],
+			outputs=[deterministic_loss, deterministic_objective, deterministic_accuracy],
 			on_unused_input='warn'
 		)
 
@@ -421,8 +421,7 @@ class FeedForwardNetwork(Network):
 		test_dataset_x, test_dataset_y = test_dataset
 		test_running_time = timeit.default_timer()
 		test_function_outputs = self._function_test(test_dataset_x, test_dataset_y)
-		average_test_objective = test_function_outputs[0]
-		average_test_accuracy = test_function_outputs[1]
+		average_test_loss, average_test_objective, average_test_accuracy = test_function_outputs
 		test_running_time = timeit.default_timer() - test_running_time
 		logger.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, test_running_time, average_test_objective,
@@ -435,8 +434,7 @@ class FeedForwardNetwork(Network):
 		validate_running_time = timeit.default_timer()
 		validate_dataset_x, validate_dataset_y = validate_dataset
 		validate_function_outputs = self._function_test(validate_dataset_x, validate_dataset_y)
-		average_validate_objective = validate_function_outputs[0]
-		average_validate_accuracy = validate_function_outputs[1]
+		average_validate_loss, average_validate_objective, average_validate_accuracy = validate_function_outputs
 		validate_running_time = timeit.default_timer() - validate_running_time
 		logger.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, validate_running_time, average_validate_objective,
@@ -462,9 +460,36 @@ class FeedForwardNetwork(Network):
 		if test_dataset is not None:
 			self.test(test_dataset)
 
-	def train(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None, output_directory=None):
+	def train(self, train_dataset, validate_dataset=None, test_dataset=None, minibatch_size=100, output_directory=None):
+		self.update_shared_variables()
+
+		epoch_running_time, average_train_loss, average_train_objective, average_train_accuracy = self.train_epoch(
+			train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory)
+
+		if validate_dataset is not None:
+			output_file = None
+			if output_directory is not None:
+				output_file = os.path.join(output_directory, 'model.pkl')
+			self.validate(validate_dataset, test_dataset, output_file)
+		elif test_dataset is not None:
+			# if output_directory != None:
+			# output_file = os.path.join(output_directory, 'model-%d.pkl' % self.epoch_index)
+			# cPickle.dump(self, open(output_file, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
+			self.test(test_dataset)
+
+		logger.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
+			average_train_accuracy * 100))
+		print('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
+			average_train_accuracy * 100))
+
+		#return epoch_running_time
+
+	def train_epoch(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None,
+	                output_directory=None):
 		# In each epoch_index, we do a full pass over the training data:
-		epoch_running_time = 0
+		epoch_running_time = timeit.default_timer()
 
 		train_dataset_x, train_dataset_y = train_dataset
 
@@ -472,8 +497,7 @@ class FeedForwardNetwork(Network):
 		data_indices = numpy.random.permutation(number_of_data)
 		minibatch_start_index = 0
 
-		self.update_shared_variables()
-
+		total_train_loss = 0
 		total_train_objective = 0
 		total_train_accuracy = 0
 		while minibatch_start_index < number_of_data:
@@ -484,12 +508,13 @@ class FeedForwardNetwork(Network):
 			minibatch_x = train_dataset_x[minibatch_indices, :]
 			minibatch_y = train_dataset_y[minibatch_indices]
 
-			minibatch_running_time, minibatch_average_train_objective, minibatch_average_train_accuracy = self.train_minibatch(
+			minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = self.train_minibatch(
 				minibatch_x, minibatch_y)
 
 			epoch_running_time += minibatch_running_time
 
 			current_minibatch_size = len(data_indices[minibatch_start_index:minibatch_start_index + minibatch_size])
+			total_train_loss += minibatch_average_train_loss * current_minibatch_size
 			total_train_objective += minibatch_average_train_objective * current_minibatch_size
 			total_train_accuracy += minibatch_average_train_accuracy * current_minibatch_size
 
@@ -507,33 +532,18 @@ class FeedForwardNetwork(Network):
 
 			self.minibatch_index += 1
 
-		if validate_dataset is not None:
-			output_file = None
-			if output_directory is not None:
-				output_file = os.path.join(output_directory, 'model.pkl')
-			self.validate(validate_dataset, test_dataset, output_file)
-		elif test_dataset is not None:
-			# if output_directory != None:
-			# output_file = os.path.join(output_directory, 'model-%d.pkl' % self.epoch_index)
-			# cPickle.dump(self, open(output_file, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
-			self.test(test_dataset)
+		epoch_average_train_loss = total_train_loss / number_of_data
+		epoch_average_train_objective = total_train_objective / number_of_data
+		epoch_average_train_accuracy = total_train_accuracy / number_of_data
+		epoch_running_time = timeit.default_timer() - epoch_running_time
 
-		average_train_accuracy = total_train_accuracy / number_of_data
-		average_train_objective = total_train_objective / number_of_data
-		logger.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
-			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
-			average_train_accuracy * 100))
-		print('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
-			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
-			average_train_accuracy * 100))
-
-		return epoch_running_time
+		return epoch_running_time, epoch_average_train_loss, epoch_average_train_objective, epoch_average_train_accuracy
 
 	def train_minibatch(self, minibatch_x, minibatch_y):
 		minibatch_running_time = timeit.default_timer()
 		train_trainable_params_function_outputs = self._function_train_trainable_params_nondeterministic(minibatch_x,
 		                                                                                                 minibatch_y)
-		minibatch_average_train_objective, minibatch_average_train_accuracy = train_trainable_params_function_outputs
+		minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = train_trainable_params_function_outputs
 
 		'''
 		# TODO: begin{this is only for adaptive dropout layers}
@@ -544,7 +554,7 @@ class FeedForwardNetwork(Network):
 
 		minibatch_running_time = timeit.default_timer() - minibatch_running_time
 
-		return minibatch_running_time, minibatch_average_train_objective, minibatch_average_train_accuracy
+		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy
 
 
 def parse_sequence(dataset, window_size, sequence_length, position_offset=-1):
@@ -864,7 +874,7 @@ class RecurrentNetwork(FeedForwardNetwork):
 				average_test_accuracy * 100))
 			'''
 
-	def train(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None, output_directory=None,
+	def train(self, train_dataset, validate_dataset=None, test_dataset=None, minibatch_size=1, output_directory=None,
 	          minibatch_by_instance=True):
 		# In each epoch_index, we do a full pass over the training data:
 		epoch_running_time = 0

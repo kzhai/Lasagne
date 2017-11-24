@@ -14,7 +14,7 @@ from ..random import get_rng
 __all__ = [
     "sample_activation_probability",
     #
-    "BernoulliDropoutLayer",
+    "BernoulliDropoutLayerBackup",
     #
     "GaussianDropoutLayer",
     "FastDropoutLayer",
@@ -101,7 +101,7 @@ def sample_activation_probability(input_dimensions, activation_style, activation
     return activation_probability.astype(theano.config.floatX)
 
 
-class BernoulliDropoutLayer(Layer):
+class BernoulliDropoutLayerBackup(Layer):
     """Dropout layer
 
     Sets values to zero with probability p. See notes for disabling dropout
@@ -154,7 +154,7 @@ class BernoulliDropoutLayer(Layer):
     """
 
     def __init__(self, incoming, activation_probability=0.5, shared_axes=(), num_leading_axes=1, **kwargs):
-        super(BernoulliDropoutLayer, self).__init__(incoming, **kwargs)
+        super(BernoulliDropoutLayerBackup, self).__init__(incoming, **kwargs)
         self._srng = RandomStreams(get_rng().randint(1, 2147462579))
 
         self.num_leading_axes = num_leading_axes
@@ -204,7 +204,7 @@ class BernoulliDropoutLayer(Layer):
             return input * mask
 
 
-class BernoulliDropoutLayerRescale(BernoulliDropoutLayer):
+class BernoulliDropoutLayerRescale(BernoulliDropoutLayerBackup):
     """Bernoulli dropout layer
     """
 

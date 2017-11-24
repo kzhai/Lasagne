@@ -3,9 +3,8 @@ import os
 import timeit
 
 import numpy
-import theano
 
-from . import FeedForwardNetwork, AdaptiveFeedForwardNetwork, DynamicFeedForwardNetwork, AdjustableFeedForwardNetwork
+from . import AdaptiveFeedForwardNetwork, DynamicFeedForwardNetwork, AdjustableFeedForwardNetwork
 from . import adjust_parameter_according_to_policy
 from .. import init, nonlinearities, objectives, Xpolicy, updates
 from .. import layers
@@ -18,8 +17,115 @@ __all__ = [
 	#
 	#
 	#
-	"MultiLayerPerceptronHanPrunable",
+	"MultiLayerPerceptronHan",
 ]
+
+
+class AdaptiveMultiLayerPerceptronBackup(AdaptiveFeedForwardNetwork):
+	def __init__(self,
+	             incoming,
+
+	             dense_dimensions,
+	             dense_nonlinearities,
+
+	             layer_activation_types,
+	             layer_activation_parameters,
+	             layer_activation_styles,
+
+	             objective_functions=objectives.categorical_crossentropy,
+	             update_function=updates.nesterov_momentum,
+
+	             learning_rate_policy=[1e-3, Xpolicy.constant],
+	             # learning_rate_decay=None,
+
+	             adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
+	             # dropout_learning_rate_decay=None,
+	             adaptable_update_interval=1,
+	             # update_hidden_layer_dropout_only=False,
+
+	             max_norm_constraint=0,
+	             # learning_rate_decay_style=None,
+	             # learning_rate_decay_parameter=0,
+	             validation_interval=-1,
+	             ):
+		super(AdaptiveMultiLayerPerceptronBackup, self).__init__(incoming=incoming,
+
+		                                                         objective_functions=objective_functions,
+		                                                         update_function=update_function,
+		                                                         learning_rate_policy=learning_rate_policy,
+		                                                         # learning_rate_decay,
+
+		                                                         adaptable_learning_rate_policy=adaptable_learning_rate_policy,
+		                                                         # dropout_learning_rate_decay,
+		                                                         adaptable_update_interval=adaptable_update_interval,
+
+		                                                         max_norm_constraint=max_norm_constraint,
+		                                                         validation_interval=validation_interval,
+		                                                         )
+		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
+		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+
+		# self._input_layer = layers.InputLayer(shape=input_shape)
+		# self._input_variable = self._input_layer.input_var
+
+		assert len(dense_dimensions) == len(layer_activation_types)
+		assert len(dense_dimensions) == len(dense_nonlinearities)
+		assert len(dense_dimensions) == len(layer_activation_parameters)
+		assert len(dense_dimensions) == len(layer_activation_styles)
+
+		'''
+		pretrained_network_layers = None
+		if pretrained_model != None:
+			pretrained_network_layers = lasagne.layers.get_all_layers(pretrained_model._neural_network)
+		'''
+
+		# neural_network = input_network
+		neural_network = self._input_layer
+		for layer_index in range(len(dense_dimensions)):
+			previous_layer_dimension = layers.get_output_shape(neural_network)[1:]
+			activation_probability = layers.sample_activation_probability(previous_layer_dimension,
+			                                                              layer_activation_styles[layer_index],
+			                                                              layer_activation_parameters[layer_index])
+
+			# neural_network = layers.AdaptiveDropoutLayer(neural_network, activation_probability=activation_probability)
+
+			neural_network = layer_activation_types[layer_index](neural_network,
+			                                                     activation_probability=activation_probability)
+
+			layer_dimension = dense_dimensions[layer_index]
+			layer_nonlinearity = dense_nonlinearities[layer_index]
+
+			neural_network = layers.DenseLayer(neural_network, layer_dimension, W=init.GlorotUniform(
+				gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
+
+			'''
+			if pretrained_network_layers == None or len(pretrained_network_layers) <= layer_index:
+				_neural_network = lasagne.layers.DenseLayer(_neural_network, layer_dimension, nonlinearity=layer_nonlinearity)
+			else:
+				pretrained_layer = pretrained_network_layers[layer_index]
+				assert isinstance(pretrained_layer, lasagne.layers.DenseLayer)
+				assert pretrained_layer.nonlinearity == layer_nonlinearity, (pretrained_layer.nonlinearity, layer_nonlinearity)
+				assert pretrained_layer.num_units == layer_dimension
+
+				_neural_network = lasagne.layers.DenseLayer(_neural_network,
+													layer_dimension,
+													W=pretrained_layer.W,
+													b=pretrained_layer.b,
+													nonlinearity=layer_nonlinearity)
+			'''
+
+		self._neural_network = neural_network
+
+		self.build_functions()
+
+	def train_minibatch(self, minibatch_x, minibatch_y):
+		minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = super(
+			AdaptiveMultiLayerPerceptronBackup, self).train_minibatch(minibatch_x, minibatch_y)
+
+		# minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy
+		self.train_minibatch_adaptables(minibatch_x, minibatch_y)
+
+		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy
 
 
 class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
@@ -118,6 +224,14 @@ class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
 		self._neural_network = neural_network
 
 		self.build_functions()
+
+	def train(self, train_dataset, validate_dataset=None, test_dataset=None, minibatch_size=100, output_directory=None):
+		super(AdaptiveMultiLayerPerceptron, self).train(train_dataset, validate_dataset, test_dataset, minibatch_size,
+		                                                output_directory)
+
+		self.train_adaptables_layerwise_iteratively(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
+		#self.train_adaptables_layerwise(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
+		#self.train_adaptables_networkwise(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
 
 
 class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
@@ -333,7 +447,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 #
 #
 
-class MultiLayerPerceptronHanPrunable(AdjustableFeedForwardNetwork):
+class MultiLayerPerceptronHan(AdjustableFeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 
@@ -355,14 +469,14 @@ class MultiLayerPerceptronHanPrunable(AdjustableFeedForwardNetwork):
 	             max_norm_constraint=0,
 	             validation_interval=-1,
 	             ):
-		super(MultiLayerPerceptronHanPrunable, self).__init__(incoming,
-		                                                      objective_functions=objective_functions,
-		                                                      update_function=update_function,
-		                                                      learning_rate_policy=learning_rate_policy,
-		                                                      # prune_policy=prune_policy,
-		                                                      max_norm_constraint=max_norm_constraint,
-		                                                      validation_interval=validation_interval,
-		                                                      )
+		super(MultiLayerPerceptronHan, self).__init__(incoming,
+		                                              objective_functions=objective_functions,
+		                                              update_function=update_function,
+		                                              learning_rate_policy=learning_rate_policy,
+		                                              # prune_policy=prune_policy,
+		                                              max_norm_constraint=max_norm_constraint,
+		                                              validation_interval=validation_interval,
+		                                              )
 
 		self._prune_threshold_policies = prune_threshold_policies
 		# self._splice_threshold_policies = splice_threshold_policies
@@ -390,7 +504,7 @@ class MultiLayerPerceptronHanPrunable(AdjustableFeedForwardNetwork):
 			layer_dimension = dense_dimensions[layer_index]
 			layer_nonlinearity = dense_nonlinearities[layer_index]
 
-			neural_network = layers.PrunableDenseLayerHan(neural_network, layer_dimension, W=init.GlorotUniform(
+			neural_network = layers.DenseLayerHan(neural_network, layer_dimension, W=init.GlorotUniform(
 				gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
 
 		self._neural_network = neural_network
@@ -425,11 +539,11 @@ class MultiLayerPerceptronHanPrunable(AdjustableFeedForwardNetwork):
 		dropout_layer_index = 0
 		for layer_0, layer_1 in zip(self.get_network_layers()[:-1], self.get_network_layers()[1:]):
 			if (not isinstance(layer_0, layers.PrunableBernoulliDropoutLayerHan)) or \
-					(not isinstance(layer_1, layers.PrunableDenseLayerHan)):
+					(not isinstance(layer_1, layers.DenseLayerHan)):
 				continue
 
 			assert isinstance(layer_0, layers.PrunableBernoulliDropoutLayerHan)
-			assert isinstance(layer_1, layers.PrunableDenseLayerHan)
+			assert isinstance(layer_1, layers.DenseLayerHan)
 
 			prune_threshold = prune_thresholds[dropout_layer_index]
 			dropout_layer_index += 1
@@ -474,9 +588,9 @@ class MultiLayerPerceptronHanPrunable(AdjustableFeedForwardNetwork):
 		layer_info_index = 0
 		for layer_1, layer_2, layer_3 in zip(self.get_network_layers()[:-2], self.get_network_layers()[1:-1],
 		                                     self.get_network_layers()[2:]):
-			if (not isinstance(layer_1, layers.PrunableDenseLayerHan)) or \
+			if (not isinstance(layer_1, layers.DenseLayerHan)) or \
 					(not isinstance(layer_2, layers.PrunableBernoulliDropoutLayerHan)) or \
-					(not isinstance(layer_3, layers.PrunableDenseLayerHan)):
+					(not isinstance(layer_3, layers.DenseLayerHan)):
 				continue
 
 			layer_info_index += 1
@@ -505,7 +619,7 @@ class MultiLayerPerceptronHanPrunable(AdjustableFeedForwardNetwork):
 			self.test(test_dataset)
 
 
-class MultiLayerPerceptronGuoDynamicSurgery(AdjustableFeedForwardNetwork):
+class MultiLayerPerceptronGuo(AdjustableFeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 
@@ -533,14 +647,14 @@ class MultiLayerPerceptronGuoDynamicSurgery(AdjustableFeedForwardNetwork):
 	             max_norm_constraint=0,
 	             validation_interval=-1,
 	             ):
-		super(MultiLayerPerceptronGuoDynamicSurgery, self).__init__(incoming,
-		                                                            objective_functions=objective_functions,
-		                                                            update_function=update_function,
-		                                                            learning_rate_policy=learning_rate_policy,
-		                                                            # prune_policy=prune_policy,
-		                                                         max_norm_constraint=max_norm_constraint,
-		                                                            validation_interval=validation_interval,
-		                                                            )
+		super(MultiLayerPerceptronGuo, self).__init__(incoming,
+		                                              objective_functions=objective_functions,
+		                                              update_function=update_function,
+		                                              learning_rate_policy=learning_rate_policy,
+		                                              # prune_policy=prune_policy,
+		                                              max_norm_constraint=max_norm_constraint,
+		                                              validation_interval=validation_interval,
+		                                              )
 
 		self._prune_threshold_policies = prune_threshold_policies
 		self._splice_threshold_policies = splice_threshold_policies
@@ -568,7 +682,7 @@ class MultiLayerPerceptronGuoDynamicSurgery(AdjustableFeedForwardNetwork):
 			layer_dimension = dense_dimensions[layer_index]
 			layer_nonlinearity = dense_nonlinearities[layer_index]
 
-			neural_network = layers.PrunableDenseLayerHan(neural_network, layer_dimension, W=init.GlorotUniform(
+			neural_network = layers.DenseLayerHan(neural_network, layer_dimension, W=init.GlorotUniform(
 				gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
 
 		self._neural_network = neural_network
@@ -712,7 +826,7 @@ def main():
 	)
 	'''
 
-	network = MultiLayerPerceptronHanPrunable(
+	network = MultiLayerPerceptronHan(
 		incoming=input_shape,
 
 		dense_dimensions=[1024, 10],

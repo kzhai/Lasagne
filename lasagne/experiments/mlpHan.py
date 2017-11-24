@@ -87,7 +87,7 @@ def train_mlpHan():
 	settings = config_model(construct_mlpHan_parser, validate_mlpHan_arguments)
 	settings = validate_config(settings)
 
-	network = networks.MultiLayerPerceptronHanPrunable(
+	network = networks.MultiLayerPerceptronHan(
 		incoming=settings.input_shape,
 
 		dense_dimensions=settings.dense_dimensions,

@@ -418,6 +418,9 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 
 	if debugger.display_architecture in settings.debug:
 		debugger.display_architecture(network)
+	if debugger.debug_function_output in settings.debug:
+		debugger.debug_function_output(network, train_dataset)
+		debugger.debug_function_output(network, test_dataset)
 	for snapshot_function in settings.snapshot:
 		snapshot_function(network, settings)
 
@@ -437,8 +440,11 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 		if debugger.debug_rademacher_p_inf_q_1 in settings.debug:
 			debugger.debug_rademacher_p_inf_q_1(network, train_dataset)
 			debugger.debug_rademacher_p_inf_q_1(network, test_dataset)
+		if debugger.debug_function_output in settings.debug:
+			debugger.debug_function_output(network, train_dataset)
+			debugger.debug_function_output(network, test_dataset)
 
-		network.train(train_dataset, settings.minibatch_size, validate_dataset, test_dataset, output_directory)
+		network.train(train_dataset, validate_dataset, test_dataset, settings.minibatch_size, output_directory)
 		network.epoch_index += 1
 
 		# if settings.snapshot_interval > 0 and network.epoch_index % settings.snapshot_interval == 0:

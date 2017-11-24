@@ -2,25 +2,25 @@ import numpy
 import theano.tensor as T
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
-from . import Layer, BernoulliDropoutLayer
+from . import Layer, BernoulliDropoutLayerBackup
 from .. import init
 from ..random import get_rng
 
 __all__ = [
-	"AdaptiveDropoutLayer",
+	"BernoulliDropoutLayer",
 	"DynamicDropoutLayer",
 	#
 	"PrunableBernoulliDropoutLayerHan",
 ]
 
 
-class AdaptiveDropoutLayer(Layer):
+class AdaptiveDropoutLayerBackup(Layer):
 	"""Adaptive Dropout layer
 	"""
 
 	def __init__(self, incoming, activation_probability=0.5, rescale=True, shared_axes=(),
 	             num_leading_axes=1, **kwargs):
-		super(AdaptiveDropoutLayer, self).__init__(incoming, **kwargs)
+		super(AdaptiveDropoutLayerBackup, self).__init__(incoming, **kwargs)
 		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
 
 		if num_leading_axes >= len(self.input_shape):
@@ -42,10 +42,29 @@ class AdaptiveDropoutLayer(Layer):
 		# self.activation_probability = theano.shared(value=activation_probability, )
 		self.shared_axes = tuple(shared_axes)
 
+	def _set_r(self, activation_probability=init.Uniform(range=(0, 1))):
+		old_activation_probability = self.activation_probability.eval()
+		self.params.pop(self.activation_probability)
+
+		if isinstance(activation_probability, init.Initializer):
+			self.activation_probability = self.add_param(activation_probability,
+			                                             self.input_shape[self.num_leading_axes:],
+			                                             name="adaptable.r", trainable=False,
+			                                             regularizable=False, adaptable=True)
+		elif isinstance(activation_probability, numpy.ndarray):
+			self.activation_probability = self.add_param(activation_probability,
+			                                             activation_probability.shape,
+			                                             name="adaptable.r", trainable=False,
+			                                             regularizable=False, adaptable=True)
+		else:
+			raise ValueError("Unrecognized parameter type %s." % type(activation_probability))
+
+		return old_activation_probability
+
 	def get_output_for(self, input, deterministic=False, **kwargs):
 		if deterministic:
 			# return input * self.activation_probability
-			return T.mul(input, self.activation_probability)
+			return T.mul(input, T.clip(self.activation_probability, 0, 1))
 		else:
 			retain_prob = self.activation_probability.eval()
 			retain_prob = numpy.clip(retain_prob, 0, 1)
@@ -68,24 +87,73 @@ class AdaptiveDropoutLayer(Layer):
 				mask = T.patternbroadcast(mask, bcast)
 			return input * mask
 
+
+class BernoulliDropoutLayer(Layer):
+	"""Adaptive Dropout layer
+	"""
+
+	def __init__(self, incoming, activation_probability=0.5, shared_axes=(), num_leading_axes=1, **kwargs):
+		super(BernoulliDropoutLayer, self).__init__(incoming, **kwargs)
+		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
+
+		if num_leading_axes >= len(self.input_shape):
+			raise ValueError(
+				"Got num_leading_axes=%d for a %d-dimensional input, "
+				"leaving no trailing axes for the dot product." %
+				(num_leading_axes, len(self.input_shape)))
+		elif num_leading_axes < -len(self.input_shape):
+			raise ValueError(
+				"Got num_leading_axes=%d for a %d-dimensional input, "
+				"requesting more trailing axes than there are input "
+				"dimensions." % (num_leading_axes, len(self.input_shape)))
+		self.num_leading_axes = num_leading_axes
+
+		self.activation_probability = self.add_param(activation_probability, self.input_shape[self.num_leading_axes:],
+		                                             name="r", trainable=False, regularizable=False)
+
+		self.shared_axes = tuple(shared_axes)
+
 	def _set_r(self, activation_probability=init.Uniform(range=(0, 1))):
 		old_activation_probability = self.activation_probability.eval()
 		self.params.pop(self.activation_probability)
 
 		if isinstance(activation_probability, init.Initializer):
 			self.activation_probability = self.add_param(activation_probability,
-			                                             self.input_shape[self.num_leading_axes:],
-			                                             name="adaptable.r", trainable=False,
-			                                             regularizable=False, adaptable=True)
+			                                             self.input_shape[self.num_leading_axes:], name="r",
+			                                             trainable=False, regularizable=False)
 		elif isinstance(activation_probability, numpy.ndarray):
-			self.activation_probability = self.add_param(activation_probability,
-			                                             activation_probability.shape,
-			                                             name="adaptable.r", trainable=False,
-			                                             regularizable=False, adaptable=True)
+			self.activation_probability = self.add_param(activation_probability, activation_probability.shape, name="r",
+			                                             trainable=False, regularizable=False)
 		else:
 			raise ValueError("Unrecognized parameter type %s." % type(activation_probability))
 
 		return old_activation_probability
+
+	def get_output_for(self, input, deterministic=False, **kwargs):
+		if deterministic:
+			# return input * self.activation_probability
+			return T.mul(input, T.clip(self.activation_probability, 0, 1))
+		else:
+			retain_prob = self.activation_probability.eval()
+			retain_prob = numpy.clip(retain_prob, 0, 1)
+
+			# use nonsymbolic shape for dropout mask if possible
+			mask_shape = self.input_shape
+			if any(s is None for s in mask_shape):
+				mask_shape = input.shape
+
+			# apply dropout, respecting shared axes
+			if self.shared_axes:
+				shared_axes = tuple(a if a >= 0 else a + input.ndim
+				                    for a in self.shared_axes)
+				mask_shape = tuple(1 if a in shared_axes else s
+				                   for a, s in enumerate(mask_shape))
+			mask = self._srng.binomial(mask_shape, p=retain_prob,
+			                           dtype=input.dtype)
+			if self.shared_axes:
+				bcast = tuple(bool(s == 1) for s in mask_shape)
+				mask = T.patternbroadcast(mask, bcast)
+			return input * mask
 
 
 '''
@@ -109,7 +177,7 @@ class PrunableAdaptiveDropoutLayer(AdaptiveDropoutLayer):
 '''
 
 
-class DynamicDropoutLayer(AdaptiveDropoutLayer):
+class DynamicDropoutLayer(BernoulliDropoutLayer):
 	"""Elastic adaptive Dropout layer
 	"""
 
