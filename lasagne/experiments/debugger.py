@@ -250,10 +250,13 @@ def snapshot_dropouts(network, settings=None, **kwargs):
 				isinstance(network_layer, layers.DynamicDropoutLayer):
 			layer_retain_probability = network_layer.activation_probability.eval()
 		elif isinstance(network_layer, layers.SparseVariationalDropoutLayer):
-			alpha = T.exp(network_layer.log_alpha).eval()
-			layer_retain_probability = 1. / (1. + alpha)
+			sigma = T.nnet.sigmoid(network_layer.logit_sigma).eval()
+			layer_retain_probability = 1. / (1. + sigma ** 2)
+			#alpha = T.exp(network_layer.logit_sigma).eval()
+			#layer_retain_probability = 1. / (1. + alpha)
 		elif isinstance(network_layer, layers.VariationalDropoutTypeALayer) or \
-				isinstance(network_layer, layers.VariationalDropoutTypeBLayer):
+				isinstance(network_layer, layers.VariationalDropoutTypeBLayer) or \
+				isinstance(network_layer, layers.SparseVariationalDropoutLayer):
 			sigma = T.nnet.sigmoid(network_layer.logit_sigma).eval()
 			layer_retain_probability = 1. / (1. + sigma ** 2)
 		elif isinstance(network_layer, layers.GaussianDropoutLayer) or \

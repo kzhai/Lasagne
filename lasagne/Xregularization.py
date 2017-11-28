@@ -1,7 +1,7 @@
 import theano.tensor as T
 
 from .layers import get_output, get_output_shape, EmbeddingLayer, DenseLayer, ObstructedDenseLayer, \
-	BernoulliDropoutLayer, BernoulliDropoutLayer
+	BernoulliDropoutLayer
 
 
 def regularize_layer_weighted(layers, penalty, tags={'regularizable': True}, **kwargs):
@@ -247,46 +247,12 @@ def kl_divergence_sparse(network, **kwargs):
 	k3 = 1.48695
 	C = -k1
 
-	#
-	#
-	#
-
-	for layer in network.get_network_layers():
-		if isinstance(layer, BernoulliDropoutLayer):
-			# retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1)
-			retain_probability = T.clip(layer.activation_probability, 0, 1)
-			rademacher_regularization *= T.max(abs(retain_probability))
-		elif isinstance(layer, DenseLayer):
-			# compute B_l * p_l, with a layer-wise scale constant
-			rademacher_regularization *= T.max(T.sum(abs(layer.W), axis=0))
-
-			if kwargs['rescale']:
-				# this is to offset glorot initialization
-				d1, d2 = layer.W.shape
-				rademacher_regularization /= d1 * T.sqrt(T.log(d2))
-				rademacher_regularization *= T.sqrt(d1 + d2)
-		elif isinstance(layer, ObstructedDenseLayer):
-			rademacher_regularization *= T.max(T.sum(abs(layer.W), axis=0))
-
-			if kwargs['rescale']:
-				# this is to offset glorot initialization
-				d1, d2 = layer.W.shape
-				d2 = layer.num_units
-				rademacher_regularization /= d1 * T.sqrt(T.log(d2))
-				rademacher_regularization *= T.sqrt(d1 + d2)
-
-	#
-	#
-	#
-
 	params = network.get_network_params()
-	alphas = [T.exp(p) for p in params if p.name == "variational.dropout.log_alpha"]
+	log_alphas = [T.nnet.sigmoid(p) for p in params if p.name == "variational.dropout.logit_sigma"]
 
-	kl_divergence = -T.sum(
-		[T.sum(k1 * T.nnet.sigmoid(k2 + (k3 * T.log(alpha))) - 0.5 * T.log(1 + T.pow(alpha, -1)) + C) for alpha in
-		 alphas])
-
-	return kl_divergence
+	return -T.sum(
+		[T.sum(k1 * T.nnet.sigmoid(k2 + (k3 * log_alpha)) - 0.5 * T.log(1 + T.pow(T.exp(log_alpha), -1)) + C) for
+		 log_alpha in log_alphas])
 
 
 '''

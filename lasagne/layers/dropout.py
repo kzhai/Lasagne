@@ -639,8 +639,9 @@ def _validate_activation_probability_for_logit_parameterization(activation_proba
 		return numpy.clip(activation_probability, 0.5 + clip_margin, 1 - clip_margin)
 	return numpy.asarray(activation_probability).astype(theano.config.floatX)
 
+SparseVariationalDropoutLayer = VariationalDropoutTypeALayer
 
-class SparseVariationalDropoutLayer(Layer):
+class SparseVariationalDropoutLayerBackup(Layer):
 	"""
 	Layer implementing the sparse variational dropout described in:
 	https://arxiv.org/abs/1701.05369
@@ -660,7 +661,7 @@ class SparseVariationalDropoutLayer(Layer):
 
 	def __init__(self, incoming, activation_probability=0.5, shared_axes=(), num_leading_axes=1, **kwargs):
 		# VariationalDropoutLayer.__init__(self, incoming, activation_probability=activation_probability, adaptive=adaptive, **kwargs)
-		super(SparseVariationalDropoutLayer, self).__init__(incoming, **kwargs)
+		super(SparseVariationalDropoutLayerBackup, self).__init__(incoming, **kwargs)
 
 		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
 
