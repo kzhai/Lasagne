@@ -10,7 +10,7 @@ __all__ = [
 	"BernoulliDropoutLayer",
 	"DynamicDropoutLayer",
 	#
-	"PrunableBernoulliDropoutLayerHan",
+	"BernoulliDropoutLayerHan",
 ]
 
 
@@ -226,14 +226,14 @@ class DynamicDropoutLayer(BernoulliDropoutLayer):
 		return old_activation_probability
 
 
-class PrunableBernoulliDropoutLayerHan(BernoulliDropoutLayer):
+class BernoulliDropoutLayerHan(BernoulliDropoutLayer):
 	"""Prunable Dropout layer
 	"""
 
 	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)),
 	             num_leading_axes=1, shared_axes=(), **kwargs):
-		super(PrunableBernoulliDropoutLayerHan, self).__init__(incoming, activation_probability, num_leading_axes,
-		                                                       shared_axes, **kwargs)
+		super(BernoulliDropoutLayerHan, self).__init__(incoming, activation_probability, num_leading_axes,
+		                                               shared_axes, **kwargs)
 
 	def prune_activation_probability(self, input_indices_to_keep):
 		self.input_shape = self.input_layer.output_shape

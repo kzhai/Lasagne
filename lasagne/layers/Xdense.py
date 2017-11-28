@@ -302,12 +302,19 @@ class DenseLayerHan(PrunableDenseLayer):
 		return self.nonlinearity(activation)
 
 class DenseLayerGuo(PrunableDenseLayer):
+	"""
+	@TODO: unfinished
+	"""
 	def __init__(self, incoming, num_units, W=init.GlorotUniform(), b=init.Constant(0.),
-	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, **kwargs):
+	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, a_k = 0, b_k = 1, **kwargs):
 		super(DenseLayerGuo, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes,
 		                                    **kwargs)
 		num_inputs = int(numpy.prod(self.input_shape[self.num_leading_axes:]))
 		self.mask = numpy.ones((num_inputs, self.num_units))
+
+		assert a_k < b_k
+		self.a_k = a_k
+		self.b_k = b_k
 
 	def prune_weight(self, threshold=1e-3):
 		# threshold = numpy.min(numpy.max(numpy.abs(self.W.eval()), axis=0))

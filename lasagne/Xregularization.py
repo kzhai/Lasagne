@@ -241,17 +241,52 @@ def kl_divergence_sparse(network, **kwargs):
 	# gather up all the alphas
 	# params = network.get_network_params(name="variational.dropout.log_alpha")
 	# alphas = [T.exp(p) for p in params]
-	params = network.get_network_params()
-	alphas = [T.exp(p) for p in params if p.name == "variational.dropout.log_alpha"]
 
 	k1 = 0.63576
 	k2 = 1.8732
 	k3 = 1.48695
 	C = -k1
 
-	return -T.sum(
+	#
+	#
+	#
+
+	for layer in network.get_network_layers():
+		if isinstance(layer, BernoulliDropoutLayer):
+			# retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1)
+			retain_probability = T.clip(layer.activation_probability, 0, 1)
+			rademacher_regularization *= T.max(abs(retain_probability))
+		elif isinstance(layer, DenseLayer):
+			# compute B_l * p_l, with a layer-wise scale constant
+			rademacher_regularization *= T.max(T.sum(abs(layer.W), axis=0))
+
+			if kwargs['rescale']:
+				# this is to offset glorot initialization
+				d1, d2 = layer.W.shape
+				rademacher_regularization /= d1 * T.sqrt(T.log(d2))
+				rademacher_regularization *= T.sqrt(d1 + d2)
+		elif isinstance(layer, ObstructedDenseLayer):
+			rademacher_regularization *= T.max(T.sum(abs(layer.W), axis=0))
+
+			if kwargs['rescale']:
+				# this is to offset glorot initialization
+				d1, d2 = layer.W.shape
+				d2 = layer.num_units
+				rademacher_regularization /= d1 * T.sqrt(T.log(d2))
+				rademacher_regularization *= T.sqrt(d1 + d2)
+
+	#
+	#
+	#
+
+	params = network.get_network_params()
+	alphas = [T.exp(p) for p in params if p.name == "variational.dropout.log_alpha"]
+
+	kl_divergence = -T.sum(
 		[T.sum(k1 * T.nnet.sigmoid(k2 + (k3 * T.log(alpha))) - 0.5 * T.log(1 + T.pow(alpha, -1)) + C) for alpha in
 		 alphas])
+
+	return kl_divergence
 
 
 '''

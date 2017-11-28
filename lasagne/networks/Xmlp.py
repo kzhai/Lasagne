@@ -448,6 +448,11 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 #
 
 class MultiLayerPerceptronHan(AdjustableFeedForwardNetwork):
+	"""
+	Han, S., Pool, J., Tran, J., & Dally, W. (2015).
+	Learning both weights and connections for efficient neural network.
+	In Advances in Neural Information Processing Systems (pp. 1135-1143).
+	"""
 	def __init__(self,
 	             incoming,
 
@@ -498,8 +503,8 @@ class MultiLayerPerceptronHan(AdjustableFeedForwardNetwork):
 			                                                              layer_activation_styles[layer_index],
 			                                                              layer_activation_parameters[layer_index])
 
-			neural_network = layers.PrunableBernoulliDropoutLayerHan(neural_network,
-			                                                         activation_probability=activation_probability)
+			neural_network = layers.BernoulliDropoutLayerHan(neural_network,
+			                                                 activation_probability=activation_probability)
 
 			layer_dimension = dense_dimensions[layer_index]
 			layer_nonlinearity = dense_nonlinearities[layer_index]
@@ -538,11 +543,11 @@ class MultiLayerPerceptronHan(AdjustableFeedForwardNetwork):
 
 		dropout_layer_index = 0
 		for layer_0, layer_1 in zip(self.get_network_layers()[:-1], self.get_network_layers()[1:]):
-			if (not isinstance(layer_0, layers.PrunableBernoulliDropoutLayerHan)) or \
+			if (not isinstance(layer_0, layers.BernoulliDropoutLayerHan)) or \
 					(not isinstance(layer_1, layers.DenseLayerHan)):
 				continue
 
-			assert isinstance(layer_0, layers.PrunableBernoulliDropoutLayerHan)
+			assert isinstance(layer_0, layers.BernoulliDropoutLayerHan)
 			assert isinstance(layer_1, layers.DenseLayerHan)
 
 			prune_threshold = prune_thresholds[dropout_layer_index]
@@ -589,7 +594,7 @@ class MultiLayerPerceptronHan(AdjustableFeedForwardNetwork):
 		for layer_1, layer_2, layer_3 in zip(self.get_network_layers()[:-2], self.get_network_layers()[1:-1],
 		                                     self.get_network_layers()[2:]):
 			if (not isinstance(layer_1, layers.DenseLayerHan)) or \
-					(not isinstance(layer_2, layers.PrunableBernoulliDropoutLayerHan)) or \
+					(not isinstance(layer_2, layers.BernoulliDropoutLayerHan)) or \
 					(not isinstance(layer_3, layers.DenseLayerHan)):
 				continue
 
@@ -620,6 +625,11 @@ class MultiLayerPerceptronHan(AdjustableFeedForwardNetwork):
 
 
 class MultiLayerPerceptronGuo(AdjustableFeedForwardNetwork):
+	"""
+	Guo, Y., Yao, A., & Chen, Y. (2016).
+	Dynamic network surgery for efficient DNNs.
+	In Advances In Neural Information Processing Systems (pp. 1379-1387).
+	"""
 	def __init__(self,
 	             incoming,
 
@@ -676,13 +686,13 @@ class MultiLayerPerceptronGuo(AdjustableFeedForwardNetwork):
 			                                                              layer_activation_styles[layer_index],
 			                                                              layer_activation_parameters[layer_index])
 
-			neural_network = layers.PrunableBernoulliDropoutLayerHan(neural_network,
-			                                                         activation_probability=activation_probability)
+			neural_network = layers.BernoulliDropoutLayerHan(neural_network,
+			                                                 activation_probability=activation_probability)
 
 			layer_dimension = dense_dimensions[layer_index]
 			layer_nonlinearity = dense_nonlinearities[layer_index]
 
-			neural_network = layers.DenseLayerHan(neural_network, layer_dimension, W=init.GlorotUniform(
+			neural_network = layers.DenseLayerGuo(neural_network, layer_dimension, W=init.GlorotUniform(
 				gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
 
 		self._neural_network = neural_network
@@ -722,6 +732,63 @@ class MultiLayerPerceptronGuo(AdjustableFeedForwardNetwork):
 			                    test_dataset=test_dataset)
 
 		self.prune_synapses(train_dataset, validate_dataset, test_dataset)
+
+	def split_neurons(self, split_thresholds, validate_dataset=None, test_dataset=None, output_directory=None):
+		architecture_changed = False
+
+		dropout_layer_index = 0
+		for pre_dropout_layer, dropout_layer, post_dropout_layer in zip(self.get_network_layers()[:-2],
+		                                                                self.get_network_layers()[1:-1],
+		                                                                self.get_network_layers()[2:]):
+
+			if (not isinstance(pre_dropout_layer, layers.DynamicDenseLayer)) or \
+					(not isinstance(dropout_layer, layers.DynamicDropoutLayer)) or \
+					(not isinstance(post_dropout_layer, layers.DynamicDenseLayer)):
+				continue
+
+			# print("layer %s size %d" % (pre_dropout_layer, pre_dropout_layer.num_units))
+			# print("layer %s size %s" % (dropout_layer, dropout_layer.input_shape))
+			# print("layer %s size %d" % (post_dropout_layer, post_dropout_layer.num_units))
+
+			split_threshold = split_thresholds[dropout_layer_index]
+			dropout_layer_index += 1
+			neuron_indices_to_split, neuron_indices_to_keep = dropout_layer.find_neuron_indices_to_split(
+				split_threshold)
+
+			if len(neuron_indices_to_split) == 0:
+				continue
+
+			architecture_changed = True
+			old_size = len(neuron_indices_to_split) + len(neuron_indices_to_keep)
+			new_size = 2 * len(neuron_indices_to_split) + len(neuron_indices_to_keep)
+
+			pre_dropout_layer.split_output(neuron_indices_to_split)
+			dropout_layer.split_activation_probability(neuron_indices_to_split)
+			post_dropout_layer.split_input(neuron_indices_to_split)
+
+			print("Split layer %s from %d to %d with threshold %g" % (pre_dropout_layer, old_size, new_size,
+			                                                          split_threshold))
+			logger.info("Split layer %s from %d to %d with threshold %g" % (pre_dropout_layer, old_size, new_size,
+			                                                                split_threshold))
+
+		if not architecture_changed:
+			return
+
+		self.build_functions()
+
+		# print("Performance on validate and test set after pruning...")
+		# logger.info("Performance on validate and test set after pruning...")
+
+		if validate_dataset is not None:
+			output_file = None
+			if output_directory is not None:
+				output_file = os.path.join(output_directory, 'model.pkl')
+			self.validate(validate_dataset, test_dataset, output_file)
+		elif test_dataset is not None:
+			self.test(test_dataset)
+
+		return
+
 
 	"""
 	def prune_synapses(self, train_dataset=None, validate_dataset=None, test_dataset=None,
