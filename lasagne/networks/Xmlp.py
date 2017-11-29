@@ -4,7 +4,7 @@ import timeit
 
 import numpy
 
-from . import AdaptiveFeedForwardNetwork, DynamicFeedForwardNetwork, AdjustableFeedForwardNetwork
+from . import FeedForwardNetwork, AdaptiveFeedForwardNetwork, DynamicFeedForwardNetwork, AdjustableFeedForwardNetwork
 from . import adjust_parameter_according_to_policy
 from .. import init, nonlinearities, objectives, Xpolicy, updates
 from .. import layers
@@ -18,6 +18,7 @@ __all__ = [
 	#
 	#
 	"MultiLayerPerceptronHan",
+	"MultiLayerPerceptronGuo",
 ]
 
 
@@ -229,9 +230,11 @@ class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
 		super(AdaptiveMultiLayerPerceptron, self).train(train_dataset, validate_dataset, test_dataset, minibatch_size,
 		                                                output_directory)
 
-		self.train_adaptables_layerwise_iteratively(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
-		#self.train_adaptables_layerwise(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
-		#self.train_adaptables_networkwise(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
+		self.train_adaptables_layerwise_iteratively(train_dataset, validate_dataset, test_dataset, minibatch_size,
+		                                            output_directory)
+
+	# self.train_adaptables_layerwise(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
+	# self.train_adaptables_networkwise(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
 
 
 class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
@@ -447,12 +450,13 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 #
 #
 
-class MultiLayerPerceptronHan(AdjustableFeedForwardNetwork):
+class MultiLayerPerceptronHan(FeedForwardNetwork):
 	"""
 	Han, S., Pool, J., Tran, J., & Dally, W. (2015).
 	Learning both weights and connections for efficient neural network.
 	In Advances in Neural Information Processing Systems (pp. 1135-1143).
 	"""
+
 	def __init__(self,
 	             incoming,
 
@@ -467,7 +471,7 @@ class MultiLayerPerceptronHan(AdjustableFeedForwardNetwork):
 	             update_function=updates.nesterov_momentum,
 	             learning_rate_policy=[1e-3, Xpolicy.constant],
 
-	             prune_threshold_policies=None,
+	             prune_threshold_policy=None,
 	             # splice_threshold_policies=None,
 	             # prune_split_interval=[0, 0],
 
@@ -483,7 +487,7 @@ class MultiLayerPerceptronHan(AdjustableFeedForwardNetwork):
 		                                              validation_interval=validation_interval,
 		                                              )
 
-		self._prune_threshold_policies = prune_threshold_policies
+		self._prune_threshold_policy = prune_threshold_policy
 		# self._splice_threshold_policies = splice_threshold_policies
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
 		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
@@ -503,55 +507,49 @@ class MultiLayerPerceptronHan(AdjustableFeedForwardNetwork):
 			                                                              layer_activation_styles[layer_index],
 			                                                              layer_activation_parameters[layer_index])
 
-			neural_network = layers.BernoulliDropoutLayerHan(neural_network,
-			                                                 activation_probability=activation_probability)
+			neural_network = layers.BernoulliDropoutLayer(neural_network,
+			                                              activation_probability=activation_probability)
 
 			layer_dimension = dense_dimensions[layer_index]
 			layer_nonlinearity = dense_nonlinearities[layer_index]
 
-			neural_network = layers.DenseLayerHan(neural_network, layer_dimension, W=init.GlorotUniform(
+			neural_network = layers.MaskedDenseLayerHan(neural_network, layer_dimension, W=init.GlorotUniform(
 				gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
 
 		self._neural_network = neural_network
 
 		self.build_functions()
 
-	def adjust_network(self, train_dataset=None, validate_dataset=None, test_dataset=None):
-		if self.epoch_index < self.prune_split_interval[0] \
-				or self.prune_split_interval[1] <= 0 \
-				or self.epoch_index % self.prune_split_interval[1] != 0:
-			return
+	def train_epoch(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None,
+	                output_directory=None):
+		epoch_running_time, epoch_average_train_loss, epoch_average_train_objective, epoch_average_train_accuracy = super(
+			MultiLayerPerceptronHan, self).train_epoch(train_dataset, minibatch_size, validate_dataset, test_dataset,
+		                                               output_directory)
 
-		if self._prune_threshold_policies is not None:
-			prune_thresholds = [adjust_parameter_according_to_policy(prune_threshold_policy, self.epoch_index) for
-			                    prune_threshold_policy in self._prune_threshold_policies]
+		epoch_running_time_temp = timeit.default_timer()
 
-			# self.prune_network(prune_thresholds=prune_thresholds, validate_dataset=validate_dataset, test_dataset=test_dataset)
-			# self.prune_synapses(train_dataset, validate_dataset, test_dataset)
-			self.prune_synapses(prune_thresholds, validate_dataset, test_dataset)
+		self.prune_synapses()
 		'''
-		if self._splice_threshold_policies is not None:
-			splice_thresholds = [adjust_parameter_according_to_policy(splice_threshold_policy, self.epoch_index) for
-								 splice_threshold_policy in self._splice_threshold_policies]
-			self.splice_network(splice_thresholds=splice_thresholds, validate_dataset=validate_dataset,
-								test_dataset=test_dataset)
+		if self.epoch_index >= self.prune_split_interval[0] \
+				and self.prune_split_interval[1] > 0 \
+				and self.epoch_index % self.prune_split_interval[1] == 0:
+			self.prune_synapses()
 		'''
 
-	def prune_synapses(self, prune_thresholds, validate_dataset=None, test_dataset=None, output_directory=None,
-	                   dropout_decay_style="elementwise"):
-		layer_info_list = []
+		epoch_running_time_temp = timeit.default_timer() - epoch_running_time_temp
+		epoch_running_time += epoch_running_time_temp
 
-		dropout_layer_index = 0
+		return epoch_running_time, epoch_average_train_loss, epoch_average_train_objective, epoch_average_train_accuracy
+
+	def prune_synapses(self, dropout_decay_style="elementwise"):
+		# prune_thresholds = [adjust_parameter_according_to_policy(prune_threshold_policy, self.epoch_index) for prune_threshold_policy in self._prune_threshold_policies]
+
+		prune_threshold = adjust_parameter_according_to_policy(self._prune_threshold_policy, self.epoch_index)
+
 		for layer_0, layer_1 in zip(self.get_network_layers()[:-1], self.get_network_layers()[1:]):
-			if (not isinstance(layer_0, layers.BernoulliDropoutLayerHan)) or \
-					(not isinstance(layer_1, layers.DenseLayerHan)):
+			if (not isinstance(layer_0, layers.BernoulliDropoutLayer)) or \
+					(not isinstance(layer_1, layers.MaskedDenseLayerHan)):
 				continue
-
-			assert isinstance(layer_0, layers.BernoulliDropoutLayerHan)
-			assert isinstance(layer_1, layers.DenseLayerHan)
-
-			prune_threshold = prune_thresholds[dropout_layer_index]
-			dropout_layer_index += 1
 
 			# input_size = layers.get_output_shape(layer_0)[1:]
 			# old_sizes.append(layer_1.num_units)
@@ -561,75 +559,41 @@ class MultiLayerPerceptronHan(AdjustableFeedForwardNetwork):
 			elif dropout_decay_style == "elementwise":
 				C_old = numpy.sum(layer_1.mask, axis=1)
 			'''
-			C_old = numpy.sum(layer_1.mask, axis=1)
-			neuron_indices_to_prune, neuron_indices_to_keep = layer_1.prune_weight(prune_threshold)
+			C_old = numpy.sum(layer_1.mask != 0, axis=1)
+			layer_1.adjust_mask(prune_threshold)
 			# print "layer 0:", layer_0.input_shape, layer_0
 			# print "layer 1:", layer_1.num_units, layer_1
 			# print "neuron indices to prune:", len(neuron_indices_to_prune)  # , neuron_indices_to_prune
 			# print "neuron indices to keep:", len(neuron_indices_to_keep)  # , neuron_indices_to_keep
 			# print "=========="
-			C_new = numpy.sum(layer_1.mask, axis=1)
 			'''
 			if dropout_decay_style == "layerwise":
 				C_new = numpy.sum(layer_1.mask)
 			elif dropout_decay_style == "elementwise":
 				C_new = numpy.sum(layer_1.mask, axis=1)
 			'''
-
-			assert len(neuron_indices_to_keep) <= layer_0.input_shape, (
-				len(neuron_indices_to_keep), neuron_indices_to_keep, layer_0.input_shape)
-			layer_info_list.append(neuron_indices_to_keep)
+			C_new = numpy.sum(layer_1.mask != 0, axis=1)
 
 			if numpy.all(C_old == C_new):
 				continue
 
-			print("Prune connections in layer %s from %d to %d with threshold %g" % (layer_1, numpy.sum(C_old),
-			                                                                         numpy.sum(C_new), prune_threshold))
-			logger.info("Prune connections in layer %s from %d to %d with threshold %g" % (layer_1, numpy.sum(C_old),
-			                                                                               numpy.sum(C_new),
-			                                                                               prune_threshold))
-			layer_0.decay_activation_probability(numpy.sqrt(C_new / C_old))
+			print("Prune connections in layer %s from %d to %d with threshold %g" % (
+				layer_1, numpy.sum(C_old), numpy.sum(C_new), prune_threshold))
+			logger.info("Prune connections in layer %s from %d to %d with threshold %g" % (
+				layer_1, numpy.sum(C_old), numpy.sum(C_new), prune_threshold))
 
-		layer_info_index = 0
-		for layer_1, layer_2, layer_3 in zip(self.get_network_layers()[:-2], self.get_network_layers()[1:-1],
-		                                     self.get_network_layers()[2:]):
-			if (not isinstance(layer_1, layers.DenseLayerHan)) or \
-					(not isinstance(layer_2, layers.BernoulliDropoutLayerHan)) or \
-					(not isinstance(layer_3, layers.DenseLayerHan)):
-				continue
-
-			layer_info_index += 1
-			neuron_indices_to_keep = layer_info_list[layer_info_index]
-
-			if len(neuron_indices_to_keep) == layer_1.num_units:
-				continue
-			old_size = layer_1.num_units
-			new_size = len(neuron_indices_to_keep)
-
-			layer_1.prune_output(neuron_indices_to_keep)
-			layer_2.prune_activation_probability(neuron_indices_to_keep)
-			layer_3.prune_input(neuron_indices_to_keep)
-
-			print("Prune layer %s from %d to %d" % (layer_1, old_size, new_size))
-			logger.info("Prune layer %s from %d to %d" % (layer_1, old_size, new_size))
-
-		self.build_functions()
-
-		if validate_dataset is not None:
-			output_file = None
-			if output_directory is not None:
-				output_file = os.path.join(output_directory, 'model.pkl')
-			self.validate(validate_dataset, test_dataset, output_file)
-		elif test_dataset is not None:
-			self.test(test_dataset)
+			old_activation_probability = layer_0.activation_probability.eval()
+			activation_probability = old_activation_probability * numpy.sqrt(1.0 * C_new / C_old)
+			layer_0.activation_probability.set_value(activation_probability)
 
 
-class MultiLayerPerceptronGuo(AdjustableFeedForwardNetwork):
+class MultiLayerPerceptronGuo(FeedForwardNetwork):
 	"""
 	Guo, Y., Yao, A., & Chen, Y. (2016).
 	Dynamic network surgery for efficient DNNs.
 	In Advances In Neural Information Processing Systems (pp. 1379-1387).
 	"""
+
 	def __init__(self,
 	             incoming,
 
@@ -650,9 +614,9 @@ class MultiLayerPerceptronGuo(AdjustableFeedForwardNetwork):
 	             #
 	             #
 
-	             prune_threshold_policies=None,
-	             splice_threshold_policies=None,
-	             prune_split_interval=[0, 0],
+	             prune_threshold_policy=None,
+	             splice_threshold_policy=None,
+	             #prune_split_interval=[0, 0],
 
 	             max_norm_constraint=0,
 	             validation_interval=-1,
@@ -666,8 +630,8 @@ class MultiLayerPerceptronGuo(AdjustableFeedForwardNetwork):
 		                                              validation_interval=validation_interval,
 		                                              )
 
-		self._prune_threshold_policies = prune_threshold_policies
-		self._splice_threshold_policies = splice_threshold_policies
+		self._prune_threshold_policy = prune_threshold_policy
+		self._splice_threshold_policy = splice_threshold_policy
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
 		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
@@ -686,13 +650,12 @@ class MultiLayerPerceptronGuo(AdjustableFeedForwardNetwork):
 			                                                              layer_activation_styles[layer_index],
 			                                                              layer_activation_parameters[layer_index])
 
-			neural_network = layers.BernoulliDropoutLayerHan(neural_network,
-			                                                 activation_probability=activation_probability)
+			neural_network = layers.BernoulliDropoutLayer(neural_network, activation_probability=activation_probability)
 
 			layer_dimension = dense_dimensions[layer_index]
 			layer_nonlinearity = dense_nonlinearities[layer_index]
 
-			neural_network = layers.DenseLayerGuo(neural_network, layer_dimension, W=init.GlorotUniform(
+			neural_network = layers.MaskedDenseLayerGuo(neural_network, layer_dimension, W=init.GlorotUniform(
 				gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
 
 		self._neural_network = neural_network
@@ -714,20 +677,102 @@ class MultiLayerPerceptronGuo(AdjustableFeedForwardNetwork):
 		return epoch_running_time
 	'''
 
+	def train_epoch(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None,
+	                output_directory=None):
+		epoch_running_time, epoch_average_train_loss, epoch_average_train_objective, epoch_average_train_accuracy = super(
+			MultiLayerPerceptronGuo, self).train_epoch(train_dataset, minibatch_size, validate_dataset, test_dataset,
+		                                               output_directory)
+
+		epoch_running_time_temp = timeit.default_timer()
+
+		self.adjust_synapses()
+		'''
+		if self.epoch_index >= self.prune_split_interval[0] \
+				and self.prune_split_interval[1] > 0 \
+				and self.epoch_index % self.prune_split_interval[1] == 0:
+			self.prune_synapses()
+		'''
+
+		epoch_running_time_temp = timeit.default_timer() - epoch_running_time_temp
+		epoch_running_time += epoch_running_time_temp
+
+		return epoch_running_time, epoch_average_train_loss, epoch_average_train_objective, epoch_average_train_accuracy
+
+	def adjust_synapses(self, dropout_decay_style="elementwise"):
+		# prune_thresholds = [adjust_parameter_according_to_policy(prune_threshold_policy, self.epoch_index) for prune_threshold_policy in self._prune_threshold_policies]
+
+		prune_threshold = adjust_parameter_according_to_policy(self._prune_threshold_policy, self.epoch_index)
+		splice_threshold = adjust_parameter_according_to_policy(self._splice_threshold_policy, self.epoch_index)
+
+		for layer_0, layer_1 in zip(self.get_network_layers()[:-1], self.get_network_layers()[1:]):
+			if (not isinstance(layer_0, layers.BernoulliDropoutLayer)) or \
+					(not isinstance(layer_1, layers.MaskedDenseLayerGuo)):
+				continue
+
+			# input_size = layers.get_output_shape(layer_0)[1:]
+			# old_sizes.append(layer_1.num_units)
+			'''
+			if dropout_decay_style == "layerwise":
+				C_old = numpy.sum(layer_1.mask)
+			elif dropout_decay_style == "elementwise":
+				C_old = numpy.sum(layer_1.mask, axis=1)
+			'''
+			C_old = numpy.sum(layer_1.mask != 0, axis=1)
+			layer_1.adjust_mask([prune_threshold, splice_threshold])
+			# print "layer 0:", layer_0.input_shape, layer_0
+			# print "layer 1:", layer_1.num_units, layer_1
+			# print "neuron indices to prune:", len(neuron_indices_to_prune)  # , neuron_indices_to_prune
+			# print "neuron indices to keep:", len(neuron_indices_to_keep)  # , neuron_indices_to_keep
+			# print "=========="
+			'''
+			if dropout_decay_style == "layerwise":
+				C_new = numpy.sum(layer_1.mask)
+			elif dropout_decay_style == "elementwise":
+				C_new = numpy.sum(layer_1.mask, axis=1)
+			'''
+			C_new = numpy.sum(layer_1.mask != 0, axis=1)
+
+			if numpy.all(C_old == C_new):
+				continue
+
+			print("Adjust connections in layer %s from %d to %d with threshold [%g, %g]" % (
+				layer_1, numpy.sum(C_old), numpy.sum(C_new), prune_threshold, splice_threshold))
+			logger.info("Adjust connections in layer %s from %d to %d with threshold [%g, %g]" % (
+				layer_1, numpy.sum(C_old), numpy.sum(C_new), prune_threshold, splice_threshold))
+
+			old_activation_probability = layer_0.activation_probability.eval()
+			activation_probability = old_activation_probability * numpy.sqrt(1.0 * C_new / C_old)
+			layer_0.activation_probability.set_value(activation_probability)
+
+		#
+		#
+		#
+		#
+		#
+		#
+		#
+		#
+		#
+		#
+		#
+		#
+
+
+class BACKUP():
 	def adjust_network(self, train_dataset=None, validate_dataset=None, test_dataset=None):
 		if self.epoch_index < self.prune_split_interval[0] \
 				or self.prune_split_interval[1] <= 0 \
 				or self.epoch_index % self.prune_split_interval[1] != 0:
 			return
 
-		if self._prune_threshold_policies is not None:
+		if self.prune_threshold_policy is not None:
 			prune_thresholds = [adjust_parameter_according_to_policy(prune_threshold_policy, self.epoch_index) for
-			                    prune_threshold_policy in self._prune_threshold_policies]
+			                    prune_threshold_policy in self.prune_threshold_policy]
 			self.prune_network(prune_thresholds=prune_thresholds, validate_dataset=validate_dataset,
 			                   test_dataset=test_dataset)
-		if self._splice_threshold_policies is not None:
+		if self.splice_threshold_policy is not None:
 			splice_thresholds = [adjust_parameter_according_to_policy(splice_threshold_policy, self.epoch_index) for
-			                     splice_threshold_policy in self._splice_threshold_policies]
+			                     splice_threshold_policy in self.splice_threshold_policy]
 			self.splice_network(splice_thresholds=splice_thresholds, validate_dataset=validate_dataset,
 			                    test_dataset=test_dataset)
 
@@ -788,7 +833,6 @@ class MultiLayerPerceptronGuo(AdjustableFeedForwardNetwork):
 			self.test(test_dataset)
 
 		return
-
 
 	"""
 	def prune_synapses(self, train_dataset=None, validate_dataset=None, test_dataset=None,
@@ -860,6 +904,181 @@ class MultiLayerPerceptronGuo(AdjustableFeedForwardNetwork):
 
 		self.build_functions()
 	"""
+
+
+class MultiLayerPerceptronHanBackup(AdjustableFeedForwardNetwork):
+	"""
+	Han, S., Pool, J., Tran, J., & Dally, W. (2015).
+	Learning both weights and connections for efficient neural network.
+	In Advances in Neural Information Processing Systems (pp. 1135-1143).
+	"""
+
+	def __init__(self,
+	             incoming,
+
+	             dense_dimensions,
+	             dense_nonlinearities,
+
+	             # layer_activation_types,
+	             layer_activation_parameters,
+	             layer_activation_styles,
+
+	             objective_functions=objectives.categorical_crossentropy,
+	             update_function=updates.nesterov_momentum,
+	             learning_rate_policy=[1e-3, Xpolicy.constant],
+
+	             prune_threshold_policies=None,
+	             # splice_threshold_policies=None,
+	             # prune_split_interval=[0, 0],
+
+	             max_norm_constraint=0,
+	             validation_interval=-1,
+	             ):
+		super(MultiLayerPerceptronHanBackup, self).__init__(incoming,
+		                                                    objective_functions=objective_functions,
+		                                                    update_function=update_function,
+		                                                    learning_rate_policy=learning_rate_policy,
+		                                                    # prune_policy=prune_policy,
+		                                                    max_norm_constraint=max_norm_constraint,
+		                                                    validation_interval=validation_interval,
+		                                                    )
+
+		self._prune_threshold_policies = prune_threshold_policies
+		# self._splice_threshold_policies = splice_threshold_policies
+		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
+		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+
+		# self._input_layer = layers.InputLayer(shape=input_shape)
+		# self._input_variable = self._input_layer.input_var
+
+		assert len(dense_dimensions) == len(dense_nonlinearities)
+		assert len(dense_dimensions) == len(layer_activation_parameters)
+		assert len(dense_dimensions) == len(layer_activation_styles)
+
+		# neural_network = input_network
+		neural_network = self._input_layer
+		for layer_index in range(len(dense_dimensions)):
+			previous_layer_dimension = layers.get_output_shape(neural_network)[1:]
+			activation_probability = layers.sample_activation_probability(previous_layer_dimension,
+			                                                              layer_activation_styles[layer_index],
+			                                                              layer_activation_parameters[layer_index])
+
+			neural_network = layers.BernoulliDropoutLayerHanBackup(neural_network,
+			                                                       activation_probability=activation_probability)
+
+			layer_dimension = dense_dimensions[layer_index]
+			layer_nonlinearity = dense_nonlinearities[layer_index]
+
+			neural_network = layers.DenseLayerHanBackup(neural_network, layer_dimension, W=init.GlorotUniform(
+				gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
+
+		self._neural_network = neural_network
+
+		self.build_functions()
+
+	def adjust_network(self, train_dataset=None, validate_dataset=None, test_dataset=None):
+		if self.epoch_index < self.prune_split_interval[0] \
+				or self.prune_split_interval[1] <= 0 \
+				or self.epoch_index % self.prune_split_interval[1] != 0:
+			return
+
+		if self._prune_threshold_policies is not None:
+			prune_thresholds = [adjust_parameter_according_to_policy(prune_threshold_policy, self.epoch_index) for
+			                    prune_threshold_policy in self._prune_threshold_policies]
+
+			# self.prune_network(prune_thresholds=prune_thresholds, validate_dataset=validate_dataset, test_dataset=test_dataset)
+			# self.prune_synapses(train_dataset, validate_dataset, test_dataset)
+			self.prune_synapses(prune_thresholds, validate_dataset, test_dataset)
+		'''
+		if self._splice_threshold_policies is not None:
+			splice_thresholds = [adjust_parameter_according_to_policy(splice_threshold_policy, self.epoch_index) for
+								 splice_threshold_policy in self._splice_threshold_policies]
+			self.splice_network(splice_thresholds=splice_thresholds, validate_dataset=validate_dataset,
+								test_dataset=test_dataset)
+		'''
+
+	def prune_synapses(self, prune_thresholds, validate_dataset=None, test_dataset=None, output_directory=None,
+	                   dropout_decay_style="elementwise"):
+		layer_info_list = []
+
+		dropout_layer_index = 0
+		for layer_0, layer_1 in zip(self.get_network_layers()[:-1], self.get_network_layers()[1:]):
+			if (not isinstance(layer_0, layers.BernoulliDropoutLayerHanBackup)) or \
+					(not isinstance(layer_1, layers.DenseLayerHanBackup)):
+				continue
+
+			prune_threshold = prune_thresholds[dropout_layer_index]
+			dropout_layer_index += 1
+
+			# input_size = layers.get_output_shape(layer_0)[1:]
+			# old_sizes.append(layer_1.num_units)
+			'''
+			if dropout_decay_style == "layerwise":
+				C_old = numpy.sum(layer_1.mask)
+			elif dropout_decay_style == "elementwise":
+				C_old = numpy.sum(layer_1.mask, axis=1)
+			'''
+			C_old = numpy.sum(layer_1.mask, axis=1)
+			neuron_indices_to_prune, neuron_indices_to_keep = layer_1.adjust_mask(prune_threshold)
+			# print "layer 0:", layer_0.input_shape, layer_0
+			# print "layer 1:", layer_1.num_units, layer_1
+			# print "neuron indices to prune:", len(neuron_indices_to_prune)  # , neuron_indices_to_prune
+			# print "neuron indices to keep:", len(neuron_indices_to_keep)  # , neuron_indices_to_keep
+			# print "=========="
+			C_new = numpy.sum(layer_1.mask, axis=1)
+			'''
+			if dropout_decay_style == "layerwise":
+				C_new = numpy.sum(layer_1.mask)
+			elif dropout_decay_style == "elementwise":
+				C_new = numpy.sum(layer_1.mask, axis=1)
+			'''
+
+			assert len(neuron_indices_to_keep) <= layer_0.input_shape, (
+				len(neuron_indices_to_keep), neuron_indices_to_keep, layer_0.input_shape)
+			layer_info_list.append(neuron_indices_to_keep)
+
+			if numpy.all(C_old == C_new):
+				continue
+
+			print("Prune connections in layer %s from %d to %d with threshold %g" % (layer_1, numpy.sum(C_old),
+			                                                                         numpy.sum(C_new), prune_threshold))
+			logger.info("Prune connections in layer %s from %d to %d with threshold %g" % (layer_1, numpy.sum(C_old),
+			                                                                               numpy.sum(C_new),
+			                                                                               prune_threshold))
+			layer_0.decay_activation_probability(numpy.sqrt(C_new / C_old))
+
+		layer_info_index = 0
+		for layer_1, layer_2, layer_3 in zip(self.get_network_layers()[:-2], self.get_network_layers()[1:-1],
+		                                     self.get_network_layers()[2:]):
+			if (not isinstance(layer_1, layers.DenseLayerHanBackup)) or \
+					(not isinstance(layer_2, layers.BernoulliDropoutLayerHanBackup)) or \
+					(not isinstance(layer_3, layers.DenseLayerHanBackup)):
+				continue
+
+			layer_info_index += 1
+			neuron_indices_to_keep = layer_info_list[layer_info_index]
+
+			if len(neuron_indices_to_keep) == layer_1.num_units:
+				continue
+			old_size = layer_1.num_units
+			new_size = len(neuron_indices_to_keep)
+
+			layer_1.prune_output(neuron_indices_to_keep)
+			layer_2.prune_activation_probability(neuron_indices_to_keep)
+			layer_3.prune_input(neuron_indices_to_keep)
+
+			print("Prune layer %s from %d to %d" % (layer_1, old_size, new_size))
+			logger.info("Prune layer %s from %d to %d" % (layer_1, old_size, new_size))
+
+		self.build_functions()
+
+		if validate_dataset is not None:
+			output_file = None
+			if output_directory is not None:
+				output_file = os.path.join(output_directory, 'model.pkl')
+			self.validate(validate_dataset, test_dataset, output_file)
+		elif test_dataset is not None:
+			self.test(test_dataset)
 
 
 def main():

@@ -245,8 +245,36 @@ class BernoulliDropoutLayerHan(BernoulliDropoutLayer):
 		return old_activation_probability
 
 	def decay_activation_probability(self, decay_weight):
-		activation_probability = self.activation_probability.eval() * decay_weight
+		old_activation_probability = self.activation_probability.eval()
+		activation_probability = old_activation_probability * decay_weight
+		self.activation_probability.set_value(activation_probability)
+		#old_activation_probability = self._set_r(activation_probability)
+
+		return old_activation_probability
+
+class BernoulliDropoutLayerHanBackup(BernoulliDropoutLayer):
+	"""Prunable Dropout layer
+	"""
+
+	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)),
+	             num_leading_axes=1, shared_axes=(), **kwargs):
+		super(BernoulliDropoutLayerHanBackup, self).__init__(incoming, activation_probability, num_leading_axes,
+		                                               shared_axes, **kwargs)
+
+	def prune_activation_probability(self, input_indices_to_keep):
+		self.input_shape = self.input_layer.output_shape
+		assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_keep)
+
+		activation_probability = self.activation_probability.eval()[input_indices_to_keep]
 		old_activation_probability = self._set_r(activation_probability)
+
+		return old_activation_probability
+
+	def decay_activation_probability(self, decay_weight):
+		old_activation_probability = self.activation_probability.eval()
+		activation_probability = old_activation_probability * decay_weight
+		self.activation_probability.set_value(activation_probability)
+		#old_activation_probability = self._set_r(activation_probability)
 
 		return old_activation_probability
 
