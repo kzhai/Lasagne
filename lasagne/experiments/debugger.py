@@ -7,7 +7,7 @@ import timeit
 
 from lasagne import layers
 from lasagne import nonlinearities, objectives, updates, Xregularization
-from ..layers import DenseLayer, BernoulliDropoutLayer, BernoulliDropoutLayer
+from ..layers import DenseLayer, AdaptiveDropoutLayer, AdaptiveDropoutLayer
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ def debug_rademacher_p_2_q_2(network, minibatch, rescale=False, **kwargs):
 	output.append(T.max(abs(input_value)))
 
 	for layer in network.get_network_layers():
-		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, BernoulliDropoutLayer):
+		if isinstance(layer, AdaptiveDropoutLayer):
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
 			mapping.append("sqrt(sum(retain_probability ** 2))")
 			output.append(T.sqrt(T.sum(retain_probability ** 2)))
@@ -161,7 +161,7 @@ def debug_rademacher_p_1_q_inf(network, minibatch, rescale=False, **kwargs):
 	output.append(T.max(abs(input_value)))
 
 	for layer in network.get_network_layers():
-		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, BernoulliDropoutLayer):
+		if isinstance(layer, AdaptiveDropoutLayer):
 			# retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1)
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
 			mapping.append("max(abs(retain_probability))")
@@ -209,7 +209,7 @@ def debug_rademacher_p_inf_q_1(network, minibatch, rescale=False, **kwargs):
 	output.append(T.max(abs(input_value)))
 
 	for layer in network.get_network_layers():
-		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, BernoulliDropoutLayer):
+		if isinstance(layer, AdaptiveDropoutLayer):
 			# retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1)
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
 			mapping.append("sum(abs(retain_probability))")
@@ -246,7 +246,7 @@ def snapshot_dropouts(network, settings=None, **kwargs):
 	dropout_layer_index = 0
 	for network_layer in network.get_network_layers():
 		if isinstance(network_layer, layers.BernoulliDropoutLayer) or \
-				isinstance(network_layer, layers.BernoulliDropoutLayer) or \
+				isinstance(network_layer, layers.AdaptiveDropoutLayer) or \
 				isinstance(network_layer, layers.DynamicDropoutLayer):
 			layer_retain_probability = network_layer.activation_probability.eval()
 		elif isinstance(network_layer, layers.SparseVariationalDropoutLayer):
