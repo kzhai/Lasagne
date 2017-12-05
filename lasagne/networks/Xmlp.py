@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 
-class AdaptiveMultiLayerPerceptronBackup(AdaptiveFeedForwardNetwork):
+class AdaptiveMultiLayerPerceptronMinibatch(AdaptiveFeedForwardNetwork):
 	def __init__(self,
 	             incoming,
 
@@ -52,20 +52,20 @@ class AdaptiveMultiLayerPerceptronBackup(AdaptiveFeedForwardNetwork):
 	             # learning_rate_decay_parameter=0,
 	             validation_interval=-1,
 	             ):
-		super(AdaptiveMultiLayerPerceptronBackup, self).__init__(incoming=incoming,
+		super(AdaptiveMultiLayerPerceptronMinibatch, self).__init__(incoming=incoming,
 
-		                                                         objective_functions=objective_functions,
-		                                                         update_function=update_function,
-		                                                         learning_rate_policy=learning_rate_policy,
-		                                                         # learning_rate_decay,
+		                                                            objective_functions=objective_functions,
+		                                                            update_function=update_function,
+		                                                            learning_rate_policy=learning_rate_policy,
+		                                                            # learning_rate_decay,
 
 		                                                         adaptable_learning_rate_policy=adaptable_learning_rate_policy,
-		                                                         # dropout_learning_rate_decay,
+		                                                            # dropout_learning_rate_decay,
 		                                                         adaptable_update_interval=adaptable_update_interval,
 
-		                                                         max_norm_constraint=max_norm_constraint,
-		                                                         validation_interval=validation_interval,
-		                                                         )
+		                                                            max_norm_constraint=max_norm_constraint,
+		                                                            validation_interval=validation_interval,
+		                                                            )
 		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
 		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
@@ -124,7 +124,7 @@ class AdaptiveMultiLayerPerceptronBackup(AdaptiveFeedForwardNetwork):
 
 	def train_minibatch(self, minibatch_x, minibatch_y):
 		minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = super(
-			AdaptiveMultiLayerPerceptronBackup, self).train_minibatch(minibatch_x, minibatch_y)
+			AdaptiveMultiLayerPerceptronMinibatch, self).train_minibatch(minibatch_x, minibatch_y)
 
 		# minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy
 		self.train_minibatch_for_adaptables(minibatch_x, minibatch_y)

@@ -416,21 +416,16 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 	# START MODEL TRAINING #
 	########################
 
-	if debugger.display_architecture in settings.debug:
-		debugger.display_architecture(network)
-	if debugger.debug_function_output in settings.debug:
-		debugger.debug_function_output(network, train_dataset)
-		debugger.debug_function_output(network, test_dataset)
 	for snapshot_function in settings.snapshot:
 		snapshot_function(network, settings)
+
+	if debugger.display_architecture in settings.debug:
+		debugger.display_architecture(network)
 
 	start_train = timeit.default_timer()
 	# Finally, launch the training loop.
 	# We iterate over epochs:
 	for epoch_index in range(settings.number_of_epochs):
-		if debugger.debug_function_output in settings.debug:
-			debugger.debug_function_output(network, train_dataset)
-			debugger.debug_function_output(network, test_dataset)
 		if debugger.debug_rademacher_p_2_q_2 in settings.debug:
 			debugger.debug_rademacher_p_2_q_2(network, train_dataset)
 			debugger.debug_rademacher_p_2_q_2(network, test_dataset)
@@ -440,9 +435,13 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 		if debugger.debug_rademacher_p_inf_q_1 in settings.debug:
 			debugger.debug_rademacher_p_inf_q_1(network, train_dataset)
 			debugger.debug_rademacher_p_inf_q_1(network, test_dataset)
+
 		if debugger.debug_function_output in settings.debug:
-			debugger.debug_function_output(network, train_dataset)
-			debugger.debug_function_output(network, test_dataset)
+			function_outputs_file = os.path.join(settings.output_directory,
+			                                     "function_outputs_train.epoch_%d.npy" % (network.epoch_index))
+			debugger.debug_function_output(network, train_dataset, minibatch_size=settings.minibatch_size,
+			                               output_file=function_outputs_file)
+			#debugger.debug_function_output(network, test_dataset)
 
 		network.train(train_dataset, validate_dataset, test_dataset, settings.minibatch_size, output_directory)
 		network.epoch_index += 1
@@ -456,6 +455,13 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 				snapshot_function(network, settings)
 
 		print("PROGRESS: %f%%" % (100. * (epoch_index + 1) / settings.number_of_epochs))
+
+	if debugger.debug_function_output in settings.debug:
+		function_outputs_file = os.path.join(settings.output_directory,
+		                                     "function_outputs_train.epoch_%d.npy" % (network.epoch_index))
+		debugger.debug_function_output(network, train_dataset, minibatch_size=settings.minibatch_size,
+		                               output_file=function_outputs_file)
+		#debugger.debug_function_output(network, test_dataset)
 
 	# model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
 	# pickle.dump(network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
