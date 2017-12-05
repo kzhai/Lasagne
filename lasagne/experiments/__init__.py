@@ -1,5 +1,5 @@
 from .alexnet import *
-from .alexnetd import *
+#from .alexnetd import *
 from .base import *
 from .debugger import *
 # from .fdn import *

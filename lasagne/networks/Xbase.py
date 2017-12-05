@@ -7,8 +7,8 @@ import theano
 import theano.tensor
 
 from . import FeedForwardNetwork, RecurrentNetwork, adjust_parameter_according_to_policy
-from .. import updates, Xpolicy
 from .. import layers
+from .. import updates, Xpolicy
 
 logger = logging.getLogger(__name__)
 
@@ -26,27 +26,27 @@ __all__ = [
 
 class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 	def __init__(self,
-	             incoming,
-	             objective_functions,
-	             update_function,
-	             learning_rate_policy=[1e-3, Xpolicy.constant],
-	             # learning_rate_decay=None,
+				 incoming,
+				 objective_functions,
+				 update_function,
+				 learning_rate_policy=[1e-3, Xpolicy.constant],
+				 # learning_rate_decay=None,
 
-	             adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
-	             adaptable_update_interval=0,
+				 adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
+				 adaptable_update_interval=0,
 
-	             max_norm_constraint=0,
-	             validation_interval=-1,
-	             ):
+				 max_norm_constraint=0,
+				 validation_interval=-1,
+				 ):
 		super(AdaptiveFeedForwardNetwork, self).__init__(incoming,
-		                                                 objective_functions,
-		                                                 update_function,
-		                                                 learning_rate_policy,
-		                                                 max_norm_constraint,
-		                                                 validation_interval,
-		                                                 )
+														 objective_functions,
+														 update_function,
+														 learning_rate_policy,
+														 max_norm_constraint,
+														 validation_interval,
+														 )
 		self._adaptable_learning_rate_variable = theano.shared(value=numpy.array(1e-3).astype(theano.config.floatX),
-		                                                       name="adaptable_learning_rate")
+															   name="adaptable_learning_rate")
 
 		self._adaptable_update_interval = adaptable_update_interval
 
@@ -70,7 +70,7 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 		for layer in self.get_network_layers():
 			if isinstance(layer, layers.BernoulliDropoutLayer):
 				layer.params[layer.activation_probability].add("adaptable")
-		#print layers.get_all_params(self._neural_network, adaptable=True)
+		# print layers.get_all_params(self._neural_network, adaptable=True)
 
 		super(AdaptiveFeedForwardNetwork, self).build_functions()
 		self.build_functions_adaptive()
@@ -134,11 +134,11 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 		deterministic_loss = self.get_loss(self._output_variable, deterministic=True)
 		deterministic_objective = self.get_objectives(self._output_variable, deterministic=True)
 		deterministic_accuracy = self.get_objectives(self._output_variable, objective_functions="categorical_accuracy",
-		                                             deterministic=True)
+													 deterministic=True)
 
 		adaptable_params = self.get_network_params(adaptable=True)
 		adaptable_params_deterministic_updates = self._update_function(deterministic_loss, adaptable_params,
-		                                                               self._learning_rate_variable)
+																	   self._adaptable_learning_rate_variable)
 
 		# Compile a second function computing the validation train_loss and accuracy:
 		self._function_train_adaptable_params_deterministic = theano.function(
@@ -152,7 +152,7 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 		minibatch_running_time = timeit.default_timer()
 		if self._adaptable_update_interval > 0 and self.minibatch_index % self._adaptable_update_interval == 0:
 			train_adaptable_params_function_outputs = self._function_train_adaptable_params_deterministic(minibatch_x,
-			                                                                                              minibatch_y)
+																										  minibatch_y)
 
 			minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = train_adaptable_params_function_outputs
 		minibatch_running_time = timeit.default_timer() - minibatch_running_time
@@ -160,7 +160,7 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy
 
 	def train_epoch_adaptables(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None,
-	                           output_directory=None):
+							   output_directory=None):
 		epoch_running_time = 0
 
 		train_dataset_x, train_dataset_y = train_dataset
@@ -211,14 +211,19 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 
 		return epoch_running_time, epoch_average_train_loss, epoch_average_train_objective, epoch_average_train_accuracy
 
-	def train_adaptables_layerwise_iteratively(self, train_dataset, validate_dataset=None, test_dataset=None, minibatch_size=100,
-	                               output_directory=None, adaptable_layer_change_interval=10):
-		if self.epoch_index==0:
+	def train_adaptables_layerwise_iteratively(self, train_dataset, validate_dataset=None, test_dataset=None,
+											   minibatch_size=100,
+											   output_directory=None, adaptable_layer_change_interval=10):
+		if self.epoch_index == 0:
+			last_dropout_layer = None
 			for layer in self.get_network_layers():
-				if isinstance(layer, layers.BernoulliDropoutLayer):
-					layer.params[layer.activation_probability].discard("adaptable")
-
-		if self.epoch_index%adaptable_layer_change_interval==0:
+				if not isinstance(layer, layers.BernoulliDropoutLayer):
+					continue
+				layer.params[layer.activation_probability].discard("adaptable")
+				last_dropout_layer = layer
+			last_dropout_layer.params[last_dropout_layer.activation_probability].add("adaptable")
+		#print self.epoch_index, layers.get_all_params(self._neural_network, adaptable=True)
+		if self.epoch_index % adaptable_layer_change_interval == 0:
 			adapt_next_layer = False
 			for layer in self.get_network_layers():
 				if not isinstance(layer, layers.BernoulliDropoutLayer):
@@ -231,20 +236,23 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 					if "adaptable" in layer.params[layer.activation_probability]:
 						adapt_next_layer = True
 						layer.params[layer.activation_probability].discard("adaptable")
-			if adapt_next_layer:
-				for layer in self.get_network_layers():
-					if isinstance(layer, layers.BernoulliDropoutLayer):
-						layer.params[layer.activation_probability].add("adaptable")
-						break
+			for layer in self.get_network_layers():
+				if not isinstance(layer, layers.BernoulliDropoutLayer):
+					continue
+				if adapt_next_layer:
+					layer.params[layer.activation_probability].add("adaptable")
+					adapt_next_layer = False
+					break
 
 			self.build_functions_adaptive()
 
-		for layer in self.get_network_layers():
-			if not isinstance(layer, layers.BernoulliDropoutLayer):
-				continue
+		#
+		#
+		#
 
-			layer.params[layer.activation_probability].add("adaptable")
-			self.build_functions_adaptive()
+		#
+		#
+		#
 
 		epoch_running_time, average_train_loss, average_train_objective, average_train_accuracy = self.train_epoch_adaptables(
 			train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory)
@@ -267,8 +275,8 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
 			average_train_accuracy * 100))
 
-		layer.params[layer.activation_probability].discard("adaptable")
-		# print layers.get_all_params(self._neural_network, adaptable=True)
+		# layer.params[layer.activation_probability].discard("adaptable")
+		#print layers.get_all_params(self._neural_network, adaptable=True)
 
 		for network_layer in self.get_network_layers():
 			if isinstance(network_layer, layers.BernoulliDropoutLayer) or \
@@ -285,7 +293,7 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 				numpy.max(layer_retain_probability)))
 
 	def train_adaptables_layerwise(self, train_dataset, validate_dataset=None, test_dataset=None, minibatch_size=100,
-	                               output_directory=None):
+								   output_directory=None):
 		for layer in self.get_network_layers():
 			if isinstance(layer, layers.BernoulliDropoutLayer):
 				layer.params[layer.activation_probability].discard("adaptable")
@@ -317,7 +325,7 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 				average_train_accuracy * 100))
 
 			layer.params[layer.activation_probability].discard("adaptable")
-			#print layers.get_all_params(self._neural_network, adaptable=True)
+			# print layers.get_all_params(self._neural_network, adaptable=True)
 
 			for network_layer in self.get_network_layers():
 				if isinstance(network_layer, layers.BernoulliDropoutLayer) or \
@@ -334,7 +342,7 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 					numpy.max(layer_retain_probability)))
 
 	def train_adaptables_networkwise(self, train_dataset, validate_dataset=None, test_dataset=None, minibatch_size=100,
-	                                 output_directory=None):
+									 output_directory=None):
 		recompile_computation_graph = False
 		for layer in self.get_network_layers():
 			if not isinstance(layer, layers.BernoulliDropoutLayer):
@@ -370,30 +378,30 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 
 class AdaptiveFeedForwardNetworkMinibatch(AdaptiveFeedForwardNetwork):
 	def __init__(self,
-	             incoming,
-	             objective_functions,
-	             update_function,
-	             learning_rate_policy=[1e-3, Xpolicy.constant],
-	             # learning_rate_decay=None,
+				 incoming,
+				 objective_functions,
+				 update_function,
+				 learning_rate_policy=[1e-3, Xpolicy.constant],
+				 # learning_rate_decay=None,
 
-	             adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
-	             adaptable_update_interval=0,
+				 adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
+				 adaptable_update_interval=0,
 
-	             max_norm_constraint=0,
-	             validation_interval=-1,
-	             ):
+				 max_norm_constraint=0,
+				 validation_interval=-1,
+				 ):
 		super(AdaptiveFeedForwardNetworkMinibatch, self).__init__(incoming,
-		                                                          objective_functions,
-		                                                          update_function,
-		                                                          learning_rate_policy,
-		                                                          # learning_rate_decay=None,
+																  objective_functions,
+																  update_function,
+																  learning_rate_policy,
+																  # learning_rate_decay=None,
 
-		                                                          adaptable_learning_rate_policy,
-		                                                          adaptable_update_interval,
+																  adaptable_learning_rate_policy,
+																  adaptable_update_interval,
 
-		                                                          max_norm_constraint,
-		                                                          validation_interval
-		                                                          )
+																  max_norm_constraint,
+																  validation_interval
+																  )
 
 	def train_minibatch(self, minibatch_x, minibatch_y):
 		minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = super(
@@ -407,32 +415,32 @@ class AdaptiveFeedForwardNetworkMinibatch(AdaptiveFeedForwardNetwork):
 
 class DynamicFeedForwardNetwork(AdaptiveFeedForwardNetwork):
 	def __init__(self,
-	             incoming,
-	             objective_functions,
-	             update_function,
-	             learning_rate_policy=[1e-3, Xpolicy.constant],
+				 incoming,
+				 objective_functions,
+				 update_function,
+				 learning_rate_policy=[1e-3, Xpolicy.constant],
 
-	             adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
-	             adaptable_update_interval=0,
+				 adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
+				 adaptable_update_interval=0,
 
-	             # prune_threshold_policies=None,
-	             # split_threshold_policies=None,
-	             # prune_split_interval=0,
+				 # prune_threshold_policies=None,
+				 # split_threshold_policies=None,
+				 # prune_split_interval=0,
 
-	             max_norm_constraint=0,
-	             validation_interval=-1,
-	             ):
+				 max_norm_constraint=0,
+				 validation_interval=-1,
+				 ):
 		super(DynamicFeedForwardNetwork, self).__init__(incoming,
-		                                                objective_functions,
-		                                                update_function,
-		                                                learning_rate_policy,
-		                                                #
-		                                                adaptable_learning_rate_policy,
-		                                                adaptable_update_interval,
-		                                                #
-		                                                max_norm_constraint,
-		                                                validation_interval,
-		                                                )
+														objective_functions,
+														update_function,
+														learning_rate_policy,
+														#
+														adaptable_learning_rate_policy,
+														adaptable_update_interval,
+														#
+														max_norm_constraint,
+														validation_interval,
+														)
 		'''
 		self.prune_threshold_policies = prune_threshold_policies
 		self.split_threshold_policies = split_threshold_policies
@@ -440,9 +448,9 @@ class DynamicFeedForwardNetwork(AdaptiveFeedForwardNetwork):
 		'''
 
 	def train_epoch(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None,
-	                output_directory=None):
+					output_directory=None):
 		epoch_running_time = super(DynamicFeedForwardNetwork, self).train(train_dataset, validate_dataset, test_dataset,
-		                                                                  minibatch_size, output_directory)
+																		  minibatch_size, output_directory)
 
 		# if self.epoch_index >= self._prune_policy[2] and self.epoch_index % self._prune_policy[1] == 0:
 		epoch_running_time_temp = timeit.default_timer()
@@ -458,28 +466,28 @@ class DynamicFeedForwardNetwork(AdaptiveFeedForwardNetwork):
 
 class AdjustableFeedForwardNetwork(FeedForwardNetwork):
 	def __init__(self,
-	             incoming,
-	             objective_functions,
-	             update_function,
-	             learning_rate_policy=[1e-3, Xpolicy.constant],
+				 incoming,
+				 objective_functions,
+				 update_function,
+				 learning_rate_policy=[1e-3, Xpolicy.constant],
 
-	             # adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
-	             # adaptable_update_interval=0,
+				 # adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
+				 # adaptable_update_interval=0,
 
-	             # prune_threshold_policies=None,
-	             # split_threshold_policies=None,
-	             # prune_split_interval=0,
+				 # prune_threshold_policies=None,
+				 # split_threshold_policies=None,
+				 # prune_split_interval=0,
 
-	             max_norm_constraint=0,
-	             validation_interval=-1,
-	             ):
+				 max_norm_constraint=0,
+				 validation_interval=-1,
+				 ):
 		super(AdjustableFeedForwardNetwork, self).__init__(incoming,
-		                                                   objective_functions,
-		                                                   update_function,
-		                                                   learning_rate_policy,
-		                                                   max_norm_constraint,
-		                                                   validation_interval,
-		                                                   )
+														   objective_functions,
+														   update_function,
+														   learning_rate_policy,
+														   max_norm_constraint,
+														   validation_interval,
+														   )
 		'''
 		self.prune_threshold_policies = prune_threshold_policies
 		self.split_threshold_policies = split_threshold_policies
@@ -488,8 +496,8 @@ class AdjustableFeedForwardNetwork(FeedForwardNetwork):
 
 	def train(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None, output_directory=None):
 		epoch_running_time = super(AdjustableFeedForwardNetwork, self).train(train_dataset, validate_dataset,
-		                                                                     test_dataset, minibatch_size,
-		                                                                     output_directory)
+																			 test_dataset, minibatch_size,
+																			 output_directory)
 
 		# if self.epoch_index >= self._prune_policy[2] and self.epoch_index % self._prune_policy[1] == 0:
 		epoch_running_time_temp = timeit.default_timer()
@@ -505,33 +513,33 @@ class AdjustableFeedForwardNetwork(FeedForwardNetwork):
 
 class AdaptiveRecurrentNetwork(RecurrentNetwork):
 	def __init__(self,
-	             # incoming,
-	             # incoming_mask,
-	             sequence_length,
-	             # recurrent_type,
+				 # incoming,
+				 # incoming_mask,
+				 sequence_length,
+				 # recurrent_type,
 
-	             objective_functions,
-	             update_function,
-	             learning_rate_policy=1e-3,
-	             # learning_rate_decay=None,
+				 objective_functions,
+				 update_function,
+				 learning_rate_policy=1e-3,
+				 # learning_rate_decay=None,
 
-	             dropout_learning_rate=1e-3,
-	             # dropout_learning_rate_decay=None,
-	             dropout_rate_update_interval=0,
+				 dropout_learning_rate=1e-3,
+				 # dropout_learning_rate_decay=None,
+				 dropout_rate_update_interval=0,
 
-	             max_norm_constraint=0,
-	             total_norm_constraint=0,
-	             normalize_embeddings=False,
+				 max_norm_constraint=0,
+				 total_norm_constraint=0,
+				 normalize_embeddings=False,
 
-	             # learning_rate_decay_style=None,
-	             # learning_rate_decay_parameter=0,
-	             validation_interval=-1,
+				 # learning_rate_decay_style=None,
+				 # learning_rate_decay_parameter=0,
+				 validation_interval=-1,
 
-	             window_size=1,
-	             position_offset=0,
-	             # gradient_steps=-1,
-	             # gradient_clipping=0,
-	             ):
+				 window_size=1,
+				 position_offset=0,
+				 # gradient_steps=-1,
+				 # gradient_clipping=0,
+				 ):
 		super(AdaptiveRecurrentNetwork, self).__init__(
 			sequence_length,
 			# recurrent_type,
@@ -587,17 +595,17 @@ class AdaptiveRecurrentNetwork(RecurrentNetwork):
 		dropout_loss = self.get_loss(self._output_variable, deterministic=True)
 		dropout_objective = self.get_objectives(self._output_variable, deterministic=True)
 		dropout_accuracy = self.get_objectives(self._output_variable, objective_functions="categorical_accuracy",
-		                                       deterministic=True)
+											   deterministic=True)
 
 		adaptable_params = self.get_network_params(adaptable=True)
 		if self.total_norm_constraint > 0:
 			adaptable_grads = theano.tensor.grad(dropout_loss, adaptable_params)
 			scaled_adaptable_grads = updates.total_norm_constraint(adaptable_grads, self.total_norm_constraint)
 			adaptable_params_updates = self._update_function(scaled_adaptable_grads, adaptable_params,
-			                                                 self._dropout_learning_rate_variable)
+															 self._dropout_learning_rate_variable)
 		else:
 			adaptable_params_updates = self._update_function(dropout_loss, adaptable_params,
-			                                                 self._dropout_learning_rate_variable)
+															 self._dropout_learning_rate_variable)
 
 		'''
 		if self.max_norm_constraint > 0:
@@ -621,7 +629,7 @@ class AdaptiveRecurrentNetwork(RecurrentNetwork):
 		# Compile a second function computing the validation train_loss and accuracy:
 		self._train_dropout_function = theano.function(
 			inputs=[self._input_variable, self._output_variable, self._input_mask_variable,
-			        self._dropout_learning_rate_variable],
+					self._dropout_learning_rate_variable],
 			outputs=[dropout_objective, dropout_accuracy],
 			updates=adaptable_params_updates
 		)
@@ -644,10 +652,10 @@ class AdaptiveRecurrentNetwork(RecurrentNetwork):
 				trainable_grads = theano.tensor.grad(train_loss, trainable_params)
 				scaled_trainable_grads = updates.total_norm_constraint(trainable_grads, self.total_norm_constraint)
 				trainable_params_updates = self._update_function(scaled_trainable_grads, trainable_params,
-				                                                 self._learning_rate_variable)
+																 self._learning_rate_variable)
 			else:
 				trainable_params_updates = self._update_function(train_loss, trainable_params,
-				                                                 self._learning_rate_variable)
+																 self._learning_rate_variable)
 
 			if self.max_norm_constraint > 0:
 				for param in self.get_network_params(trainable=True):
@@ -663,13 +671,13 @@ class AdaptiveRecurrentNetwork(RecurrentNetwork):
 					# raise ValueError("Unsupported tensor dimensionality {} of param {}.".format(ndim, param))
 
 					trainable_params_updates[param] = updates.norm_constraint(trainable_params_updates[param],
-					                                                          self.max_norm_constraint,
-					                                                          norm_axes=sum_over)
+																			  self.max_norm_constraint,
+																			  norm_axes=sum_over)
 
 			# Compile a function performing a training step on a mini-batch (by giving the updates dictionary) and returning the corresponding training train_loss:
 			self._train_function = theano.function(
 				inputs=[self._input_variable, self._output_variable, self._input_mask_variable,
-				        self._learning_rate_variable],
+						self._learning_rate_variable],
 				outputs=[train_objective, train_accuracy],
 				updates=trainable_params_updates
 			)
@@ -689,7 +697,7 @@ class AdaptiveRecurrentNetwork(RecurrentNetwork):
 		test_loss = self.get_loss(self._output_variable, deterministic=True)
 		test_objective = self.get_objectives(self._output_variable, deterministic=True)
 		test_accuracy = self.get_objectives(self._output_variable, objective_functions="categorical_accuracy",
-		                                    deterministic=True)
+											deterministic=True)
 
 		'''
 		from lasagne.experiments.debugger import debug_rademacher
@@ -770,7 +778,7 @@ class AdaptiveRecurrentNetwork(RecurrentNetwork):
 		if self._dropout_rate_update_interval > 0 and self.minibatch_index % self._dropout_rate_update_interval == 0:
 			dropout_learning_rate = adjust_parameter_according_to_policy(self.dropout_learning_rate, self.epoch_index)
 			train_dropout_function_outputs = self._train_dropout_function(minibatch_x, minibatch_y, minibatch_m,
-			                                                              dropout_learning_rate)
+																		  dropout_learning_rate)
 		minibatch_running_time_temp = timeit.default_timer() - minibatch_running_time_temp
 
 		#

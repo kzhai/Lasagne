@@ -6,7 +6,7 @@ try:
 	from .Xbase import *
 	from .Xlenet import *
 	from .Xmlp import *
-	from .XmlpDebug import *
+	#from .XmlpDebug import *
 except ImportError:
 	print "Some of the XModules are not found..."
 	pass
