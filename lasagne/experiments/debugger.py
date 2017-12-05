@@ -1,13 +1,14 @@
 import logging
-import numpy
 import os
+import timeit
+
+import numpy
 import theano
 import theano.tensor as T
-import timeit
 
 from lasagne import layers
 from lasagne import nonlinearities, objectives, updates, Xregularization
-from ..layers import DenseLayer, BernoulliDropoutLayer, BernoulliDropoutLayer
+from ..layers import DenseLayer, AdaptiveDropoutLayer
 
 logger = logging.getLogger(__name__)
 
@@ -57,43 +58,80 @@ def display_architecture(network, **kwargs):
 		print("debug: output size after %s is %s" % (layer, layers.get_output_shape(layer, input_shape)))
 
 
-def debug_function_output(network, minibatch, **kwargs):
+def debug_function_output(network, dataset, **kwargs):
+	dataset_x, dataset_y = dataset
+
+	number_of_data = dataset_x.shape[0]
+	data_indices = numpy.random.permutation(number_of_data)
+
+	minibatch_size = kwargs.get('minibatch_size', number_of_data)
+	output_file = kwargs.get('output_file', None)
+
 	# Create a train_loss expression for training, i.e., a scalar objective we want to minimize (for our multi-class problem, it is the cross-entropy train_loss):
-	nondeterministic_loss = network.get_loss(network._output_variable)
-	nondeterministic_objective = network.get_objectives(network._output_variable)
-	nondeterministic_accuracy = network.get_objectives(network._output_variable,
-													   objective_functions="categorical_accuracy")
+	stochastic_loss = network.get_loss(network._output_variable)
+	stochastic_objective = network.get_objectives(network._output_variable)
+	stochastic_accuracy = network.get_objectives(network._output_variable,
+	                                             objective_functions="categorical_accuracy")
 
 	# Create a train_loss expression for validation/testing. The crucial difference here is that we do a deterministic forward pass through the networks, disabling dropout layers.
 	deterministic_loss = network.get_loss(network._output_variable, deterministic=True)
 	deterministic_objective = network.get_objectives(network._output_variable, deterministic=True)
 	deterministic_accuracy = network.get_objectives(network._output_variable,
-													objective_functions="categorical_accuracy", deterministic=True)
+	                                                objective_functions="categorical_accuracy", deterministic=True)
 
-	function_debugger = theano.function(
+	stochastic_function_output_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
-		outputs=[nondeterministic_loss, nondeterministic_objective, nondeterministic_accuracy,
-				 deterministic_loss, deterministic_objective, deterministic_accuracy],
+		outputs=[stochastic_accuracy, stochastic_loss, stochastic_objective],
 		on_unused_input='raise'
 	)
 
-	minibatch_x, minibatch_y = minibatch
-	debugger_function_output = function_debugger(minibatch_x, minibatch_y)
+	deterministic_function_output_debugger = theano.function(
+		inputs=[network._input_variable, network._output_variable],
+		outputs=[deterministic_accuracy, deterministic_loss, deterministic_objective],
+		on_unused_input='raise'
+	)
+
+	minibatch_start_index = 0
+	minibatch_index = 0
+	minibatch_outputs = numpy.zeros((int(numpy.ceil(1. * number_of_data / minibatch_size)), 9))
+
+	while minibatch_start_index < number_of_data:
+		# automatically handles the left-over data
+		minibatch_indices = data_indices[minibatch_start_index:minibatch_start_index + minibatch_size]
+
+		minibatch_x = dataset_x[minibatch_indices, :]
+		minibatch_y = dataset_y[minibatch_indices]
+
+		function_stochastic_output = stochastic_function_output_debugger(minibatch_x, minibatch_y)
+		function_deterministic_output = deterministic_function_output_debugger(minibatch_x, minibatch_y)
+
+		function_stochastic_output.append(function_stochastic_output[-2] - function_stochastic_output[-1])
+		function_deterministic_output.append(function_deterministic_output[-2] - function_deterministic_output[-1])
+
+		current_minibatch_size = len(data_indices[minibatch_start_index:minibatch_start_index + minibatch_size])
+		minibatch_outputs[minibatch_index, 0] = current_minibatch_size
+		minibatch_outputs[minibatch_index, 1:5] = function_stochastic_output
+		minibatch_outputs[minibatch_index, 5:9] = function_deterministic_output
+
+		minibatch_start_index += minibatch_size
+		minibatch_index += 1
+
+	assert numpy.sum(minibatch_outputs[:, 0]) == number_of_data, (numpy.sum(minibatch_outputs[:, 0]), number_of_data)
+
+	if output_file!=None:
+		numpy.save(output_file, minibatch_outputs)
+
+	dataset_outputs = numpy.sum(minibatch_outputs[:, 0][:, numpy.newaxis] * minibatch_outputs[:, 1:], axis=0) / number_of_data
 
 	logger.debug("stochastic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
-				 (debugger_function_output[0], debugger_function_output[1],
-				  debugger_function_output[0] - debugger_function_output[1], debugger_function_output[2] * 100))
+	             (dataset_outputs[1], dataset_outputs[2], dataset_outputs[3], dataset_outputs[0] * 100))
 	print("debug: stochastic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
-		  (debugger_function_output[0], debugger_function_output[1],
-		   debugger_function_output[0] - debugger_function_output[1], debugger_function_output[2] * 100))
+	             (dataset_outputs[1], dataset_outputs[2], dataset_outputs[3], dataset_outputs[0] * 100))
 
 	logger.debug("deterministic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
-				 (debugger_function_output[3], debugger_function_output[4],
-				  debugger_function_output[3] - debugger_function_output[4], debugger_function_output[5] * 100))
+	             (dataset_outputs[5], dataset_outputs[6], dataset_outputs[7], dataset_outputs[4] * 100))
 	print("debug: deterministic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
-		  (debugger_function_output[3], debugger_function_output[4],
-		   debugger_function_output[3] - debugger_function_output[4], debugger_function_output[5] * 100))
-
+	             (dataset_outputs[5], dataset_outputs[6], dataset_outputs[7], dataset_outputs[4] * 100))
 
 def debug_rademacher_p_2_q_2(network, minibatch, rescale=False, **kwargs):
 	input_layer = Xregularization.find_input_layer(network)
@@ -110,7 +148,7 @@ def debug_rademacher_p_2_q_2(network, minibatch, rescale=False, **kwargs):
 	output.append(T.max(abs(input_value)))
 
 	for layer in network.get_network_layers():
-		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, BernoulliDropoutLayer):
+		if isinstance(layer, AdaptiveDropoutLayer):
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
 			mapping.append("sqrt(sum(retain_probability ** 2))")
 			output.append(T.sqrt(T.sum(retain_probability ** 2)))
@@ -161,7 +199,7 @@ def debug_rademacher_p_1_q_inf(network, minibatch, rescale=False, **kwargs):
 	output.append(T.max(abs(input_value)))
 
 	for layer in network.get_network_layers():
-		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, BernoulliDropoutLayer):
+		if isinstance(layer, AdaptiveDropoutLayer):
 			# retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1)
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
 			mapping.append("max(abs(retain_probability))")
@@ -209,7 +247,7 @@ def debug_rademacher_p_inf_q_1(network, minibatch, rescale=False, **kwargs):
 	output.append(T.max(abs(input_value)))
 
 	for layer in network.get_network_layers():
-		if isinstance(layer, BernoulliDropoutLayer) or isinstance(layer, BernoulliDropoutLayer):
+		if isinstance(layer, AdaptiveDropoutLayer):
 			# retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1)
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
 			mapping.append("sum(abs(retain_probability))")
@@ -246,14 +284,17 @@ def snapshot_dropouts(network, settings=None, **kwargs):
 	dropout_layer_index = 0
 	for network_layer in network.get_network_layers():
 		if isinstance(network_layer, layers.BernoulliDropoutLayer) or \
-				isinstance(network_layer, layers.BernoulliDropoutLayer) or \
+				isinstance(network_layer, layers.AdaptiveDropoutLayer) or \
 				isinstance(network_layer, layers.DynamicDropoutLayer):
 			layer_retain_probability = network_layer.activation_probability.eval()
 		elif isinstance(network_layer, layers.SparseVariationalDropoutLayer):
-			alpha = T.exp(network_layer.log_alpha).eval()
-			layer_retain_probability = 1. / (1. + alpha)
+			sigma = T.nnet.sigmoid(network_layer.logit_sigma).eval()
+			layer_retain_probability = 1. / (1. + sigma ** 2)
+		# alpha = T.exp(network_layer.logit_sigma).eval()
+		# layer_retain_probability = 1. / (1. + alpha)
 		elif isinstance(network_layer, layers.VariationalDropoutTypeALayer) or \
-				isinstance(network_layer, layers.VariationalDropoutTypeBLayer):
+				isinstance(network_layer, layers.VariationalDropoutTypeBLayer) or \
+				isinstance(network_layer, layers.SparseVariationalDropoutLayer):
 			sigma = T.nnet.sigmoid(network_layer.logit_sigma).eval()
 			layer_retain_probability = 1. / (1. + sigma ** 2)
 		elif isinstance(network_layer, layers.GaussianDropoutLayer) or \
@@ -272,7 +313,7 @@ def snapshot_dropouts(network, settings=None, **kwargs):
 		if settings is not None:
 			# layer_retain_probability = numpy.reshape(layer_retain_probability, numpy.prod(layer_retain_probability.shape))
 			retain_rate_file = os.path.join(settings.output_directory,
-											"noise.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
+			                                "noise.%d.epoch.%d.npy" % (dropout_layer_index, network.epoch_index))
 			numpy.save(retain_rate_file, layer_retain_probability)
 		dropout_layer_index += 1
 
@@ -287,7 +328,7 @@ def snapshot_conv_filters(network, settings, **kwargs):
 
 		# conv_filters = numpy.reshape(conv_filters, numpy.prod(conv_filters.shape))
 		conv_filter_file = os.path.join(settings.output_directory,
-										"conv.%d.epoch.%d.npy" % (conv_layer_index, network.epoch_index))
+		                                "conv.%d.epoch.%d.npy" % (conv_layer_index, network.epoch_index))
 		numpy.save(conv_filter_file, conv_filters)
 
 		conv_layer_index += 1

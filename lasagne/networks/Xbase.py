@@ -14,9 +14,13 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
 	"AdaptiveFeedForwardNetwork",
-	"AdaptiveFeedForwardNetworkMinibatch",
-	#
 	"DynamicFeedForwardNetwork",
+	#
+	#
+	#
+	#
+	#
+	"AdaptiveFeedForwardNetworkMinibatch",
 	#
 	"AdjustableFeedForwardNetwork",
 	#
@@ -26,18 +30,19 @@ __all__ = [
 
 class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 	def __init__(self,
-				 incoming,
-				 objective_functions,
-				 update_function,
-				 learning_rate_policy=[1e-3, Xpolicy.constant],
-				 # learning_rate_decay=None,
+	             incoming,
+	             objective_functions,
+	             update_function,
+	             learning_rate_policy=[1e-3, Xpolicy.constant],
+	             # learning_rate_decay=None,
 
-				 adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
-				 adaptable_update_interval=0,
+	             adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
+	             # adaptable_update_interval=0,
+	             train_adaptables_mode="layer",
 
-				 max_norm_constraint=0,
-				 validation_interval=-1,
-				 ):
+	             max_norm_constraint=0,
+	             validation_interval=-1,
+	             ):
 		super(AdaptiveFeedForwardNetwork, self).__init__(incoming,
 														 objective_functions,
 														 update_function,
@@ -48,11 +53,20 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 		self._adaptable_learning_rate_variable = theano.shared(value=numpy.array(1e-3).astype(theano.config.floatX),
 															   name="adaptable_learning_rate")
 
-		self._adaptable_update_interval = adaptable_update_interval
+		# self._adaptable_update_interval = adaptable_update_interval
 
 		self.adaptable_learning_rate_change_stack = []
 
 		self.set_adaptable_learning_rate_policy(adaptable_learning_rate_policy)
+
+		if train_adaptables_mode == "network":
+			self.train_adaptables_epoch_mode = self.train_adaptables_networkwise
+		elif train_adaptables_mode == "layer":
+			self.train_adaptables_epoch_mode = self.train_adaptables_layerwise
+		# elif train_adaptables_mode == "layer-in-turn":
+		# self.train_adaptables_epoch_mode = self.train_adaptables_layerwise_in_turn
+		else:
+			raise NotImplementedError("Not implemented adaptables training mode!")
 
 	def set_adaptable_learning_rate_policy(self, adaptable_learning_rate):
 		self.adaptable_learning_rate_policy = adaptable_learning_rate
@@ -68,12 +82,11 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 
 	def build_functions(self):
 		for layer in self.get_network_layers():
-			if isinstance(layer, layers.BernoulliDropoutLayer):
+			if isinstance(layer, layers.AdaptiveDropoutLayer):
 				layer.params[layer.activation_probability].add("adaptable")
-		# print layers.get_all_params(self._neural_network, adaptable=True)
 
 		super(AdaptiveFeedForwardNetwork, self).build_functions()
-		self.build_functions_adaptive()
+		self.build_functions_for_adaptables()
 
 		'''
 		# Create a train_loss expression for training, i.e., a scalar objective we want to minimize (for our multi-class problem, it is the cross-entropy train_loss):
@@ -129,8 +142,8 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 		)
 		'''
 
-	def build_functions_adaptive(self):
-		# Create a train_loss expression for validation/testing. The crucial difference here is that we do a deterministic forward pass through the networks, disabling dropout layers.
+	def build_functions_for_adaptables(self):
+				# Create a train_loss expression for validation/testing. The crucial difference here is that we do a deterministic forward pass through the networks, disabling dropout layers.
 		deterministic_loss = self.get_loss(self._output_variable, deterministic=True)
 		deterministic_objective = self.get_objectives(self._output_variable, deterministic=True)
 		deterministic_accuracy = self.get_objectives(self._output_variable, objective_functions="categorical_accuracy",
@@ -148,19 +161,18 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 			on_unused_input='warn'
 		)
 
-	def train_minibatch_adaptables(self, minibatch_x, minibatch_y):
+	def train_minibatch_for_adaptables(self, minibatch_x, minibatch_y):
 		minibatch_running_time = timeit.default_timer()
-		if self._adaptable_update_interval > 0 and self.minibatch_index % self._adaptable_update_interval == 0:
-			train_adaptable_params_function_outputs = self._function_train_adaptable_params_deterministic(minibatch_x,
-																										  minibatch_y)
+		train_adaptable_params_function_outputs = self._function_train_adaptable_params_deterministic(minibatch_x,
+		                                                                                              minibatch_y)
 
-			minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = train_adaptable_params_function_outputs
+		minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = train_adaptable_params_function_outputs
 		minibatch_running_time = timeit.default_timer() - minibatch_running_time
 
 		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy
 
-	def train_epoch_adaptables(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None,
-							   output_directory=None):
+	def train_epoch_for_adaptables(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None,
+	                               output_directory=None):
 		epoch_running_time = 0
 
 		train_dataset_x, train_dataset_y = train_dataset
@@ -175,12 +187,11 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 		while minibatch_start_index < number_of_data:
 			# automatically handles the left-over data
 			minibatch_indices = data_indices[minibatch_start_index:minibatch_start_index + minibatch_size]
-			minibatch_start_index += minibatch_size
 
 			minibatch_x = train_dataset_x[minibatch_indices, :]
 			minibatch_y = train_dataset_y[minibatch_indices]
 
-			minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = self.train_minibatch_adaptables(
+			minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = self.train_minibatch_for_adaptables(
 				minibatch_x, minibatch_y)
 
 			epoch_running_time += minibatch_running_time
@@ -202,31 +213,28 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 					output_file = os.path.join(output_directory, 'model.pkl')
 				self.validate(validate_dataset, test_dataset, output_file)
 
+			minibatch_start_index += minibatch_size
 			self.minibatch_index += 1
 
 		epoch_average_train_loss = total_train_loss / number_of_data
 		epoch_average_train_objective = total_train_objective / number_of_data
 		epoch_average_train_accuracy = total_train_accuracy / number_of_data
-		epoch_running_time = timeit.default_timer() - epoch_running_time
+		#epoch_running_time = timeit.default_timer() - epoch_running_time
 
 		return epoch_running_time, epoch_average_train_loss, epoch_average_train_objective, epoch_average_train_accuracy
 
-	def train_adaptables_layerwise_iteratively(self, train_dataset, validate_dataset=None, test_dataset=None,
-											   minibatch_size=100,
-											   output_directory=None, adaptable_layer_change_interval=10):
+	def train_adaptables_layerwise_in_turn(self, train_dataset, validate_dataset=None, test_dataset=None,
+	                                       minibatch_size=100, output_directory=None,
+	                                       adaptable_layer_change_interval=10):
 		if self.epoch_index == 0:
-			last_dropout_layer = None
 			for layer in self.get_network_layers():
-				if not isinstance(layer, layers.BernoulliDropoutLayer):
-					continue
-				layer.params[layer.activation_probability].discard("adaptable")
-				last_dropout_layer = layer
-			last_dropout_layer.params[last_dropout_layer.activation_probability].add("adaptable")
-		#print self.epoch_index, layers.get_all_params(self._neural_network, adaptable=True)
+				if isinstance(layer, layers.AdaptiveDropoutLayer):
+					layer.params[layer.activation_probability].discard("adaptable")
+
 		if self.epoch_index % adaptable_layer_change_interval == 0:
 			adapt_next_layer = False
 			for layer in self.get_network_layers():
-				if not isinstance(layer, layers.BernoulliDropoutLayer):
+				if not isinstance(layer, layers.AdaptiveDropoutLayer):
 					continue
 				if adapt_next_layer:
 					layer.params[layer.activation_probability].add("adaptable")
@@ -236,27 +244,26 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 					if "adaptable" in layer.params[layer.activation_probability]:
 						adapt_next_layer = True
 						layer.params[layer.activation_probability].discard("adaptable")
-			for layer in self.get_network_layers():
-				if not isinstance(layer, layers.BernoulliDropoutLayer):
-					continue
-				if adapt_next_layer:
-					layer.params[layer.activation_probability].add("adaptable")
-					adapt_next_layer = False
-					break
 
-			self.build_functions_adaptive()
+			if adapt_next_layer:
+				for layer in self.get_network_layers():
+					if isinstance(layer, layers.AdaptiveDropoutLayer):
+						layer.params[layer.activation_probability].add("adaptable")
+						break
 
-		#
-		#
-		#
+			self.build_functions_for_adaptables()
 
-		#
-		#
-		#
+		for layer in self.get_network_layers():
+			if not isinstance(layer, layers.AdaptiveDropoutLayer):
+				continue
 
-		epoch_running_time, average_train_loss, average_train_objective, average_train_accuracy = self.train_epoch_adaptables(
+			layer.params[layer.activation_probability].add("adaptable")
+			self.build_functions_for_adaptables()
+
+		epoch_running_time, average_train_loss, average_train_objective, average_train_accuracy = self.train_epoch_for_adaptables(
 			train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory)
 
+		'''
 		if validate_dataset is not None:
 			output_file = None
 			if output_directory is not None:
@@ -267,20 +274,19 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 			# output_file = os.path.join(output_directory, 'model-%d.pkl' % self.epoch_index)
 			# cPickle.dump(self, open(output_file, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 			self.test(test_dataset)
+		'''
 
-		logger.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		logger.info('[adaptables] train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
 			average_train_accuracy * 100))
-		print('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		print('[adaptables] train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
 			average_train_accuracy * 100))
 
-		# layer.params[layer.activation_probability].discard("adaptable")
-		#print layers.get_all_params(self._neural_network, adaptable=True)
-
+		'''
 		for network_layer in self.get_network_layers():
-			if isinstance(network_layer, layers.BernoulliDropoutLayer) or \
-					isinstance(network_layer, layers.BernoulliDropoutLayer) or \
+			if isinstance(network_layer, layers.AdaptiveDropoutLayer) or \
+					isinstance(network_layer, layers.AdaptiveDropoutLayer) or \
 					isinstance(network_layer, layers.DynamicDropoutLayer):
 				layer_retain_probability = network_layer.activation_probability.eval()
 			else:
@@ -291,21 +297,24 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 				numpy.mean(layer_retain_probability),
 				numpy.min(layer_retain_probability),
 				numpy.max(layer_retain_probability)))
+		'''
 
-	def train_adaptables_layerwise(self, train_dataset, validate_dataset=None, test_dataset=None, minibatch_size=100,
-								   output_directory=None):
+	def train_adaptables_layerwise(self, train_dataset, validate_dataset=None, test_dataset=None,
+	                               minibatch_size=100,
+	                               output_directory=None):
 		for layer in self.get_network_layers():
-			if isinstance(layer, layers.BernoulliDropoutLayer):
+			if isinstance(layer, layers.AdaptiveDropoutLayer):
 				layer.params[layer.activation_probability].discard("adaptable")
 		for layer in self.get_network_layers():
-			if not isinstance(layer, layers.BernoulliDropoutLayer):
+			if not isinstance(layer, layers.AdaptiveDropoutLayer):
 				continue
 
 			layer.params[layer.activation_probability].add("adaptable")
-			self.build_functions_adaptive()
-			epoch_running_time, average_train_loss, average_train_objective, average_train_accuracy = self.train_epoch_adaptables(
+			self.build_functions_for_adaptables()
+			epoch_running_time, average_train_loss, average_train_objective, average_train_accuracy = self.train_epoch_for_adaptables(
 				train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory)
 
+			'''
 			if validate_dataset is not None:
 				output_file = None
 				if output_directory is not None:
@@ -316,20 +325,22 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 				# output_file = os.path.join(output_directory, 'model-%d.pkl' % self.epoch_index)
 				# cPickle.dump(self, open(output_file, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 				self.test(test_dataset)
+			'''
 
-			logger.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+			logger.info('[adaptables] train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 				self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
 				average_train_accuracy * 100))
-			print('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+			print('[adaptables] train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 				self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
 				average_train_accuracy * 100))
 
 			layer.params[layer.activation_probability].discard("adaptable")
 			# print layers.get_all_params(self._neural_network, adaptable=True)
 
+			'''
 			for network_layer in self.get_network_layers():
-				if isinstance(network_layer, layers.BernoulliDropoutLayer) or \
-						isinstance(network_layer, layers.BernoulliDropoutLayer) or \
+				if isinstance(network_layer, layers.AdaptiveDropoutLayer) or \
+						isinstance(network_layer, layers.AdaptiveDropoutLayer) or \
 						isinstance(network_layer, layers.DynamicDropoutLayer):
 					layer_retain_probability = network_layer.activation_probability.eval()
 				else:
@@ -340,23 +351,26 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 					numpy.mean(layer_retain_probability),
 					numpy.min(layer_retain_probability),
 					numpy.max(layer_retain_probability)))
+			'''
 
-	def train_adaptables_networkwise(self, train_dataset, validate_dataset=None, test_dataset=None, minibatch_size=100,
-									 output_directory=None):
+	def train_adaptables_networkwise(self, train_dataset, validate_dataset=None, test_dataset=None,
+	                                 minibatch_size=100,
+	                                 output_directory=None):
 		recompile_computation_graph = False
 		for layer in self.get_network_layers():
-			if not isinstance(layer, layers.BernoulliDropoutLayer):
+			if not isinstance(layer, layers.AdaptiveDropoutLayer):
 				continue
 			if "adaptable" not in layer.params[layer.activation_probability]:
 				layer.params[layer.activation_probability].add("adaptable")
 				recompile_computation_graph = True
 
 		if recompile_computation_graph:
-			self.build_functions_adaptive()
+			self.build_functions_for_adaptables()
 
-		epoch_running_time, average_train_loss, average_train_objective, average_train_accuracy = self.train_epoch_adaptables(
+		epoch_running_time, average_train_loss, average_train_objective, average_train_accuracy = self.train_epoch_for_adaptables(
 			train_dataset, minibatch_size, validate_dataset, test_dataset, output_directory)
 
+		'''
 		if validate_dataset is not None:
 			output_file = None
 			if output_directory is not None:
@@ -367,13 +381,32 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 			# output_file = os.path.join(output_directory, 'model-%d.pkl' % self.epoch_index)
 			# cPickle.dump(self, open(output_file, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 			self.test(test_dataset)
+		'''
 
-		logger.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		logger.info('[adaptables] train adaptables: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
 			average_train_accuracy * 100))
-		print('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		print('[adaptables] train adaptables: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
 			average_train_accuracy * 100))
+
+	def train(self, train_dataset, validate_dataset=None, test_dataset=None, minibatch_size=100, output_directory=None):
+		epoch_running_time = super(AdaptiveFeedForwardNetwork, self).train(train_dataset, validate_dataset,
+		                                                                   test_dataset, minibatch_size,
+		                                                                   output_directory)
+
+		# self.train_adaptables_layerwise_in_turn(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
+		# self.train_adaptables_layerwise(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
+		# self.train_adaptables_networkwise(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
+
+		epoch_running_time_temp = timeit.default_timer()
+
+		self.train_adaptables_epoch_mode(train_dataset, validate_dataset, test_dataset, minibatch_size,
+		                                 output_directory)
+		epoch_running_time_temp = timeit.default_timer() - epoch_running_time_temp
+		epoch_running_time += epoch_running_time_temp
+
+		return epoch_running_time
 
 
 class AdaptiveFeedForwardNetworkMinibatch(AdaptiveFeedForwardNetwork):
@@ -408,9 +441,13 @@ class AdaptiveFeedForwardNetworkMinibatch(AdaptiveFeedForwardNetwork):
 			AdaptiveFeedForwardNetworkMinibatch, self).train_minibatch(minibatch_x, minibatch_y)
 
 		# minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy
-		super(AdaptiveFeedForwardNetworkMinibatch, self).train_minibatch_adaptables(minibatch_x, minibatch_y)
+		super(AdaptiveFeedForwardNetworkMinibatch, self).train_minibatch_for_adaptables(minibatch_x, minibatch_y)
 
 		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy
+
+	def train(self, train_dataset, validate_dataset=None, test_dataset=None, minibatch_size=100, output_directory=None):
+		super(AdaptiveFeedForwardNetwork, self).train(train_dataset, validate_dataset, test_dataset, minibatch_size,
+		                                              output_directory)
 
 
 class DynamicFeedForwardNetwork(AdaptiveFeedForwardNetwork):

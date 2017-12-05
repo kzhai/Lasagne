@@ -57,7 +57,7 @@ def plot_retain_rates(model_directory, snapshot_interval=[-1, -1, 1], plot_direc
 		print layer_epoch_retain_rates[layer_index]
 
 	output_file_path = None if plot_directory is None else os.path.join(plot_directory, "noise.pdf")
-	plot_2D_violin([layer_epoch_retain_rates[layer_index][-1] for layer_index in layer_dimensions], output_file_path)
+	plot_2D_violins([layer_epoch_retain_rates[layer_index][-1] for layer_index in layer_dimensions], output_file_path)
 
 	for layer_index in layer_dimensions:
 		output_file_path = None if plot_directory is None else os.path.join(plot_directory,
@@ -66,7 +66,7 @@ def plot_retain_rates(model_directory, snapshot_interval=[-1, -1, 1], plot_direc
 		plot_3D_wires(layer_epoch_retain_rates[layer_index], snapshot_interval[2], output_file_path)
 
 
-def plot_2D_violin(matrix=None, output_file_path=None):
+def plot_2D_violins(matrix=None, output_file_path=None):
 	import matplotlib.pyplot as plt
 
 	# demonstrate how to toggle the display of different elements:
@@ -171,7 +171,7 @@ def plot_3D_wires(matrix=None, rescale_x_interval=1, output_file_path=None):
 		plt.savefig(output_file_path, bbox_inches='tight')
 
 
-def plot_3D_hist(matrix=None, rescale_x_interval=1):
+def plot_3D_bars(matrix=None, rescale_x_interval=1):
 	import matplotlib.pyplot as plt
 
 	fig = plt.figure()

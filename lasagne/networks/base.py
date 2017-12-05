@@ -484,12 +484,13 @@ class FeedForwardNetwork(Network):
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
 			average_train_accuracy * 100))
 
-		#return epoch_running_time
+		return epoch_running_time
 
 	def train_epoch(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None,
 	                output_directory=None):
 		# In each epoch_index, we do a full pass over the training data:
-		epoch_running_time = timeit.default_timer()
+		#epoch_running_time = timeit.default_timer()
+		epoch_running_time = 0
 
 		train_dataset_x, train_dataset_y = train_dataset
 
@@ -503,7 +504,6 @@ class FeedForwardNetwork(Network):
 		while minibatch_start_index < number_of_data:
 			# automatically handles the left-over data
 			minibatch_indices = data_indices[minibatch_start_index:minibatch_start_index + minibatch_size]
-			minibatch_start_index += minibatch_size
 
 			minibatch_x = train_dataset_x[minibatch_indices, :]
 			minibatch_y = train_dataset_y[minibatch_indices]
@@ -530,12 +530,13 @@ class FeedForwardNetwork(Network):
 					output_file = os.path.join(output_directory, 'model.pkl')
 				self.validate(validate_dataset, test_dataset, output_file)
 
+			minibatch_start_index += minibatch_size
 			self.minibatch_index += 1
 
 		epoch_average_train_loss = total_train_loss / number_of_data
 		epoch_average_train_objective = total_train_objective / number_of_data
 		epoch_average_train_accuracy = total_train_accuracy / number_of_data
-		epoch_running_time = timeit.default_timer() - epoch_running_time
+		#epoch_running_time = timeit.default_timer() - epoch_running_time
 
 		return epoch_running_time, epoch_average_train_loss, epoch_average_train_objective, epoch_average_train_accuracy
 

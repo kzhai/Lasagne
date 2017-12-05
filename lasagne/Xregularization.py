@@ -1,7 +1,7 @@
 import theano.tensor as T
 
 from .layers import get_output, get_output_shape, EmbeddingLayer, DenseLayer, ObstructedDenseLayer, \
-	BernoulliDropoutLayer, BernoulliDropoutLayer
+	AdaptiveDropoutLayer
 
 
 def regularize_layer_weighted(layers, penalty, tags={'regularizable': True}, **kwargs):
@@ -42,7 +42,7 @@ def linf_norm(X, axis=None):
 
 def __find_pre_dropout_layer(network):
 	for layer_1, layer_2 in zip(network.get_network_layers()[:-1], network.get_network_layers()[1:]):
-		if isinstance(layer_2, BernoulliDropoutLayer) or isinstance(layer_2, BernoulliDropoutLayer):
+		if isinstance(layer_2, AdaptiveDropoutLayer) or isinstance(layer_2, AdaptiveDropoutLayer):
 			return layer_1
 
 
@@ -82,7 +82,7 @@ def rademacher_p_2_q_2(network, **kwargs):
 	# rademacher_regularization *= T.max(abs(get_output(pseudo_input_layer)))
 
 	for layer in network.get_network_layers():
-		if isinstance(layer, BernoulliDropoutLayer):
+		if isinstance(layer, AdaptiveDropoutLayer):
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
 			rademacher_regularization *= T.sqrt(T.sum(retain_probability ** 2))
 		elif isinstance(layer, DenseLayer):
@@ -129,7 +129,7 @@ def rademacher_p_inf_q_1(network, **kwargs):
 	rademacher_regularization *= T.max(abs(input_value))
 
 	for layer in network.get_network_layers():
-		if isinstance(layer, BernoulliDropoutLayer):
+		if isinstance(layer, AdaptiveDropoutLayer):
 			# retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1)
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
 			rademacher_regularization *= T.sum(abs(retain_probability))
@@ -173,7 +173,7 @@ def rademacher_p_1_q_inf(network, **kwargs):
 	rademacher_regularization *= T.max(abs(input_value))
 
 	for layer in network.get_network_layers():
-		if isinstance(layer, BernoulliDropoutLayer):
+		if isinstance(layer, AdaptiveDropoutLayer):
 			# retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1)
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
 			rademacher_regularization *= T.max(abs(retain_probability))
@@ -241,17 +241,18 @@ def kl_divergence_sparse(network, **kwargs):
 	# gather up all the alphas
 	# params = network.get_network_params(name="variational.dropout.log_alpha")
 	# alphas = [T.exp(p) for p in params]
-	params = network.get_network_params()
-	alphas = [T.exp(p) for p in params if p.name == "variational.dropout.log_alpha"]
 
 	k1 = 0.63576
 	k2 = 1.8732
 	k3 = 1.48695
 	C = -k1
 
+	params = network.get_network_params()
+	log_alphas = [T.nnet.sigmoid(p) for p in params if p.name == "variational.dropout.logit_sigma"]
+
 	return -T.sum(
-		[T.sum(k1 * T.nnet.sigmoid(k2 + (k3 * T.log(alpha))) - 0.5 * T.log(1 + T.pow(alpha, -1)) + C) for alpha in
-		 alphas])
+		[T.sum(k1 * T.nnet.sigmoid(k2 + (k3 * log_alpha)) - 0.5 * T.log(1 + T.pow(T.exp(log_alpha), -1)) + C) for
+		 log_alpha in log_alphas])
 
 
 '''

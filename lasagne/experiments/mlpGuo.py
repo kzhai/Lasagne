@@ -1,15 +1,16 @@
 import logging
 
-from . import param_deliminator, parse_parameter_policy
+from . import parse_parameter_policy
 from .. import networks
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-	"train_mlpHan",
+	"train_mlpGuo",
 ]
 
-def construct_mlpHan_parser():
+
+def construct_mlpGuo_parser():
 	from . import construct_discriminative_parser, add_dense_options, add_dropout_init_options
 	model_parser = construct_discriminative_parser()
 	model_parser = add_dense_options(model_parser)
@@ -20,6 +21,8 @@ def construct_mlpHan_parser():
 	# model argument set 1
 	model_parser.add_argument("--prune_policy", dest="prune_policy", action='store',
 	                          default="1e-3", help="prune policy, [threshold=1e-3, interval=1, delay=0]")
+	model_parser.add_argument("--splice_policy", dest="splice_policy", action='store',
+	                          default="1e-2", help="prune policy, [threshold=1e-3, interval=1, delay=0]")
 
 	'''
 	model_parser.add_argument("--prune_synapses_after", dest="prune_synapses_after", type=int, action='store',
@@ -35,7 +38,7 @@ def construct_mlpHan_parser():
 	return model_parser
 
 
-def validate_mlpHan_arguments(arguments):
+def validate_mlpGuo_arguments(arguments):
 	from . import validate_discriminative_arguments, validate_dense_arguments, validate_dropout_init_arguments
 	arguments = validate_discriminative_arguments(arguments)
 	arguments = validate_dense_arguments(arguments)
@@ -44,6 +47,7 @@ def validate_mlpHan_arguments(arguments):
 
 	# model argument set 1
 	arguments.prune_policy = parse_parameter_policy(arguments.prune_policy)
+	arguments.splice_policy = parse_parameter_policy(arguments.splice_policy)
 	'''
 	assert arguments.prune_synapses_after >= 0
 	assert arguments.prune_synapses_interval > 0
@@ -52,26 +56,21 @@ def validate_mlpHan_arguments(arguments):
 	return arguments
 
 
-def train_mlpHan():
+def train_mlpGuo():
 	"""
 	Demonstrate stochastic gradient descent optimization for a multilayer perceptron
 	This is demonstrated on MNIST.
 	"""
 
 	from . import config_model, validate_config
-	settings = config_model(construct_mlpHan_parser, validate_mlpHan_arguments)
+	settings = config_model(construct_mlpGuo_parser, validate_mlpGuo_arguments)
 	settings = validate_config(settings)
 
-	network = networks.MultiLayerPerceptronHan(
+	network = networks.MultiLayerPerceptronGuo(
 		incoming=settings.input_shape,
 
 		dense_dimensions=settings.dense_dimensions,
 		dense_nonlinearities=settings.dense_nonlinearities,
-
-		prune_threshold_policy=settings.prune_policy,
-		# prune_synapses_after=settings.prune_synapses_after,
-		# prune_synapses_interval=settings.prune_synapses_interval,
-		# prune_synapses_threshold=settings.prune_synapses_threshold,
 
 		# layer_activation_types=settings.layer_activation_types,
 		layer_activation_parameters=settings.layer_activation_parameters,
@@ -83,6 +82,9 @@ def train_mlpHan():
 
 		learning_rate_policy=settings.learning_rate,
 		# learning_rate_decay=settings.learning_rate_decay,
+
+		prune_threshold_policy=settings.prune_policy,
+		splice_threshold_policy=settings.splice_policy,
 
 		max_norm_constraint=settings.max_norm_constraint,
 		validation_interval=settings.validation_interval,
@@ -97,4 +99,4 @@ def train_mlpHan():
 
 
 if __name__ == '__main__':
-	train_mlpHan()
+	train_mlpGuo()

@@ -131,7 +131,7 @@ def main():
 		dense_dimensions=[1024, 10],
 		dense_nonlinearities=[nonlinearities.rectify, nonlinearities.softmax],
 
-		layer_activation_types=[layers.BernoulliDropoutLayer, layers.BernoulliDropoutLayer],
+		layer_activation_types=[layers.AdaptiveDropoutLayer, layers.AdaptiveDropoutLayer],
 		layer_activation_parameters=[0.8, 0.5],
 		layer_activation_styles=["bernoulli", "bernoulli"],
 

@@ -18,8 +18,10 @@ def construct_mlpA_parser():
 	# model argument set 1
 	model_parser.add_argument("--adaptable_learning_rate", dest="adaptable_learning_rate", action='store',
 	                          default=None, help="adaptable learning rate [None - learning_rate]")
-	model_parser.add_argument("--adaptable_update_interval", dest="adaptable_update_interval", type=int,
-	                          action='store', default=1, help="adatable update interval [1]")
+	model_parser.add_argument("--train_adaptables_mode", dest="train_adaptables_mode",
+	                          action='store', default="layer", help="train adaptables mode [layer]")
+	#model_parser.add_argument("--adaptable_update_interval", dest="adaptable_update_interval", type=int,
+	                          #action='store', default=1, help="adatable update interval [1]")
 
 	return model_parser
 
@@ -45,7 +47,9 @@ def validate_mlpA_arguments(arguments):
 	else:
 		arguments.adaptable_learning_rate = parse_parameter_policy(arguments.adaptable_learning_rate)
 
-	assert (arguments.adaptable_update_interval >= 0)
+	assert arguments.train_adaptables_mode in set(["layer", "network", "layer-in-turn"])
+
+	#assert (arguments.adaptable_update_interval >= 0)
 
 	return arguments
 
@@ -77,7 +81,8 @@ def train_mlpA():
 		learning_rate_policy=settings.learning_rate,
 
 		adaptable_learning_rate_policy=settings.adaptable_learning_rate,
-		adaptable_update_interval=settings.adaptable_update_interval,
+		#adaptable_update_interval=settings.adaptable_update_interval,
+		train_adaptables_mode=settings.train_adaptables_mode,
 
 		max_norm_constraint=settings.max_norm_constraint,
 		validation_interval=settings.validation_interval,
