@@ -4,7 +4,7 @@ import re
 import numpy
 import numpy.random
 
-retain_rates_file_name_pattern = re.compile(r'noise\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
+retain_rates_file_name_pattern = re.compile(r'layer\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
 
 
 def plot_retain_rates(model_directory, snapshot_interval=[-1, -1, 1], plot_directory=None):

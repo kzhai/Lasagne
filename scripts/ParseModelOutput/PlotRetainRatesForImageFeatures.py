@@ -4,11 +4,12 @@ import re
 import numpy
 import numpy.random
 
-retain_rates_file_name_pattern = re.compile(r'noise\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
+from PlotRetainRates import retain_rates_file_name_pattern
 
 
-def plot_feature_map(model_directory, feature_map_size, layer_index=0, snapshot_interval=[-1, -1, 1],
-                     plot_directory=None):
+def plot_retain_rates_for_image_features(model_directory, feature_map_size, layer_index=0,
+                                         snapshot_interval=[-1, -1, 1],
+                                         plot_directory=None):
 	# retain_rates_file_name_pattern = re.compile(r'layer\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
 
 	for file_name in os.listdir(model_directory):
@@ -25,8 +26,8 @@ def plot_feature_map(model_directory, feature_map_size, layer_index=0, snapshot_
 			continue
 
 		retain_rates = numpy.load(os.path.join(model_directory, file_name))
-		#print numpy.mean(retain_rates[:512]), numpy.max(retain_rates[:512]), numpy.min(retain_rates[:512])
-		#print numpy.mean(retain_rates[512:]), numpy.max(retain_rates[512:]), numpy.min(retain_rates[512:])
+		# print numpy.mean(retain_rates[:512]), numpy.max(retain_rates[:512]), numpy.min(retain_rates[:512])
+		# print numpy.mean(retain_rates[512:]), numpy.max(retain_rates[512:]), numpy.min(retain_rates[512:])
 		retain_rates = numpy.reshape(retain_rates, feature_map_size)
 		retain_rates = numpy.clip(retain_rates, 0, 1.0)
 
@@ -144,4 +145,5 @@ if __name__ == '__main__':
 
 	feature_map_size = tuple([int(dimension) for dimension in arguments.feature_map_size.split(",")])
 	layer_index = arguments.layer_index
-	plot_feature_map(model_directory, feature_map_size, layer_index, snapshot_interval, plot_directory)
+	plot_retain_rates_for_image_features(model_directory, feature_map_size, layer_index, snapshot_interval,
+	                                     plot_directory)
