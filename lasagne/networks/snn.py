@@ -11,7 +11,7 @@ from .. import layers
 logger = logging.getLogger(__name__)
 
 __all__ = [
-	"StandoutNeuralNetworkTypeA",
+	#"StandoutNeuralNetworkTypeA",
 	"StandoutNeuralNetworkTypeB",
 ]
 
