@@ -489,7 +489,7 @@ class FeedForwardNetwork(Network):
 	def train_epoch(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None,
 	                output_directory=None):
 		# In each epoch_index, we do a full pass over the training data:
-		#epoch_running_time = timeit.default_timer()
+		# epoch_running_time = timeit.default_timer()
 		epoch_running_time = 0
 
 		train_dataset_x, train_dataset_y = train_dataset
@@ -536,7 +536,7 @@ class FeedForwardNetwork(Network):
 		epoch_average_train_loss = total_train_loss / number_of_data
 		epoch_average_train_objective = total_train_objective / number_of_data
 		epoch_average_train_accuracy = total_train_accuracy / number_of_data
-		#epoch_running_time = timeit.default_timer() - epoch_running_time
+		# epoch_running_time = timeit.default_timer() - epoch_running_time
 
 		return epoch_running_time, epoch_average_train_loss, epoch_average_train_objective, epoch_average_train_accuracy
 
@@ -622,13 +622,13 @@ def get_context(instance, window_size, position_offset=-1, vocab_size=None):
 		context_windows = -numpy.ones((len(instance), window_size), dtype=numpy.int32)
 		# padded_sequence = window_size / 2 * [-1] + instance + window_size / 2 * [-1]
 		padded_sequence = position_offset * [-1] + instance + (window_size - position_offset) * [-1]
-		for i in xrange(len(instance)):
+		for i in range(len(instance)):
 			context_windows[i, :] = padded_sequence[i:i + window_size]
 	else:
 		context_windows = numpy.zeros((len(instance), vocab_size), dtype=numpy.int32)
 		# padded_sequence = window_size / 2 * [-1] + instance + window_size / 2 * [-1]
 		padded_sequence = position_offset * [-1] + instance + (window_size - position_offset) * [-1]
-		for i in xrange(len(instance)):
+		for i in range(len(instance)):
 			for j in padded_sequence[i:i + window_size]:
 				context_windows[i, j] += 1
 
@@ -650,10 +650,10 @@ def get_sequences(context_windows, sequence_length):
 	number_of_tokens, window_size = context_windows.shape
 	sequences_x = -numpy.ones((number_of_tokens, sequence_length, window_size), dtype=numpy.int32)
 	sequences_m = numpy.zeros((number_of_tokens, sequence_length), dtype=numpy.int32)
-	for i in xrange(min(number_of_tokens, sequence_length)):
+	for i in range(min(number_of_tokens, sequence_length)):
 		sequences_x[i, 0:i + 1, :] = context_windows[0:i + 1, :]
 		sequences_m[i, 0:i + 1] = 1
-	for i in xrange(min(number_of_tokens, sequence_length), number_of_tokens):
+	for i in range(min(number_of_tokens, sequence_length), number_of_tokens):
 		sequences_x[i, :, :] = context_windows[i - sequence_length + 1:i + 1, :]
 		sequences_m[i, :] = 1
 	return sequences_x, sequences_m

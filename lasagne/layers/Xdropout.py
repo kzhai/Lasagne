@@ -1,9 +1,7 @@
 import numpy
-from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 from . import BernoulliDropoutLayer
 from .. import init
-from ..random import get_rng
 
 __all__ = [
 	"AdaptiveDropoutLayer",
@@ -44,6 +42,7 @@ class AdaptiveDropoutLayer(BernoulliDropoutLayer):
 			raise ValueError("Unrecognized parameter type %s." % type(activation_probability))
 
 		return old_activation_probability
+
 
 '''
 class PrunableAdaptiveDropoutLayer(AdaptiveDropoutLayer):

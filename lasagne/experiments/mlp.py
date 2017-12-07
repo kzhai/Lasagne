@@ -64,9 +64,9 @@ def validate_dropout_init_arguments(arguments, number_of_layers):
 		layer_activation_styles = layer_activation_style_tokens
 	# [float(layer_activation_parameter) for layer_activation_parameter in layer_activation_parameter_tokens]
 	assert len(layer_activation_styles) == number_of_layers
-	assert (layer_activation_style in set(
-		["uniform", "bernoulli", "beta_bernoulli", "reciprocal_beta_bernoulli", "reverse_reciprocal_beta_bernoulli",
-		 "mixed_beta_bernoulli"]) for layer_activation_style in layer_activation_styles)
+	assert (layer_activation_style in {"uniform", "bernoulli", "beta_bernoulli", "reciprocal_beta_bernoulli",
+	                                   "reverse_reciprocal_beta_bernoulli", "mixed_beta_bernoulli"} for
+	        layer_activation_style in layer_activation_styles)
 	arguments.layer_activation_styles = layer_activation_styles
 
 	layer_activation_parameters = arguments.layer_activation_parameters
@@ -124,22 +124,22 @@ def validate_dropout_arguments(arguments, number_of_layers):
 		else:
 			layer_activation_types = layer_activation_type_tokens
 		assert len(layer_activation_types) == number_of_layers
-	assert layer_activation_types[0] not in set(["FastDropoutLayer", "VariationalDropoutTypeBLayer"])
-	for layer_activation_type_index in xrange(len(layer_activation_types)):
-		if layer_activation_types[layer_activation_type_index] in set(
-				["BernoulliDropoutLayer", "GaussianDropoutLayer", "FastDropoutLayer"]):
+	assert layer_activation_types[0] not in {"FastDropoutLayer", "VariationalDropoutTypeBLayer"}
+	for layer_activation_type_index in range(len(layer_activation_types)):
+		if layer_activation_types[layer_activation_type_index] in {"BernoulliDropoutLayer", "GaussianDropoutLayer",
+		                                                           "FastDropoutLayer"}:
 			pass
-		elif layer_activation_types[layer_activation_type_index] in set(
-				["VariationalDropoutLayer", "VariationalDropoutTypeALayer", "VariationalDropoutTypeBLayer"]):
+		elif layer_activation_types[layer_activation_type_index] in {"VariationalDropoutLayer",
+		                                                             "VariationalDropoutTypeALayer",
+		                                                             "VariationalDropoutTypeBLayer"}:
 			if Xregularization.kl_divergence_kingma not in arguments.regularizer:
 				arguments.regularizer[Xregularization.kl_divergence_kingma] = [1.0, Xpolicy.constant]
 			assert Xregularization.kl_divergence_kingma in arguments.regularizer
-		elif layer_activation_types[layer_activation_type_index] in set(["SparseVariationalDropoutLayer"]):
+		elif layer_activation_types[layer_activation_type_index] in {"SparseVariationalDropoutLayer"}:
 			if Xregularization.kl_divergence_sparse not in arguments.regularizer:
 				arguments.regularizer[Xregularization.kl_divergence_sparse] = [1.0, Xpolicy.constant]
 			assert Xregularization.kl_divergence_sparse in arguments.regularizer
-		elif layer_activation_types[layer_activation_type_index] in set(
-				["AdaptiveDropoutLayer", "DynamicDropoutLayer"]):
+		elif layer_activation_types[layer_activation_type_index] in {"AdaptiveDropoutLayer", "DynamicDropoutLayer"}:
 			if (Xregularization.rademacher_p_1_q_inf not in arguments.regularizer) and \
 					(Xregularization.rademacher_p_2_q_2 not in arguments.regularizer) and \
 					(Xregularization.rademacher_p_inf_q_1 not in arguments.regularizer):

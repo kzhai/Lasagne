@@ -47,7 +47,7 @@ def validate_mlpA_arguments(arguments):
 	else:
 		arguments.adaptable_learning_rate = parse_parameter_policy(arguments.adaptable_learning_rate)
 
-	assert arguments.train_adaptables_mode in set(["layer", "network", "layer-in-turn"])
+	assert arguments.train_adaptables_mode in {"layer", "network", "layer-in-turn"}
 
 	#assert (arguments.adaptable_update_interval >= 0)
 
