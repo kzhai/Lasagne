@@ -31,7 +31,7 @@ __all__ = [
 	"load_mnist",
 ]
 
-layer_deliminator = "^"
+layer_deliminator = "*"
 param_deliminator = ","
 specs_deliminator = ":"
 
