@@ -115,7 +115,7 @@ def parse_parameter_policy(policy_string):
 	       or policy_tokens[1] is Xpolicy.natural_exp_decay \
 	       or policy_tokens[1] is Xpolicy.exponential_decay
 
-	for x in xrange(2, 4):
+	for x in range(2, 4):
 		policy_tokens[x] = float(policy_tokens[x])
 		assert policy_tokens[x] > 0
 
