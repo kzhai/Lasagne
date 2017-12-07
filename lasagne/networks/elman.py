@@ -118,13 +118,13 @@ class ElmanNetwork(RecurrentNetwork):
 		'''
 
 		last_rnn_layer_index = 0
-		for layer_index in xrange(len(layer_dimensions)):
+		for layer_index in range(len(layer_dimensions)):
 			layer_dimension = layer_dimensions[layer_index]
 			if isinstance(layer_dimension, list):
 				last_rnn_layer_index = layer_index
 		dropout_layer_index = 0
 
-		for layer_index in xrange(len(layer_dimensions)):
+		for layer_index in range(len(layer_dimensions)):
 			layer_dimension = layer_dimensions[layer_index]
 			layer_nonlinearity = layer_nonlinearities[layer_index]
 
@@ -302,13 +302,13 @@ class DynamicElmanNetwork(AdaptiveRecurrentNetwork):
 		'''
 
 		last_rnn_layer_index = 0
-		for layer_index in xrange(len(layer_dimensions)):
+		for layer_index in range(len(layer_dimensions)):
 			layer_dimension = layer_dimensions[layer_index]
 			if isinstance(layer_dimension, list):
 				last_rnn_layer_index = layer_index
 		dropout_layer_index = 0
 
-		for layer_index in xrange(len(layer_dimensions)):
+		for layer_index in range(len(layer_dimensions)):
 			layer_dimension = layer_dimensions[layer_index]
 			layer_nonlinearity = layer_nonlinearities[layer_index]
 
@@ -473,12 +473,12 @@ def print_output_dimension(checkpoint_text, neural_network, sequence_length, win
 	reference_to_input_layers = [input_layer for input_layer in layers.get_all_layers(neural_network) if
 	                             isinstance(input_layer, layers.InputLayer)]
 	if len(reference_to_input_layers) == 1:
-		print checkpoint_text, ":", layers.get_output_shape(neural_network, {
-			reference_to_input_layers[0]: (batch_size, sequence_length, window_size)})
+		print(checkpoint_text, ":", layers.get_output_shape(neural_network, {
+			reference_to_input_layers[0]: (batch_size, sequence_length, window_size)}))
 	elif len(reference_to_input_layers) == 2:
-		print checkpoint_text, ":", layers.get_output_shape(neural_network, {
+		print(checkpoint_text, ":", layers.get_output_shape(neural_network, {
 			reference_to_input_layers[0]: (batch_size, sequence_length, window_size),
-			reference_to_input_layers[1]: (batch_size, sequence_length)})
+			reference_to_input_layers[1]: (batch_size, sequence_length)}))
 
 
 def main():

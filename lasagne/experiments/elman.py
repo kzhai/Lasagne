@@ -77,7 +77,7 @@ def validate_elman_arguments(arguments):
 	layer_dimensions = []
 	recurrent_mode = False
 	start_index = 0
-	for end_index in xrange(len(options_layer_dimensions)):
+	for end_index in range(len(options_layer_dimensions)):
 		if options_layer_dimensions[end_index] == "[":
 			assert (not recurrent_mode)
 			recurrent_mode = True
