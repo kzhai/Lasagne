@@ -18,5 +18,5 @@ try:
 	from .dropout import *
 	from .Xdropout import *
 except ImportError:
-	print "Some of the XModules are not found..."
+	raise ImportError("Could not load some of the XModules...")
 	pass

@@ -13,5 +13,5 @@ try:
 	from .lenetA import *
 	from .mlpA import *
 except ImportError:
-	print "Some of the XModules are not found..."
+	raise ImportError("Could not load some of the XModules...")
 	pass
