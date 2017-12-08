@@ -4,7 +4,7 @@ import re
 import numpy
 import numpy.random
 
-retain_rates_file_name_pattern = re.compile(r'layer\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
+retain_rates_file_name_pattern = re.compile(r'noise\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
 
 
 def plot_retain_rates(model_directory, snapshot_interval=[-1, -1, 1], plot_directory=None):
@@ -54,7 +54,7 @@ def plot_retain_rates(model_directory, snapshot_interval=[-1, -1, 1], plot_direc
 
 	for layer_index in layer_dimensions:
 		layer_epoch_retain_rates[layer_index] = numpy.clip(layer_epoch_retain_rates[layer_index], 0, 1)
-		print layer_epoch_retain_rates[layer_index]
+		print(layer_epoch_retain_rates[layer_index])
 
 	output_file_path = None if plot_directory is None else os.path.join(plot_directory, "noise.pdf")
 	plot_2D_violins([layer_epoch_retain_rates[layer_index][-1] for layer_index in layer_dimensions], output_file_path)
@@ -74,7 +74,7 @@ def plot_2D_violins(matrix=None, output_file_path=None):
 	fig = plt.figure()
 	axe = fig.add_subplot(111)
 
-	labels = ["layer %d" % x for x in xrange(len(matrix))]
+	labels = ["layer %d" % x for x in range(len(matrix))]
 	# axe.boxplot(matrix, labels=labels, showmeans=True, meanline=True, notch=1, sym='o', vert=1, whis=1.5)
 	axe.violinplot(matrix, showmeans=True, showextrema=True, showmedians=False, vert=1)
 
@@ -119,8 +119,8 @@ def plot_3D_wires(matrix=None, rescale_x_interval=1, output_file_path=None):
 		number_of_neurons = matrix.shape[1]
 		x_y_coordinates = numpy.zeros((2, number_of_epochs * number_of_neurons))
 		coordinate_index = 0
-		for epoch_index in xrange(number_of_epochs):
-			for neuron_index in xrange(number_of_neurons):
+		for epoch_index in range(number_of_epochs):
+			for neuron_index in range(number_of_neurons):
 				x_y_coordinates[0, coordinate_index] = epoch_index
 				x_y_coordinates[1, coordinate_index] = matrix[epoch_index, neuron_index]
 				coordinate_index += 1
@@ -188,8 +188,8 @@ def plot_3D_bars(matrix=None, rescale_x_interval=1):
 		number_of_neurons = matrix.shape[1]
 		x_y_coordinates = numpy.zeros((2, number_of_epochs * number_of_neurons))
 		coordinate_index = 0
-		for epoch_index in xrange(number_of_epochs):
-			for neuron_index in xrange(number_of_neurons):
+		for epoch_index in range(number_of_epochs):
+			for neuron_index in range(number_of_neurons):
 				x_y_coordinates[0, coordinate_index] = epoch_index
 				x_y_coordinates[1, coordinate_index] = matrix[epoch_index, neuron_index]
 				coordinate_index += 1
@@ -201,19 +201,11 @@ def plot_3D_bars(matrix=None, rescale_x_interval=1):
 		hist, xedges, yedges = numpy.histogram2d(x, y, bins=[number_of_epochs / bin_x_size, 1. / bin_y_size],
 		                                         range=[[0, number_of_epochs], [0, 1]])
 
-	print x
-	print y
-	print hist
-	print xedges
-	print yedges
-
 	# Construct arrays for the anchor positions of the 16 bars.
 	# Note: numpy.meshgrid gives arrays in (ny, nx) so we use 'F' to flatten xpos,
 	# ypos in column-major order. For numpy >= 1.7, we could instead call meshgrid
 	# with indexing='ij'.
 	xpos, ypos = numpy.meshgrid(xedges[:-1] + 0.25 * bin_x_size, yedges[:-1] + 0.25 * bin_y_size)
-	print xpos
-	print ypos
 	xpos = xpos.flatten('F') * rescale_x_interval
 	ypos = ypos.flatten('F')
 	zpos = numpy.zeros_like(xpos)

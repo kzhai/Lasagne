@@ -218,7 +218,7 @@ def parse_models_3d(model_directories, number_of_points=10, output_file_path=Non
 		dense_dimensions_tokens = model_settings["dense_dimensions"].strip("[]").split(",")
 		dense_dimension = int(dense_dimensions_tokens[0])
 
-		print model_name, layer_activation_parameter, dense_dimension
+		print(model_name, layer_activation_parameter, dense_dimension)
 
 		debug_output_logs_on_train = debug_output_logs_on_train[-number_of_points:]
 		debug_rademacher_logs_on_train = debug_rademacher_logs_on_train[-number_of_points:]
@@ -281,10 +281,10 @@ def transform_coordinate_to_surface(matrix):
 		for j, y in enumerate(y_sorted):
 			surface_matrix[0, i, :] = x
 			surface_matrix[1, :, j] = y
-	for i in xrange(matrix.shape[0]):
+	for i in range(matrix.shape[0]):
 		x_index = x_to_index[matrix[i, 0]]
 		y_index = y_to_index[matrix[i, 1]]
-		for j in xrange(matrix.shape[1] - 2):
+		for j in range(matrix.shape[1] - 2):
 			surface_matrix[2 + j, x_index, y_index] = matrix[i, 2 + j]
 	return surface_matrix
 
@@ -296,7 +296,7 @@ def plot_3D_wires(matrix, output_file_path=None, smooth=0):
 	y = matrix[1, :, :]
 
 	fig, axes = plt.subplots(1, matrix.shape[0] - 2, subplot_kw={'projection': '3d'})
-	for i in xrange(matrix.shape[0] - 2):
+	for i in range(matrix.shape[0] - 2):
 		z = matrix[2 + i, :, :]
 		if smooth:
 			tck = scipy.interpolate.bisplrep(x, y, z, s=smooth)
@@ -344,7 +344,7 @@ def plot_3D_hillshaded(matrix, output_file_path=None, smooth=0):
 
 	ls = LightSource(270, 45)
 	fig, axes = plt.subplots(1, matrix.shape[0] - 2, subplot_kw={'projection': '3d'})
-	for i in xrange(matrix.shape[0] - 2):
+	for i in range(matrix.shape[0] - 2):
 		z = matrix[2 + i, :, :]
 		if smooth:
 			tck = scipy.interpolate.bisplrep(x, y, z, s=smooth)
@@ -378,7 +378,7 @@ def plot_3D_triangular(matrix, output_file_path=None):
 	# figsize = (20, 10)
 	fig, axes = plt.subplots(1, matrix.shape[1] - 2, subplot_kw={'projection': '3d'})
 
-	for i in xrange(matrix.shape[1] - 2):
+	for i in range(matrix.shape[1] - 2):
 		z = matrix[:, 2 + i]
 
 		# axes[i] = fig.gca(projection='3d')

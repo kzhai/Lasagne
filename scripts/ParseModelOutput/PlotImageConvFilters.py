@@ -48,8 +48,8 @@ def plot_images(conv_filters, feature_map_size, output_file_path=None, interpola
 
 	fig.subplots_adjust(hspace=0.05, wspace=0.05)
 
-	for x in xrange(feature_map_size[0]):
-		for y in xrange(feature_map_size[1]):
+	for x in range(feature_map_size[0]):
+		for y in range(feature_map_size[1]):
 			ax = axes[x, y];
 			ax.imshow(conv_filters[x, y, :, :], interpolation=interpolation)
 	# ax.set_title(interp_method)

@@ -39,12 +39,12 @@ def plot_retain_rates(model_directories, layer_index=0, snapshot_index=-1, plot_
 
 		model_setting_tokens = [model_name]
 		#["regularizer", "learning_rate_decay", "learning_rate"]
-		if "1.0" not in model_settings["regularizer"]:
-			continue;
+		#if "1.0" not in model_settings["regularizer"]:
+			#continue
 		#for setting_name in ["dropout_rate_update_interval"]:
 			#model_setting_tokens.append(model_settings[setting_name])
 
-		retain_rates = numpy.load(os.path.join(model_directory, "layer.%d.epoch.%d.npy" % (layer_index, epoch_index)))
+		retain_rates = numpy.load(os.path.join(model_directory, "noise.%d.epoch.%d.npy" % (layer_index, epoch_index)))
 		retain_rates = numpy.clip(retain_rates, 0, 1)
 		if len(model_retain_rates) > 0:
 			assert len(model_retain_rates[-1]) == numpy.prod(retain_rates.shape)

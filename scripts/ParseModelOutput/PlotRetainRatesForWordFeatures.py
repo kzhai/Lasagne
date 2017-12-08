@@ -62,8 +62,8 @@ def plot_retain_rates_for_word_features(model_directory, feature_mapping, layer_
 		retain_rates_argsort = numpy.argsort(retain_rates[:, -1]).tolist()
 		interesting_feature_indices_1 = retain_rates_argsort[:thresholds[0]]
 		interesting_feature_indices_2 = retain_rates_argsort[-thresholds[0]:]
-		print sorted(itemgetter(*interesting_feature_indices_1)(word_features))
-		print sorted(itemgetter(*interesting_feature_indices_2)(word_features))
+		print(sorted(itemgetter(*interesting_feature_indices_1)(word_features)))
+		print(sorted(itemgetter(*interesting_feature_indices_2)(word_features)))
 		interesting_feature_indices = list(set(interesting_feature_indices_1 + interesting_feature_indices_2))
 	elif len(thresholds) == 2:
 		# interesting_feature_indices = numpy.argwhere(numpy.min(retain_rates, axis=1) <= 0)[:, 0].tolist()
@@ -72,8 +72,8 @@ def plot_retain_rates_for_word_features(model_directory, feature_mapping, layer_
 
 		interesting_feature_indices_1 = numpy.argwhere(retain_rates[:, -1] <= thresholds[0])[:, 0].tolist()
 		interesting_feature_indices_2 = numpy.argwhere(retain_rates[:, -1] >= thresholds[1])[:, 0].tolist()
-		print sorted(itemgetter(*interesting_feature_indices_1)(word_features))
-		print sorted(itemgetter(*interesting_feature_indices_2)(word_features))
+		print(sorted(itemgetter(*interesting_feature_indices_1)(word_features)))
+		print(sorted(itemgetter(*interesting_feature_indices_2)(word_features)))
 		interesting_feature_indices = list(set(interesting_feature_indices_1 + interesting_feature_indices_2))
 
 	# print interesting_feature_indices
@@ -142,7 +142,7 @@ def plot_lines(features, indices, matrix, output_file_path=None, exclusive_radiu
 				break
 
 		if len(possible_text_x_pos) == 0:
-			print "out of coordinates for text '%s'" % feature
+			print("out of coordinates for text '%s'" % feature)
 		unavailable_coordinates.add((text_x_pos, text_y_pos))
 		# print unavailable_coordinates
 
