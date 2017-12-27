@@ -69,10 +69,10 @@ class DynamicDropoutLayer(AdaptiveDropoutLayer):
 	"""Elastic adaptive Dropout layer
 	"""
 
-	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)), num_leading_axes=1, shared_axes=(),
+	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)), shared_axes=(), num_leading_axes=1,
 	             **kwargs):
 		super(DynamicDropoutLayer, self).__init__(incoming=incoming, activation_probability=activation_probability,
-		                                          num_leading_axes=num_leading_axes, shared_axes=shared_axes, **kwargs)
+		                                          shared_axes=shared_axes, num_leading_axes=num_leading_axes, **kwargs)
 
 	def find_neuron_indices_to_prune(self, prune_threshold=1e-3):
 		activation_probability = self.activation_probability.eval()
@@ -115,40 +115,13 @@ class DynamicDropoutLayer(AdaptiveDropoutLayer):
 
 
 class BernoulliDropoutLayerHan(BernoulliDropoutLayer):
-	"""Prunable Dropout layer
+	"""Bernoulli Dropout Layer
 	"""
 
-	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)),
-	             num_leading_axes=1, shared_axes=(), **kwargs):
-		super(BernoulliDropoutLayerHan, self).__init__(incoming, activation_probability, num_leading_axes,
-		                                               shared_axes, **kwargs)
-
-	def prune_activation_probability(self, input_indices_to_keep):
-		self.input_shape = self.input_layer.output_shape
-		assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_keep)
-
-		activation_probability = self.activation_probability.eval()[input_indices_to_keep]
-		old_activation_probability = self._set_r(activation_probability)
-
-		return old_activation_probability
-
-	def decay_activation_probability(self, decay_weight):
-		old_activation_probability = self.activation_probability.eval()
-		activation_probability = old_activation_probability * decay_weight
-		self.activation_probability.set_value(activation_probability)
-		# old_activation_probability = self._set_r(activation_probability)
-
-		return old_activation_probability
-
-
-class BernoulliDropoutLayerHanBackup(AdaptiveDropoutLayer):
-	"""Prunable Dropout layer
-	"""
-
-	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)),
-	             num_leading_axes=1, shared_axes=(), **kwargs):
-		super(BernoulliDropoutLayerHanBackup, self).__init__(incoming, activation_probability, num_leading_axes,
-		                                                     shared_axes, **kwargs)
+	def __init__(self, incoming, activation_probability=init.Uniform(range=(0, 1)), shared_axes=(), num_leading_axes=1,
+	             **kwargs):
+		super(BernoulliDropoutLayerHan, self).__init__(incoming, activation_probability, shared_axes, num_leading_axes,
+		                                               **kwargs)
 
 	def prune_activation_probability(self, input_indices_to_keep):
 		self.input_shape = self.input_layer.output_shape

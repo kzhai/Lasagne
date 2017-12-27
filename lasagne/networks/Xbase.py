@@ -38,7 +38,7 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 
 	             adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
 	             # adaptable_update_interval=0,
-	             train_adaptables_mode="layer",
+	             train_adaptables_mode="train_adaptables_networkwise",
 
 	             max_norm_constraint=0,
 	             validation_interval=-1,
@@ -59,6 +59,8 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 
 		self.set_adaptable_learning_rate_policy(adaptable_learning_rate_policy)
 
+		self.train_adaptables_epoch_mode = getattr(self, train_adaptables_mode)
+		'''
 		if train_adaptables_mode == "network":
 			self.train_adaptables_epoch_mode = self.train_adaptables_networkwise
 		elif train_adaptables_mode == "layer":
@@ -67,6 +69,7 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 		# self.train_adaptables_epoch_mode = self.train_adaptables_layerwise_in_turn
 		else:
 			raise NotImplementedError("Not implemented adaptables training mode!")
+		'''
 
 	def set_adaptable_learning_rate_policy(self, adaptable_learning_rate):
 		self.adaptable_learning_rate_policy = adaptable_learning_rate

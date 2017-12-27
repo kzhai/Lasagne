@@ -19,7 +19,7 @@ def construct_mlpA_parser():
 	model_parser.add_argument("--adaptable_learning_rate", dest="adaptable_learning_rate", action='store',
 	                          default=None, help="adaptable learning rate [None - learning_rate]")
 	model_parser.add_argument("--train_adaptables_mode", dest="train_adaptables_mode",
-	                          action='store', default="layer", help="train adaptables mode [layer]")
+	                          action='store', default="train_adaptables_networkwise", help="train adaptables mode [train_adaptables_networkwise]")
 	#model_parser.add_argument("--adaptable_update_interval", dest="adaptable_update_interval", type=int,
 	                          #action='store', default=1, help="adatable update interval [1]")
 
@@ -47,7 +47,7 @@ def validate_mlpA_arguments(arguments):
 	else:
 		arguments.adaptable_learning_rate = parse_parameter_policy(arguments.adaptable_learning_rate)
 
-	assert arguments.train_adaptables_mode in {"layer", "network", "layer-in-turn"}
+	assert arguments.train_adaptables_mode in {"train_adaptables_networkwise", "train_adaptables_layerwise", "train_adaptables_layerwise_in_turn"}
 
 	#assert (arguments.adaptable_update_interval >= 0)
 

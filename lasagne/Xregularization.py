@@ -1,6 +1,7 @@
+import numpy
 import theano.tensor as T
 
-from .layers import get_output, get_output_shape, EmbeddingLayer, DenseLayer, ObstructedDenseLayer, \
+from .layers import get_output, get_output_shape, Layer, EmbeddingLayer, DenseLayer, ObstructedDenseLayer, \
 	AdaptiveDropoutLayer
 
 
@@ -260,3 +261,105 @@ def mclog_likelihood(N=None,
                      base_likelihood=lasagne.objectives.categorical_crossentropy):
     return lambda predictions, targets: N * base_likelihood(predictions, targets)
 '''
+
+
+class GaussianMixturePrior(Layer):
+	"""A Gaussian Mixture prior for Neural Networks """
+
+	def __init__(self, network, number_of_components, pretrained_weights, pi_zero=1 - 1e-3, **kwargs):
+		self.neural_network = network
+		self.number_of_components = number_of_components
+		self.network_weights = [K.flatten(w) for w in network_weights]
+		# self.pretrained_weights = special_flatten(pretrained_weights)
+		self.pi_zero = pi_zero
+
+		# super(GaussianMixturePrior, self).__init__(**kwargs)
+
+		number_of_components = self.number_of_components
+
+		# create trainable ...
+		#    ... means
+		init_mean = numpy.linspace(-0.6, 0.6, self.number_of_components - 1)
+		self.means = self.add_param(init_mean, init_mean.shape, name="means", trainable=True, regularizable=False)
+		# self.means = K.variable(init_mean, name='means')
+		#   ... the variance (we will work in log-space for more stability)
+		init_stds = numpy.tile(0.25, self.number_of_components)
+		init_gamma = - numpy.log(numpy.power(init_stds, 2))
+		self.gammas = self.add_param(init_gamma, init_gamma.shape, name="gammas", trainable=True, regularizable=False)
+		#   ... the mixing proportions
+		init_mixing_proportions = numpy.ones((self.number_of_components - 1))
+		init_mixing_proportions *= (1. - self.pi_zero) / (self.number_of_components - 1)
+		self.rhos = self.add_param(numpy.log(init_mixing_proportions), init_mixing_proportions.shape, name="rhos",
+		                           trainable=True, regularizable=False)
+
+		print("means", self.means, init_mean)
+		print("gammas", self.gammas, init_gamma)
+		print("rhos", self.rhos, init_mixing_proportions)
+
+		# Finally, add the variables to the trainable parameters
+		self.trainable_weights = [self.means] + [self.gammas] + [self.rhos]
+
+	def call(self, x, mask=None):
+		print("---------->", "checkpoint inside call")
+		number_of_components = self.number_of_components
+		loss = 0
+		# here we stack together the trainable and non-trainable params
+		#     ... the mean vector
+		means = T.concatenate([T.scalar(0.), self.means], axis=0)
+		#     ... the variances
+		precision = T.exp(self.gammas)
+		#     ... the mixing proportions (we are using the log-sum-exp trick here)
+		min_rho = T.min(self.rhos)
+		mixing_proportions = T.exp(self.rhos - min_rho)
+		mixing_proportions = (1 - self.pi_zero) * mixing_proportions / T.sum(mixing_proportions)
+		mixing_proportions = T.concatenate([T.scalar(self.pi_zero), mixing_proportions], axis=0)
+
+		# compute the loss given by the gaussian mixture
+		for weights in self.network_weights:
+			loss = loss + self.compute_loss(weights, mixing_proportions, means, precision)
+
+		# GAMMA PRIOR ON PRECISION
+		# ... for the zero component
+		(alpha, beta) = (5e3, 20e-1)
+		neglogprop = (1 - alpha) * self.gammas[0] + beta * precision[0]
+		loss = loss + T.sum(neglogprop)
+		# ... and all other components
+		alpha, beta = (2.5e2, 1e-1)
+		idx = numpy.arange(1, number_of_components)
+		neglogprop = (1 - alpha) * self.gammas[idx] + beta * precision[idx]
+		loss = loss + T.sum(neglogprop)
+
+		return loss
+
+	def compute_loss(self, weights, mixing_proportions, means, precision):
+		diff = weights[:, None] - means  # shape: (nb_params, nb_components)
+		unnormalized_log_likelihood = - (diff ** 2) / 2 * T.flatten(precision)
+		Z = T.sqrt(precision / (2 * numpy.pi))
+		log_likelihood = logsumexp(unnormalized_log_likelihood, w=T.flatten(mixing_proportions * Z), axis=1)
+
+		# return the neg. log-likelihood for the prior
+		return - T.sum(log_likelihood)
+
+	def get_output_shape_for(self, input_shape):
+		return (input_shape[0], 1)
+
+
+def logsumexp(t, w=None, axis=1):
+	"""
+	t... tensor
+	w... weight tensor
+	"""
+
+	t_max = T.max(t, axis=axis, keepdims=True)
+
+	if w is not None:
+		tmp = w * T.exp(t - t_max)
+	else:
+		tmp = T.exp(t - t_max)
+
+	out = T.sum(tmp, axis=axis)
+	out = T.log(out)
+
+	t_max = T.max(t, axis=axis)
+
+	return out + t_max

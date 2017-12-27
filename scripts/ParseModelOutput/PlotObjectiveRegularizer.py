@@ -196,8 +196,8 @@ def plot_multiple_yaxis(debug_output_logs_on_train, output_file_path=None):
 		plt.savefig(output_file_path, bbox_inches='tight')
 
 
-def parse_models_3d(model_directories, number_of_points=10, output_file_path=None):
-	trace_to_plot_coordinate = numpy.zeros((0, 4))
+def parse_models_3d(model_directories, number_of_points=10, plot_directory=None):
+	trace_to_plot_coordinate = None
 	for model_name in os.listdir(model_directories):
 		model_directory = os.path.join(model_directories, model_name)
 		if os.path.isfile(model_directory):
@@ -219,8 +219,11 @@ def parse_models_3d(model_directories, number_of_points=10, output_file_path=Non
 		dense_dimension = int(dense_dimensions_tokens[0])
 
 		print(model_name, layer_activation_parameter, dense_dimension)
+		if layer_activation_parameter < 0.2:
+			continue
 
 		debug_output_logs_on_train = debug_output_logs_on_train[-number_of_points:]
+		debug_output_logs_on_test = debug_output_logs_on_test[-number_of_points:]
 		debug_rademacher_logs_on_train = debug_rademacher_logs_on_train[-number_of_points:]
 
 		temp_trace_to_plot = numpy.zeros((len(debug_rademacher_logs_on_train), 2))
@@ -229,43 +232,68 @@ def parse_models_3d(model_directories, number_of_points=10, output_file_path=Non
 
 		temp_trace_to_plot = numpy.hstack(
 			(temp_trace_to_plot, numpy.asarray(debug_rademacher_logs_on_train)[:, numpy.newaxis]))
-		# dense_dimension, layer_activation_parameter, rademacher_complexity
+		# dense_dimension, layer_activation_parameter, rademacher_complexity,
 		assert temp_trace_to_plot.shape[1] == 3
 
 		temp_trace_to_plot = numpy.hstack((temp_trace_to_plot, debug_output_logs_on_train))
-		# dense_dimension, layer_activation_parameter, rademacher_complexity, loss, objective, regularizer, accuracy
+		# dense_dimension, layer_activation_parameter, rademacher_complexity,
+		# train_loss, train_objective, train_regularizer, train_accuracy,
 		assert temp_trace_to_plot.shape[1] == 7
-		temp_trace_to_plot = temp_trace_to_plot[:, [1, 0, 4, 2]]
-		# layer_activation_parameter, dense_dimension, objective, rademacher_complexity
-		assert temp_trace_to_plot.shape[1] == 4
+		temp_trace_to_plot = numpy.hstack((temp_trace_to_plot, debug_output_logs_on_test))
+		# dense_dimension, layer_activation_parameter, rademacher_complexity,
+		# train_loss, train_objective, train_regularizer, train_accuracy,
+		# test_loss, test_objective, test_regularizer, test_accuracy
+		assert temp_trace_to_plot.shape[1] == 11
 
 		temp_trace_to_plot = numpy.mean(temp_trace_to_plot, axis=0)[numpy.newaxis, :]
 
+		# Warning: all following rescales are necessary to the output before 171110
 		# rademacher_scale *= numpy.sqrt((784 + dense_dimension) / (numpy.log(dense_dimension)) * dense_dimension)
 		# rademacher_scale *= numpy.sqrt((dense_dimension + 10) / (numpy.log(10)) * 10)
+		# Warning: all following rescales are necessary to the output between 171110 to 171117
 		rademacher_scale = 1. / numpy.sqrt(dense_dimension)
-		temp_trace_to_plot[:, -1] /= rademacher_scale
+		temp_trace_to_plot[:, 2] /= rademacher_scale
 
 		# if number_of_points > 0:
 		# temp_trace_to_plot = temp_trace_to_plot[-number_of_points:, :]
-		trace_to_plot_coordinate = numpy.vstack((trace_to_plot_coordinate, temp_trace_to_plot))
+		if trace_to_plot_coordinate is None:
+			trace_to_plot_coordinate = temp_trace_to_plot
+		else:
+			trace_to_plot_coordinate = numpy.vstack((trace_to_plot_coordinate, temp_trace_to_plot))
 
-	# trace_to_plot_coordinate = numpy.hstack((trace_to_plot_coordinate, (trace_to_plot_coordinate[:, 2] + 1000 * trace_to_plot_coordinate[:, 3])[:, numpy.newaxis]))
+	# dense_dimension, layer_activation_parameter, rademacher_complexity,
+	# train_loss, train_objective, train_regularizer, train_accuracy,
+	# test_loss, test_objective, test_regularizer, test_accuracy
+	assert trace_to_plot_coordinate.shape[1] == 11
 
-	if output_file_path == None:
-		plot_3D_triangular(trace_to_plot_coordinate, output_file_path)
-	else:
-		plot_3D_triangular(trace_to_plot_coordinate, "triangular-" + output_file_path)
+	trace_to_plot_coordinate = trace_to_plot_coordinate[:, [1, 0, 10, 4, 2]]
+	# layer_activation_parameter, dense_dimension, test_accuracy, train_objective, rademacher_complexity
+	assert trace_to_plot_coordinate.shape[1] == 5
+
+	zlabels = ["accuracy % (test)", "loss (train)", "regularizer"]
+	zlims = [(95.5, 98.5), (0, 0.2), None]
+
+	lambda_reg = 5e-2
+	trace_to_plot_coordinate = numpy.hstack((trace_to_plot_coordinate,
+	                                         (trace_to_plot_coordinate[:, 3] + lambda_reg * trace_to_plot_coordinate[:, 4])[:,
+	                                         numpy.newaxis]))
+	# layer_activation_parameter, dense_dimension, test_accuracy, train_objective, rademacher_complexity, train_loss
+	assert trace_to_plot_coordinate.shape[1] == 6
+	zlabels.append("objective (train)")
+	#zlims.append((0, 0.4))
+	zlims.append(None)
+
+	# output_file_path = None if plot_directory is None else os.path.join(plot_directory, "triangular.pdf")
+	# plot_3D_triangular(trace_to_plot_coordinate, output_file_path)
 
 	trace_to_plot_surface = transform_coordinate_to_surface(trace_to_plot_coordinate)
-	for smooth in [1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1, 5e-1, 1, 5]:
-		# for smooth in [1.5e-4, 2e-4, 2.5e-4, 3e-4, 3.5e-4, 4e-4, 4.5e-4]:
-		if output_file_path == None:
-			plot_3D_hillshaded(trace_to_plot_surface, output_file, smooth=smooth)
-			plot_3D_wires(trace_to_plot_surface, output_file_path, smooth=smooth)
-		else:
-			plot_3D_hillshaded(trace_to_plot_surface, "hillshaded-%f-%s" % (smooth, output_file_path), smooth=smooth)
-			plot_3D_wires(trace_to_plot_surface, "wires-%f-%s" % (smooth, output_file_path), smooth=smooth)
+	for smooth in [1e-3, 1e-2]:
+		# output_file_path = None if plot_directory is None else os.path.join(plot_directory, "wires_%f.pdf" % (smooth))
+		# plot_3D_wires(trace_to_plot_surface, output_file_path, smooth=smooth)
+
+		output_file_path = None if plot_directory is None else os.path.join(plot_directory,
+		                                                                    "hillshaded_lambda=%f_smooth=%f.pdf" % (lambda_reg, smooth))
+		plot_3D_hillshaded(trace_to_plot_surface, output_file_path, smooth=smooth, zlabels=zlabels, zlims=zlims)
 
 
 def transform_coordinate_to_surface(matrix):
@@ -291,6 +319,8 @@ def transform_coordinate_to_surface(matrix):
 
 def plot_3D_wires(matrix, output_file_path=None, smooth=0):
 	import matplotlib.pyplot as plt
+	from mpl_toolkits.mplot3d import Axes3D
+	import matplotlib.tri as mtri
 
 	x = matrix[0, :, :]
 	y = matrix[1, :, :]
@@ -318,13 +348,15 @@ def plot_3D_wires(matrix, output_file_path=None, smooth=0):
 		plt.savefig(output_file_path, bbox_inches='tight')
 
 
-def plot_3D_hillshaded(matrix, output_file_path=None, smooth=0):
+def plot_3D_hillshaded(matrix, output_file_path=None, smooth=0, zlabels=None, zlims=None):
 	"""
 	Demonstrates using custom hillshading in a 3D surface plot.
 	"""
 	from matplotlib import cm
 	from matplotlib.colors import LightSource
 	import matplotlib.pyplot as plt
+	from mpl_toolkits.mplot3d import Axes3D
+	import matplotlib.tri as mtri
 
 	'''
 	filename = cbook.get_sample_data('jacksboro_fault_dem.npz', asfileobj=False)
@@ -339,11 +371,17 @@ def plot_3D_hillshaded(matrix, output_file_path=None, smooth=0):
 	x, y, z = x[region], y[region], z[region]
 	'''
 
+	ls = LightSource(270, 45)
+
 	x = matrix[0, :, :]
 	y = matrix[1, :, :]
 
-	ls = LightSource(270, 45)
-	fig, axes = plt.subplots(1, matrix.shape[0] - 2, subplot_kw={'projection': '3d'})
+	assert zlabels is None or len(zlabels) == matrix.shape[0] - 2
+	assert zlims is None or len(zlims) == matrix.shape[0] - 2
+
+	number_of_rows = int(numpy.floor(numpy.sqrt(matrix.shape[0] - 2)))
+	number_of_cols = int(numpy.ceil((matrix.shape[0] - 2) / number_of_rows))
+	fig, axes = plt.subplots(number_of_rows, number_of_cols, subplot_kw={'projection': '3d'})
 	for i in range(matrix.shape[0] - 2):
 		z = matrix[2 + i, :, :]
 		if smooth:
@@ -352,15 +390,29 @@ def plot_3D_hillshaded(matrix, output_file_path=None, smooth=0):
 
 		# To use a custom hillshading mode, override the built-in shading and pass
 		# in the rgb colors of the shaded surface calculated from "shade".
-		rgb = ls.shade(z, cmap=cm.gist_earth, vert_exag=0.1, blend_mode='soft')
-		surf = axes[i].plot_surface(x, y, z, rstride=1, cstride=1, facecolors=rgb, linewidth=0, antialiased=True,
-		                            alpha=0.9, shade=False)
+		rgb = ls.shade(z, cmap=cm.nipy_spectral, vert_exag=0.1, blend_mode='soft')
+		if number_of_rows == 1:
+			axe = axes[i % number_of_cols]
+		else:
+			axe = axes[i / number_of_rows, i % number_of_cols]
+		surf = axe.plot_surface(x, y, z, rstride=1, cstride=1, facecolors=rgb, linewidth=0, antialiased=True,
+		                        alpha=0.75, shade=False)
 		# axes[i].set_title("Loss")
-		axes[i].set_xlabel('retain rates')
-		axes[i].set_ylabel('dimension')
+		axe.set_xlabel('retain rates')
+		axe.set_xlim(0.2, 1.0)
+		axe.set_ylabel('dimension')
+		if zlabels is not None:
+			axe.set_zlabel(zlabels[i])
+		if zlims is not None and zlims[i] is not None:
+			axe.set_zlim(zlims[i][0], zlims[i][1])
 
-	# axes[0].set_zlabel('loss')
-	# axes[1].set_zlabel('regularizer')
+	'''
+	axes[0].set_zlabel('loss')
+	axes[0].set_zlim(0,0.2)
+	axes[1].set_zlabel('regularizer')
+	axes[2].set_zlabel('objective')
+	axes[2].set_zlim(0, 0.5)
+	'''
 
 	plt.tight_layout()
 	if output_file_path is None:
@@ -371,20 +423,22 @@ def plot_3D_hillshaded(matrix, output_file_path=None, smooth=0):
 
 def plot_3D_triangular(matrix, output_file_path=None):
 	import matplotlib.pyplot as plt
+	from mpl_toolkits.mplot3d import Axes3D
+	import matplotlib.tri as mtri
 
 	x = matrix[:, 0]
 	y = matrix[:, 1]
 
 	# figsize = (20, 10)
-	fig, axes = plt.subplots(1, matrix.shape[1] - 2, subplot_kw={'projection': '3d'})
+	fig, axes = plt.subplots(1, matrix.shape[1] - 2, subplot_kw={"projection": '3d'})
+	# fig, axes = plt.subplots(1, matrix.shape[1] - 2, projection='3d')
+	# fig = plt.figure()
 
 	for i in range(matrix.shape[1] - 2):
 		z = matrix[:, 2 + i]
 
 		# axes[i] = fig.gca(projection='3d')
-		axes[i].plot_trisurf(x, y, z, linewidth=0.01, alpha=0.75, antialiased=True, cmap=plt.cm.CMRmap)
-		# axes[i].plot_trisurf(x, y, z, linewidth=0.25, alpha=0.75, antialiased=True, cmap=plt.cm.YlGnBu_r)
-		# axes[i].plot_trisurf(x, y, z, linewidth=0.25, alpha=0.75, antialiased=True, cmap=plt.cm.Spectral)
+		axes[i].plot_trisurf(x, y, z, linewidth=0.01, alpha=0.75, antialiased=True, cmap=plt.cm.nipy_spectral)
 		# axes[i].set_title("Loss")
 		axes[i].set_xlabel('retain rates')
 		axes[i].set_ylabel('dimension')
@@ -403,11 +457,11 @@ if __name__ == '__main__':
 	import argparse
 
 	argument_parser = argparse.ArgumentParser()
-	argument_parser.add_argument("--input_directory", dest="input_directory", action='store', default=None,
-	                             help="input directory [None]")
+	argument_parser.add_argument("--model_directories", dest="model_directories", action='store', default=None,
+	                             help="model directory [None]")
 	argument_parser.add_argument("--number_of_samples", dest="number_of_samples", action='store', type=int, default=0,
 	                             help="number of samples [0]")
-	argument_parser.add_argument("--output_file", dest="output_file", action='store', default=None,
+	argument_parser.add_argument("--plot_directory", dest="plot_directory", action='store', default=None,
 	                             help="output file path [None]")
 	# argument_parser.add_argument("--output_directory", dest="output_directory", action='store', default=None,
 	# help="output directory [None]")
@@ -419,9 +473,9 @@ if __name__ == '__main__':
 		print("%s=%s" % (key, value))
 	print("========== ========== ========== ========== ==========")
 
-	input_directory = arguments.input_directory
-	output_file = arguments.output_file
+	model_directories = arguments.model_directories
+	plot_directory = arguments.plot_directory
 	number_of_samples = arguments.number_of_samples
 
 	# parse_models_2d(input_directory, number_of_samples, output_file_path=output_file)
-	parse_models_3d(input_directory, number_of_samples, output_file_path=output_file)
+	parse_models_3d(model_directories, number_of_samples, plot_directory=plot_directory)

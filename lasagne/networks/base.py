@@ -168,8 +168,7 @@ class Network(object):
 				regularizer += regularizer_weight_variable * regularizer_function(self, **kwargs)
 			elif regularizer_function in set([regularization.l1, regularization.l2]):
 				regularizer += regularizer_weight_variable * regularization.regularize_network_params(
-					self._neural_network,
-					regularizer_function, **kwargs)
+					self._neural_network, regularizer_function, **kwargs)
 				'''
 				if type(lambda_decay_policy) is list:
 					dense_layers = []

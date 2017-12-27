@@ -1,77 +1,113 @@
 import os
 import re
 
+import matplotlib.pyplot as plt
 import numpy
 import numpy.random
 
 retain_rates_file_name_pattern = re.compile(r'function_outputs_train\.epoch_(?P<epoch>[\d]+?)\.npy')
 
 
-def plot_loss_objective_regularizer(model_directory, snapshot_interval=[-1, -1, 1], plot_directory=None):
+def plot_loss_objective_regularizer(model_directories, snapshot_interval=[-1, -1, 1], plot_directory=None):
+	model_epoch_loss = []
+	model_epoch_objective = []
+	model_epoch_regularizer = []
+
+	model_epoch_labels = []
+
 	epoch_indices = set()
-	for file_name in os.listdir(model_directory):
-		matcher = re.match(retain_rates_file_name_pattern, file_name)
-		if matcher is None:
+	for model_name in os.listdir(model_directories):
+		model_directory = os.path.join(model_directories, model_name)
+		if os.path.isfile(model_directory):
 			continue
 
-		epoch_index = int(matcher.group("epoch"))
-
-		if snapshot_interval[0] >= 0 and epoch_index < snapshot_interval[0]:
-			continue
-		if snapshot_interval[1] >= 0 and epoch_index > snapshot_interval[1]:
-			continue
-		if epoch_index % snapshot_interval[2] != 0:
+		model_log_file = os.path.join(model_directory, "model.log")
+		if not os.path.exists(model_log_file):
 			continue
 
-		epoch_indices.add(epoch_index)
+		for file_name in os.listdir(model_directory):
+			matcher = re.match(retain_rates_file_name_pattern, file_name)
+			if matcher is None:
+				continue
 
-	epoch_stochastic_loss = [x for x in epoch_indices]
-	epoch_deterministic_loss = [x for x in epoch_indices]
-	epoch_stochastic_objective = [x for x in epoch_indices]
-	epoch_deterministic_objective = [x for x in epoch_indices]
-	epoch_stochastic_regularizer = [x for x in epoch_indices]
-	epoch_deterministic_regularizer = [x for x in epoch_indices]
-	for file_name in os.listdir(model_directory):
-		matcher = re.match(retain_rates_file_name_pattern, file_name)
-		if matcher is None:
-			continue
+			epoch_index = int(matcher.group("epoch"))
 
-		epoch_index = int(matcher.group("epoch"))
+			if snapshot_interval[0] >= 0 and epoch_index < snapshot_interval[0]:
+				continue
+			if snapshot_interval[1] >= 0 and epoch_index > snapshot_interval[1]:
+				continue
+			if epoch_index % snapshot_interval[2] != 0:
+				continue
 
-		if snapshot_interval[0] >= 0 and epoch_index < snapshot_interval[0]:
-			continue
-		if snapshot_interval[1] >= 0 and epoch_index > snapshot_interval[1]:
-			continue
-		if epoch_index % snapshot_interval[2] != 0:
-			continue
+			epoch_indices.add(epoch_index)
 
-		# minibatcb_index
-		# stochastic_accuracy, stochastic_loss, stochastic_objective, stochastic_regularizer
-		# deterministic_accuracy, deterministic_loss, deterministic_ objective, deterministic_regularizer
-		epoch_minibatch_output = numpy.load(os.path.join(model_directory, file_name))
-		epoch_stochastic_objective[
-			(epoch_index - snapshot_interval[0]) / snapshot_interval[2]] = epoch_minibatch_output[:, 2]
-		epoch_deterministic_objective[
-			(epoch_index - snapshot_interval[0]) / snapshot_interval[2]] = epoch_minibatch_output[:, 6]
+		snapshot_interval = [min(epoch_indices), max(epoch_indices), snapshot_interval[2]]
 
-		epoch_stochastic_loss[
-			(epoch_index - snapshot_interval[0]) / snapshot_interval[2]] = epoch_minibatch_output[:, 3]
-		epoch_deterministic_loss[
-			(epoch_index - snapshot_interval[0]) / snapshot_interval[2]] = epoch_minibatch_output[:, 7]
+		epoch_stochastic_loss = [x for x in epoch_indices]
+		epoch_deterministic_loss = [x for x in epoch_indices]
+		epoch_stochastic_objective = [x for x in epoch_indices]
+		epoch_deterministic_objective = [x for x in epoch_indices]
+		epoch_stochastic_regularizer = [x for x in epoch_indices]
+		epoch_deterministic_regularizer = [x for x in epoch_indices]
+		for file_name in os.listdir(model_directory):
+			matcher = re.match(retain_rates_file_name_pattern, file_name)
+			if matcher is None:
+				continue
 
-		epoch_stochastic_regularizer[
-			(epoch_index - snapshot_interval[0]) / snapshot_interval[2]] = epoch_minibatch_output[:, 4]
-		epoch_deterministic_regularizer[
-			(epoch_index - snapshot_interval[0]) / snapshot_interval[2]] = epoch_minibatch_output[:, 8]
+			epoch_index = int(matcher.group("epoch"))
+
+			if snapshot_interval[0] >= 0 and epoch_index < snapshot_interval[0]:
+				continue
+			if snapshot_interval[1] >= 0 and epoch_index > snapshot_interval[1]:
+				continue
+			if epoch_index % snapshot_interval[2] != 0:
+				continue
+
+			# minibatcb_index
+			# stochastic_accuracy, stochastic_loss, stochastic_objective, stochastic_regularizer
+			# deterministic_accuracy, deterministic_loss, deterministic_objective, deterministic_regularizer
+			epoch_minibatch_output = numpy.load(os.path.join(model_directory, file_name))
+			epoch_stochastic_objective[
+				(epoch_index - snapshot_interval[0]) / snapshot_interval[2]] = epoch_minibatch_output[:, 2] / 1.5
+			epoch_deterministic_objective[
+				(epoch_index - snapshot_interval[0]) / snapshot_interval[2]] = epoch_minibatch_output[:, 6]
+
+			epoch_stochastic_loss[
+				(epoch_index - snapshot_interval[0]) / snapshot_interval[2]] = epoch_minibatch_output[:, 3] / 1.5
+			epoch_deterministic_loss[
+				(epoch_index - snapshot_interval[0]) / snapshot_interval[2]] = epoch_minibatch_output[:, 7]
+
+			epoch_stochastic_regularizer[
+				(epoch_index - snapshot_interval[0]) / snapshot_interval[2]] = epoch_minibatch_output[:, 4]
+			epoch_deterministic_regularizer[
+				(epoch_index - snapshot_interval[0]) / snapshot_interval[2]] = epoch_minibatch_output[:, 8]
+
+		model_epoch_loss.append(epoch_stochastic_loss)
+		model_epoch_loss.append(epoch_deterministic_loss)
+		model_epoch_objective.append(epoch_stochastic_objective)
+		model_epoch_objective.append(epoch_deterministic_objective)
+		model_epoch_regularizer.append(epoch_stochastic_regularizer)
+		model_epoch_regularizer.append(epoch_deterministic_regularizer)
+
+		model_epoch_labels.append("%s ReLU in stochastic mode" % model_name)
+		model_epoch_labels.append("%s ReLU in deterministic mode" % model_name)
 
 	epoch_indices = list(epoch_indices)
 	epoch_indices.sort()
 	epoch_indices = numpy.asarray(epoch_indices) * 2
-	#output_file_path = None if plot_directory is None else os.path.join(plot_directory, "loss,stochastic+deterministic.pdf")
-	#plot_errorbars([epoch_stochastic_loss, epoch_deterministic_loss], epoch_indices, output_file_path)
+	epoch_indices -= epoch_indices[0]
+	# output_file_path = None if plot_directory is None else os.path.join(plot_directory, "loss,stochastic+deterministic.pdf")
+	# plot_errorbars([epoch_stochastic_loss, epoch_deterministic_loss], epoch_indices, output_file_path)
 	output_file_path = None if plot_directory is None else os.path.join(plot_directory,
 	                                                                    "objective,stochastic+deterministic.pdf")
-	plot_errorbars([epoch_stochastic_objective, epoch_deterministic_objective], epoch_indices, output_file_path)
+	plot_errorbars(model_epoch_objective, epoch_indices, model_epoch_labels, output_file_path)
+
+	output_file_path = None if plot_directory is None else os.path.join(plot_directory,
+	                                                                    "loss,stochastic+deterministic.pdf")
+	plot_errorbars(model_epoch_loss, epoch_indices, model_epoch_labels, output_file_path)
+
+	# output_file_path = None if plot_directory is None else os.path.join(plot_directory, "regularizer,stochastic+deterministic.pdf")
+	# plot_errorbars(model_epoch_regularizer, epoch_indices, model_epoch_labels, output_file_path)
 
 	'''
 	output_file_path = None if plot_directory is None else os.path.join(plot_directory,
@@ -80,6 +116,52 @@ def plot_loss_objective_regularizer(model_directory, snapshot_interval=[-1, -1, 
 	                              [epoch_stochastic_objective, epoch_deterministic_objective], epoch_indices,
 	                              output_file_path)
 	'''
+
+
+def plot_errorbars(model_mode_snapshots, x_ticks, labels, output_file_path=None,
+                   colors=plt.rcParams['axes.prop_cycle'].by_key()['color']):
+	import matplotlib.pyplot as plt
+
+	fig = plt.figure()
+	axe = fig.add_subplot(111)
+
+	plt.style.use('classic')
+	markers = ['<', '>', 's', 'o', 'D', 'X', 'v', '^', '*', 'P']
+
+	print len(model_mode_snapshots), len(colors), len(markers)
+
+	plots = []
+	for i, snapshots in enumerate(model_mode_snapshots):
+		percentile_50 = numpy.asarray(
+			[numpy.percentile(snapshot, 50, interpolation='linear') for snapshot in snapshots])
+		percentile_25 = numpy.asarray(
+			[numpy.percentile(snapshot, 25, interpolation='linear') for snapshot in snapshots])
+		yerrbars = percentile_50 - percentile_25
+		errbar = axe.errorbar(x_ticks, percentile_50, yerr=yerrbars, linewidth=1, marker=markers[i], markersize=5,
+		                      linestyle='-.', color=colors[i], alpha=0.5)
+		plots.append(errbar)
+
+	axe.yaxis.grid(True)
+	axe.set_xlabel('epoch')
+	axe.set_ylabel('objective')
+
+	margin_adjustment = 50
+	axe.set_xlim(x_ticks[0] - margin_adjustment, x_ticks[-1] + margin_adjustment)
+	axe.set_ylim(0, 0.05)
+	# y_upper_limit = numpy.mean(numpy.asarray([numpy.percentile(stochastic_snapshot, 100, interpolation='linear') for stochastic_snapshot in stochastic_snapshots]))
+	# y_lower_limit = numpy.mean(numpy.asarray([numpy.percentile(deterministic_snapshot, 0, interpolation='linear') for deterministic_snapshot in deterministic_snapshots]))
+	# y_upper_limit = numpy.max(stochastic_snapshots[10])
+	# y_lower_limit = numpy.min(deterministic_snapshots[-10])
+	# axe.set_ylim(y_lower_limit, y_upper_limit)
+
+	plt.legend(plots, labels, loc='upper right', shadow=True)
+
+	plt.tight_layout()
+	if output_file_path is not None:
+		plt.savefig(output_file_path, bbox_inches='tight')
+
+	plt.show()
+
 
 def plot_errorbars_multiple_yaxis(primary_snapshots, secondary_snapshots, labels, output_file_path=None):
 	import matplotlib.pyplot as plt
@@ -140,8 +222,8 @@ def plot_errorbars_multiple_yaxis(primary_snapshots, secondary_snapshots, labels
 	secondary_panel.yaxis.grid(True)
 
 	# primary_panel.set_xlim(min_xlim, max_xlim)
-	#primary_panel.set_ylim(0.00, 0.04)
-	#secondary_panel.set_ylim(0, 0.02)
+	# primary_panel.set_ylim(0.00, 0.04)
+	# secondary_panel.set_ylim(0, 0.02)
 	# secondary_panel.set_ylim(numpy.min(train_logs[:, 3]), numpy.max(train_logs[:, 3]))
 	# par2.set_ylim(1, 65)
 
@@ -170,66 +252,12 @@ def plot_errorbars_multiple_yaxis(primary_snapshots, secondary_snapshots, labels
 	plt.show()
 
 
-def plot_errorbars(stochastic_deterministic_snapshots, labels, output_file_path=None):
-	import matplotlib.pyplot as plt
-
-	fig = plt.figure()
-	axe = fig.add_subplot(111)
-
-	stochastic_snapshots = stochastic_deterministic_snapshots[0]
-	deterministic_snapshots = stochastic_deterministic_snapshots[1]
-
-	# stochastic_boxes = axe.boxplot(stochastic_snapshots, labels=labels, showmeans=True)
-	# deterministic_boxes = axe.boxplot(deterministic_snapshots, labels=labels, showmeans=True)
-
-	axe.yaxis.grid(True)
-	# axe.set_xticks([y + 1 for y in range(len(all_data))])
-	# axe.set_title('box plot')
-	# axe.set_xlabel('xlabel')
-	# axe.set_ylabel('ylabel')
-
-	# plt.show()
-	# plt.clf()
-
-	stochastic_50_percentile = numpy.asarray([numpy.percentile(stochastic_snapshot, 50, interpolation='linear') for
-	                                          stochastic_snapshot in stochastic_snapshots])
-	stochastic_25_percentile = numpy.asarray([numpy.percentile(stochastic_snapshot, 25, interpolation='linear') for
-	                                          stochastic_snapshot in stochastic_snapshots])
-	stochastic_yerrbars = stochastic_50_percentile - stochastic_25_percentile
-	stochastic_errbar = axe.errorbar(labels, stochastic_50_percentile, yerr=stochastic_yerrbars, linewidth=1,
-	                                 marker='o', markersize=5, linestyle='-.', color="r")
-
-	deterministic_50_percentile = numpy.asarray(
-		[numpy.percentile(deterministic_snapshot, 50, interpolation='linear') for deterministic_snapshot in
-		 deterministic_snapshots])
-	deterministic_25_percentile = numpy.asarray(
-		[numpy.percentile(deterministic_snapshot, 25, interpolation='linear') for deterministic_snapshot in
-		 deterministic_snapshots])
-	deterministic_yerrbars = deterministic_50_percentile - deterministic_25_percentile
-	deterministic_errbar = axe.errorbar(labels, deterministic_50_percentile, yerr=deterministic_yerrbars, linewidth=1,
-	                                    marker='x', markersize=5, linestyle='-.', color="b")
-
-	axe.yaxis.grid(True)
-	axe.set_xlabel('epoch')
-	axe.set_ylabel('objective')
-	axe.set_ylim(0.002, 0.047)
-
-	plt.legend((stochastic_errbar, deterministic_errbar), ('stochastic model', 'deterministic mode'), loc='upper right',
-	           shadow=True)
-
-	plt.tight_layout()
-	if output_file_path is not None:
-		plt.savefig(output_file_path, bbox_inches='tight')
-
-	plt.show()
-
-
 if __name__ == '__main__':
 	import argparse
 
 	argument_parser = argparse.ArgumentParser()
-	argument_parser.add_argument("--model_directory", dest="model_directory", action='store', default=None,
-	                             help="model directory [None]")
+	argument_parser.add_argument("--model_directories", dest="model_directories", action='store', default=None,
+	                             help="model directories [None]")
 	argument_parser.add_argument("--plot_directory", dest="plot_directory", action='store', default=None,
 	                             help="plot directory [None]")
 	argument_parser.add_argument("--snapshot_interval", dest="snapshot_interval", action='store', default="1",
@@ -242,7 +270,7 @@ if __name__ == '__main__':
 		print("%s=%s" % (key, value))
 	print("========== ========== ========== ========== ==========")
 
-	model_directory = arguments.model_directory
+	model_directories = arguments.model_directories
 	plot_directory = arguments.plot_directory
 
 	snapshot_interval = arguments.snapshot_interval
@@ -254,4 +282,4 @@ if __name__ == '__main__':
 	elif len(snapshot_interval_tokens) == 3:
 		snapshot_interval = [snapshot_interval_tokens[0], snapshot_interval_tokens[1], snapshot_interval_tokens[2]]
 
-	plot_loss_objective_regularizer(model_directory, snapshot_interval, plot_directory)
+	plot_loss_objective_regularizer(model_directories, snapshot_interval, plot_directory)
