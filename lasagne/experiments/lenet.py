@@ -1,6 +1,6 @@
 import logging
 
-from . import layer_deliminator
+from . import layer_deliminator, param_deliminator
 from .. import networks, nonlinearities
 
 logger = logging.getLogger(__name__)
@@ -20,8 +20,33 @@ def add_convpool_options(model_parser):
 	model_parser.add_argument("--convolution_nonlinearities", dest="convolution_nonlinearities", action='store',
 	                          default=None,
 	                          help="convolutional layer activation functions [None]")
+
+	# model argument set 4
+	model_parser.add_argument("--convolution_kernel_sizes", dest="convolution_kernel_sizes", action='store',
+	                          default="5,5",
+	                          help="convolution kernel sizes [5,5], example, '5*5,6*6' represents 5*5 and 6*6 kernel size for convolution layers respectively")
+	model_parser.add_argument("--convolution_strides", dest="convolution_strides", action='store', default="1,1",
+	                          help="convolution strides [1,1], example, '1*1,2*2' represents 1*1 and 2*2 stride size for convolution layers respectively")
+	model_parser.add_argument("--convolution_pads", dest="convolution_pads", action='store', default="2",
+	                          help="convolution pads [2], example, '2,3' represents 2 and 3 pads for convolution layers respectively")
+
+	'''
+	# model argument set 5
+	model_parser.add_argument("--locally_convolution_filter_sizes", dest="locally_convolution_filter_sizes", action='store', default="3*3",
+							  help="locally convolution filter sizes [3*3], example, '5*5,6*6' represents 5*5 and 6*6 filter size for locally connected convolution layers respectively")
+	model_parser.add_argument("--locally_convolution_strides", dest="locally_convolution_strides", action='store', default="1*1",
+							  help="locally convolution strides [1*1], example, '1*1,2*2' represents 1*1 and 2*2 stride size for locally connected convolution layers respectively")
+	model_parser.add_argument("--locally_convolution_pads", dest="locally_convolution_pads", action='store', default="1",
+							  help="locally convolution pads [1], example, '2,3' represents 2 and 3 pads for locally connected convolution layers respectively")
+	'''
+
+	# model argument set 6
 	model_parser.add_argument("--pool_modes", dest="pool_modes", action='store', default="max",
-	                          help="pooling layer modes [max], set to none to omit, example, 'max;max;none;none;max'")
+	                          help="pool layer modes [max], set to none to omit, example, 'max;max;none;none;max'")
+	model_parser.add_argument("--pool_kernel_sizes", dest="pool_kernel_sizes", action='store', default="2,2",
+	                          help="pool kernel sizes [3,3], example, '2*2,3*3' represents 2*2 and 3*3 pooling size respectively")
+	model_parser.add_argument("--pool_strides", dest="pool_strides", action='store', default="2,2",
+	                          help="pool strides [2,2], example, '2*2,3*3' represents 2*2 and 3*3 pooling stride respectively")
 
 	return model_parser
 
@@ -36,8 +61,19 @@ def validate_convpool_arguments(arguments):
 	conv_nonlinearities = arguments.convolution_nonlinearities.split(layer_deliminator)
 	arguments.convolution_nonlinearities = [getattr(nonlinearities, conv_nonlinearity) for conv_nonlinearity in
 	                                        conv_nonlinearities]
+	assert len(arguments.convolution_filters) == len(arguments.convolution_nonlinearities)
 
-	assert len(conv_filters) == len(conv_nonlinearities)
+	assert arguments.convolution_kernel_sizes is not None
+	conv_kernel_sizes = arguments.convolution_kernel_sizes.split(param_deliminator)
+	arguments.convolution_kernel_sizes = tuple([int(conv_kernel_size) for conv_kernel_size in conv_kernel_sizes])
+
+	assert arguments.convolution_strides is not None
+	conv_strides = arguments.convolution_strides.split(param_deliminator)
+	arguments.convolution_strides = tuple([int(conv_stride) for conv_stride in conv_strides])
+
+	assert arguments.convolution_pads is not None
+	#conv_pads = arguments.convolution_pads.split(param_deliminator)
+	arguments.convolution_pads = int(arguments.convolution_pads)
 
 	assert arguments.pool_modes is not None
 	pool_modes = arguments.pool_modes.split(layer_deliminator)
@@ -47,8 +83,15 @@ def validate_convpool_arguments(arguments):
 		if pool_modes[pool_mode_index].lower() == "none":
 			pool_modes[pool_mode_index] = None
 	arguments.pool_modes = pool_modes
+	assert len(arguments.convolution_filters) == len(arguments.pool_modes)
 
-	assert len(conv_filters) == len(pool_modes)
+	assert arguments.pool_kernel_sizes is not None
+	pool_kernel_sizes = arguments.pool_kernel_sizes.split(param_deliminator)
+	arguments.pool_kernel_sizes = tuple([int(pool_kernel_size) for pool_kernel_size in pool_kernel_sizes])
+
+	assert arguments.pool_strides is not None
+	pool_strides = arguments.pool_strides.split(param_deliminator)
+	arguments.pool_strides = tuple([int(pool_stride) for pool_stride in pool_strides])
 
 	return arguments
 
@@ -60,30 +103,6 @@ def construct_lenet_parser():
 	model_parser = add_convpool_options(model_parser)
 	model_parser = add_dense_options(model_parser)
 	model_parser = add_dropout_options(model_parser)
-
-	'''
-	# model argument set 4
-	model_parser.add_argument("--convolution_filter_sizes", dest="convolution_filter_sizes", action='store', default="5*5",
-							  help="convolution filter sizes [5*5], example, '5*5,6*6' represents 5*5 and 6*6 filter size for convolution layers respectively")
-	model_parser.add_argument("--convolution_strides", dest="convolution_strides", action='store', default="1*1",
-							  help="convolution strides [1*1], example, '1*1,2*2' represents 1*1 and 2*2 stride size for convolution layers respectively")
-	model_parser.add_argument("--convolution_pads", dest="convolution_pads", action='store', default="2",
-							  help="convolution pads [2], example, '2,3' represents 2 and 3 pads for convolution layers respectively")
-
-	# model argument set 5
-	model_parser.add_argument("--locally_convolution_filter_sizes", dest="locally_convolution_filter_sizes", action='store', default="3*3",
-							  help="locally convolution filter sizes [3*3], example, '5*5,6*6' represents 5*5 and 6*6 filter size for locally connected convolution layers respectively")
-	model_parser.add_argument("--locally_convolution_strides", dest="locally_convolution_strides", action='store', default="1*1",
-							  help="locally convolution strides [1*1], example, '1*1,2*2' represents 1*1 and 2*2 stride size for locally connected convolution layers respectively")
-	model_parser.add_argument("--locally_convolution_pads", dest="locally_convolution_pads", action='store', default="1",
-							  help="locally convolution pads [1], example, '2,3' represents 2 and 3 pads for locally connected convolution layers respectively")
-
-	# model argument set 6
-	model_parser.add_argument("--pooling_sizes", dest="pooling_sizes", action='store', default="3*3",
-							  help="pooling sizes [3*3], example, '2*2,3*3' represents 2*2 and 3*3 pooling size respectively")
-	model_parser.add_argument("--pooling_strides", dest="pooling_strides", action='store', default="2*2",
-							  help="pooling strides [2*2], example, '2*2,3*3' represents 2*2 and 3*3 pooling stride respectively")
-	'''
 
 	#
 	#
@@ -223,8 +242,8 @@ def train_lenet():
 	network = networks.LeNet(
 		incoming=settings.input_shape,
 
-		convolution_filters=settings.convolution_filters,
-		convolution_nonlinearities=settings.convolution_nonlinearities,
+		conv_filters=settings.convolution_filters,
+		conv_nonlinearities=settings.convolution_nonlinearities,
 		# convolution_filter_sizes=None,
 		# maxpooling_sizes=None,
 		pool_modes=settings.pool_modes,
@@ -246,6 +265,13 @@ def train_lenet():
 		# learning_rate_decay_parameter=settings.learning_rate_decay_parameter,
 
 		validation_interval=settings.validation_interval,
+
+		conv_kernel_sizes=settings.convolution_kernel_sizes,
+		conv_strides=settings.convolution_strides,
+		conv_pads=settings.convolution_pads,
+
+		pool_kernel_sizes=settings.pool_kernel_sizes,
+		pool_strides=settings.pool_strides,
 	)
 
 	'''

@@ -1,4 +1,5 @@
 import numpy
+import numpy.random
 import theano
 
 __all__ = [
@@ -87,7 +88,8 @@ def natural_exp_decay(learning_rate, global_step, decay_steps, decay_rate, decay
 	return (learning_rate * numpy.exp(-decay_rate * adjusted_global_step)).astype(theano.config.floatX)
 
 
-def inverse_time_decay(learning_rate, global_step, decay_steps, decay_rate, decay_delay=0, staircase=False):
+def inverse_time_decay(learning_rate, global_step, decay_steps, decay_rate, decay_delay=0, decay_power=1,
+                       staircase=False):
 	"""Applies inverse time decay to the learning rate.
 
 	decayed_learning_rate = learning_rate / (1 + decay_rate * t)
@@ -112,7 +114,8 @@ def inverse_time_decay(learning_rate, global_step, decay_steps, decay_rate, deca
 	if staircase:
 		adjusted_global_step = numpy.floor(adjusted_global_step)
 
-	return numpy.asarray(learning_rate / (1 + decay_rate * adjusted_global_step)).astype(theano.config.floatX)
+	return numpy.asarray(learning_rate / ((1 + decay_rate * adjusted_global_step) ** decay_power)).astype(
+		theano.config.floatX)
 
 
 def logarithmic_growth(learning_rate, global_step, growth_steps, growth_inertia=1e-6, growth_delay=0, staircase=False,
@@ -131,7 +134,8 @@ def logarithmic_growth(learning_rate, global_step, growth_steps, growth_inertia=
 	learning_rate = max(learning_rate, lower_bound)
 	return numpy.asarray(learning_rate).astype(theano.config.floatX)
 
-def plot_multiple_yaxis(x, y, output_file_path=None):
+
+def plot_learning_rate(x, y, output_file_path=None):
 	import matplotlib.pyplot as plt
 
 	fig = plt.figure()
@@ -139,20 +143,23 @@ def plot_multiple_yaxis(x, y, output_file_path=None):
 	plt.plot(x, y, 'o-')
 	plt.title('Learning Rate')
 	plt.ylabel('Learning rate')
-	ax.set_ylim(0, 0.1)
+	#ax.set_ylim(0, 0.1)
 
 	if output_file_path is None:
 		plt.show()
 	else:
 		plt.savefig(output_file_path, bbox_inches='tight')
 
+
 def main():
-	iteration = range(1000)
-	#learning_rate = [natural_exp_decay(1, x, 1, 1000) for x in iteration]
-	#print numpy.asarray(iteration)
-	#print numpy.asarray(learning_rate)
-	learning_rate = [logarithmic_growth(0.01, x, growth_steps=100, growth_inertia=100) for x in iteration]
-	plot_multiple_yaxis(numpy.asarray(iteration), numpy.asarray(learning_rate))
+	iteration = range(100)
+	# learning_rate = [natural_exp_decay(1, x, 1, 1000) for x in iteration]
+	# print numpy.asarray(iteration)
+	# print numpy.asarray(learning_rate)
+	#learning_rate = [logarithmic_growth(0.01, x, growth_steps=100, growth_inertia=100) for x in iteration]
+	learning_rate = [inverse_time_decay(0.01, global_step=x, decay_steps=1, decay_rate=1, decay_delay=0, decay_power=1) for x in iteration]
+	plot_learning_rate(numpy.asarray(iteration), numpy.asarray(learning_rate))
+
 
 if __name__ == '__main__':
 	main()

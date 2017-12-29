@@ -70,8 +70,8 @@ def train_lenetA():
 	network = networks.AdaptiveLeNet(
 		incoming=settings.input_shape,
 
-		convolution_filters=settings.convolution_filters,
-		convolution_nonlinearities=settings.convolution_nonlinearities,
+		conv_filters=settings.convolution_filters,
+		conv_nonlinearities=settings.convolution_nonlinearities,
 		# convolution_filter_sizes=None,
 		# maxpooling_sizes=None,
 		pool_modes=settings.pool_modes,
@@ -95,6 +95,13 @@ def train_lenetA():
 
 		max_norm_constraint=settings.max_norm_constraint,
 		validation_interval=settings.validation_interval,
+
+		conv_kernel_sizes=settings.convolution_kernel_sizes,
+		conv_strides=settings.convolution_strides,
+		conv_pads=settings.convolution_pads,
+
+		pool_kernel_sizes=settings.pool_kernel_sizes,
+		pool_strides=settings.pool_strides,
 	)
 
 	'''

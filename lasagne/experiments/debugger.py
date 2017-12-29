@@ -18,7 +18,8 @@ __all__ = [
 	"debug_function_output",
 	#
 	"snapshot_dropouts",
-	"snapshot_conv_filters"
+	"snapshot_dense",
+	"snapshot_convolution"
 ]
 
 
@@ -317,8 +318,22 @@ def snapshot_dropouts(network, settings=None, **kwargs):
 			numpy.save(retain_rate_file, layer_retain_probability)
 		dropout_layer_index += 1
 
+def snapshot_dense(network, settings=None, **kwargs):
+	dense_layer_index = 0
+	for network_layer in network.get_network_layers():
+		if isinstance(network_layer, layers.DenseLayer):
+			layer_weight = network_layer.W.eval()
+			layer_bias = network_layer.b.eval()
+		else:
+			continue
 
-def snapshot_conv_filters(network, settings, **kwargs):
+		if settings is not None:
+			# layer_retain_probability = numpy.reshape(layer_retain_probability, numpy.prod(layer_retain_probability.shape))
+			dense_file = os.path.join(settings.output_directory, "dense.%d.epoch.%d.npy" % (dense_layer_index, network.epoch_index))
+			numpy.save(dense_file, [layer_weight, layer_bias])
+		dense_layer_index += 1
+
+def snapshot_convolution(network, settings, **kwargs):
 	conv_layer_index = 0
 	for network_layer in network.get_network_layers():
 		if isinstance(network_layer, layers.Conv2DLayer):

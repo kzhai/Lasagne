@@ -32,7 +32,9 @@ __all__ = [
 ]
 
 layer_deliminator = "*"
+#layer_deliminator = ","
 param_deliminator = ","
+#param_deliminator = "*"
 specs_deliminator = ":"
 
 

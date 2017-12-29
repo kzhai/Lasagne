@@ -19,8 +19,8 @@ class LeNet(FeedForwardNetwork):
 	             # input_shape,
 	             incoming,
 
-	             convolution_filters,
-	             convolution_nonlinearities,
+	             conv_filters,
+	             conv_nonlinearities,
 	             # convolution_filter_sizes=None,
 	             # maxpooling_sizes=None,
 	             pool_modes,
@@ -40,12 +40,12 @@ class LeNet(FeedForwardNetwork):
 
 	             validation_interval=-1,
 
-	             convolution_kernel_sizes=(5, 5),
-	             convolution_strides=(1, 1),
-	             convolution_pads=2,
+	             conv_kernel_sizes=(5, 5),
+	             conv_strides=(1, 1),
+	             conv_pads=2,
 
-	             pooling_kernel_sizes=(3, 3),
-	             pooling_strides=(2, 2),
+	             pool_kernel_sizes=(3, 3),
+	             pool_strides=(2, 2),
 	             ):
 		super(LeNet, self).__init__(incoming,
 		                            objective_functions,
@@ -60,15 +60,15 @@ class LeNet(FeedForwardNetwork):
 		# self._input_layer = layers.InputLayer(shape=input_shape)
 		# self._input_variable = self._input_layer.input_var
 
-		assert len(layer_activation_types) == len(dense_nonlinearities) + len(convolution_nonlinearities)
-		assert len(layer_activation_parameters) == len(dense_nonlinearities) + len(convolution_nonlinearities)
-		assert len(layer_activation_styles) == len(dense_nonlinearities) + len(convolution_nonlinearities)
-		assert len(convolution_filters) == len(convolution_nonlinearities)
-		assert len(convolution_filters) == len(pool_modes)
+		assert len(layer_activation_types) == len(dense_nonlinearities) + len(conv_nonlinearities)
+		assert len(layer_activation_parameters) == len(dense_nonlinearities) + len(conv_nonlinearities)
+		assert len(layer_activation_styles) == len(dense_nonlinearities) + len(conv_nonlinearities)
+		assert len(conv_filters) == len(conv_nonlinearities)
+		assert len(conv_filters) == len(pool_modes)
 
 		dropout_layer_index = 0
 		neural_network = self._input_layer
-		for conv_layer_index in range(len(convolution_filters)):
+		for conv_layer_index in range(len(conv_filters)):
 			input_layer_shape = layers.get_output_shape(neural_network)[1:]
 			previous_layer_shape = numpy.prod(input_layer_shape)
 			activation_probability = layers.sample_activation_probability(previous_layer_shape,
@@ -80,33 +80,28 @@ class LeNet(FeedForwardNetwork):
 			                                                             activation_probability=activation_probability)
 			dropout_layer_index += 1
 
-			conv_filter_number = convolution_filters[conv_layer_index]
-			conv_nonlinearity = convolution_nonlinearities[conv_layer_index]
+			conv_filter = conv_filters[conv_layer_index]
+			conv_nonlinearity = conv_nonlinearities[conv_layer_index]
 			# conv_filter_size = convolution_filter_sizes[conv_layer_index]
-			conv_kernel_size = convolution_kernel_sizes
-			conv_stride = convolution_strides
-			conv_pad = convolution_pads
+			conv_kernel_size = conv_kernel_sizes
+			conv_stride = conv_strides
+			conv_pad = conv_pads
 
 			# Convolutional layer with 32 kernels of size 5x5. Strided and padded convolutions are supported as well see the docstring.
 			neural_network = layers.Conv2DLayer(neural_network,
 			                                    W=init.GlorotUniform(gain=init.GlorotUniformGain[conv_nonlinearity]),
-			                                    # This is ONLY for CIFAR-10 dataset.
-			                                    # W=init.Uniform(0.1**(1+len(convolution_filters)-conv_layer_index)),
-			                                    # W=init.HeNormal(gain=0.1),
-			                                    # b=init.Constant(1.0 * (conv_layer_index!=0)),
 			                                    b=init.Constant(0.),
 			                                    nonlinearity=conv_nonlinearity,
-			                                    num_filters=conv_filter_number,
+			                                    num_filters=conv_filter,
 			                                    filter_size=conv_kernel_size,
-
 			                                    stride=conv_stride,
 			                                    pad=conv_pad,
 			                                    )
 
 			pool_mode = pool_modes[conv_layer_index]
 			if pool_mode is not None:
-				pool_kernel_size = pooling_kernel_sizes
-				pool_stride = pooling_strides
+				pool_kernel_size = pool_kernel_sizes
+				pool_stride = pool_strides
 
 				# Max-pooling layer of factor 2 in both dimensions:
 				filter_size_for_pooling = layers.get_output_shape(neural_network)[2:]

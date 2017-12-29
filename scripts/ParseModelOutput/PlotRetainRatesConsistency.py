@@ -90,7 +90,7 @@ def plot_bmh(matrix, labels=None, output_file_path=None, colors = plt.rcParams['
 
 	if labels != None:
 		assert len(matrix) == len(labels)
-		
+
 	x_grid = numpy.linspace(0, 1, 1000)
 
 	plt.style.use('classic')
