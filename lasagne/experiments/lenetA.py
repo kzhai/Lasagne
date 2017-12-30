@@ -18,8 +18,11 @@ def construct_lenetA_parser():
 	# model argument set 1
 	model_parser.add_argument("--adaptable_learning_rate", dest="adaptable_learning_rate", action='store',
 	                          default=None, help="adaptable learning rate [None - learning_rate]")
-	model_parser.add_argument("--adaptable_update_interval", dest="adaptable_update_interval", type=int,
-	                          action='store', default=1, help="adatable update interval [1]")
+	model_parser.add_argument("--train_adaptables_mode", dest="train_adaptables_mode", action='store',
+	                          default="train_adaptables_networkwise",
+	                          help="train adaptables mode [train_adaptables_networkwise]")
+	# model_parser.add_argument("--adaptable_update_interval", dest="adaptable_update_interval", type=int,
+	# action='store', default=1, help="adatable update interval [1]")
 
 	return model_parser
 
@@ -46,13 +49,14 @@ def validate_lenetA_arguments(arguments):
 
 	# model argument set 1
 	from . import parse_parameter_policy
-	#arguments.adaptable_learning_rate = parse_parameter_policy(arguments.adaptable_learning_rate)
+	# arguments.adaptable_learning_rate = parse_parameter_policy(arguments.adaptable_learning_rate)
 	if arguments.adaptable_learning_rate is None:
 		arguments.adaptable_learning_rate = arguments.learning_rate
 	else:
 		arguments.adaptable_learning_rate = parse_parameter_policy(arguments.adaptable_learning_rate)
 
-	assert (arguments.adaptable_update_interval >= 0)
+	#assert (arguments.adaptable_update_interval >= 0)
+	assert arguments.train_adaptables_mode in {"train_adaptables_networkwise", "train_adaptables_layerwise", "train_adaptables_layerwise_in_turn"}
 
 	return arguments
 
@@ -91,7 +95,8 @@ def train_lenetA():
 		learning_rate_policy=settings.learning_rate,
 
 		adaptable_learning_rate_policy=settings.adaptable_learning_rate,
-		adaptable_update_interval=settings.adaptable_update_interval,
+		# adaptable_update_interval=settings.adaptable_update_interval,
+		train_adaptables_mode=settings.train_adaptables_mode,
 
 		max_norm_constraint=settings.max_norm_constraint,
 		validation_interval=settings.validation_interval,
@@ -103,19 +108,6 @@ def train_lenetA():
 		pool_kernel_sizes=settings.pool_kernel_sizes,
 		pool_strides=settings.pool_strides,
 	)
-
-	'''
-	convolution_filter_sizes = settings.convolution_filter_sizes,
-	convolution_strides = settings.convolution_strides,
-	convolution_pads = settings.convolution_pads,
-
-	local_convolution_filter_sizes = settings.local_convolution_filter_sizes,
-	local_convolution_strides = settings.local_convolution_strides,
-	local_convolution_pads = settings.local_convolution_pads,
-
-	pooling_sizes = settings.pooling_sizes,
-	pooling_strides = settings.pooling_strides,
-	'''
 
 	network.set_regularizers(settings.regularizer)
 

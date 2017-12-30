@@ -40,8 +40,10 @@ class AdaptiveLeNet(AdaptiveFeedForwardNetwork):
 
 	             adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
 	             # dropout_learning_rate_decay=None,
-	             adaptable_update_interval=1,
+	             # adaptable_update_interval=1,
 	             # update_hidden_layer_dropout_only=False,
+	             # train_adaptables_mode="network",
+	             train_adaptables_mode="train_adaptables_networkwise",
 
 	             max_norm_constraint=0,
 	             validation_interval=-1,
@@ -53,16 +55,21 @@ class AdaptiveLeNet(AdaptiveFeedForwardNetwork):
 	             pool_kernel_sizes=(3, 3),
 	             pool_strides=(2, 2),
 	             ):
-		super(AdaptiveLeNet, self).__init__(incoming,
-		                                    objective_functions,
-		                                    update_function,
-		                                    learning_rate_policy,
+		super(AdaptiveLeNet, self).__init__(incoming=incoming,
 
-		                                    adaptable_learning_rate_policy,
-		                                    adaptable_update_interval,
+		                                    objective_functions=objective_functions,
+		                                    update_function=update_function,
+		                                    learning_rate_policy=learning_rate_policy,
+		                                    # learning_rate_decay,
 
-		                                    max_norm_constraint,
-		                                    validation_interval)
+		                                    adaptable_learning_rate_policy=adaptable_learning_rate_policy,
+		                                    # dropout_learning_rate_decay,
+		                                    # adaptable_update_interval=adaptable_update_interval,
+		                                    train_adaptables_mode=train_adaptables_mode,
+
+		                                    max_norm_constraint=max_norm_constraint,
+		                                    validation_interval=validation_interval,
+		                                    )
 
 		assert len(layer_activation_types) == len(dense_nonlinearities) + len(conv_nonlinearities)
 		assert len(layer_activation_parameters) == len(dense_nonlinearities) + len(conv_nonlinearities)
