@@ -17,7 +17,7 @@ __all__ = [
 	"display_architecture",
 	"debug_function_output",
 	#
-	"snapshot_dropouts",
+	"snapshot_dropout",
 	"snapshot_dense",
 	"snapshot_convolution"
 ]
@@ -281,7 +281,7 @@ def debug_rademacher_p_inf_q_1(network, minibatch, rescale=False, **kwargs):
 	print("debug: Rademacher (p=inf, q=1) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
 
 
-def snapshot_dropouts(network, settings=None, **kwargs):
+def snapshot_dropout(network, settings=None, **kwargs):
 	dropout_layer_index = 0
 	for network_layer in network.get_network_layers():
 		if isinstance(network_layer, layers.BernoulliDropoutLayer) or \
