@@ -76,7 +76,7 @@ class DynamicDropoutLayer(AdaptiveDropoutLayer):
 
 	def find_neuron_indices_to_prune(self, prune_threshold=1e-3):
 		activation_probability = self.activation_probability.eval()
-		neuron_indices_to_prune = numpy.argwhere(activation_probability < prune_threshold).flatten()
+		neuron_indices_to_prune = numpy.argwhere(activation_probability <= prune_threshold).flatten()
 		neuron_indices_to_keep = numpy.setdiff1d(numpy.arange(0, len(activation_probability)), neuron_indices_to_prune)
 
 		return neuron_indices_to_prune, neuron_indices_to_keep
@@ -92,7 +92,7 @@ class DynamicDropoutLayer(AdaptiveDropoutLayer):
 
 	def find_neuron_indices_to_split(self, split_threshold=1 - 1e-3):
 		activation_probability = self.activation_probability.eval()
-		neuron_indices_to_split = numpy.argwhere(activation_probability > split_threshold).flatten()
+		neuron_indices_to_split = numpy.argwhere(activation_probability >= split_threshold).flatten()
 		neuron_indices_to_keep = numpy.setdiff1d(numpy.arange(0, len(activation_probability)), neuron_indices_to_split)
 
 		return neuron_indices_to_split, neuron_indices_to_keep

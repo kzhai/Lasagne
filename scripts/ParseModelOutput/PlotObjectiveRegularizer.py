@@ -6,7 +6,12 @@ import numpy
 import scipy
 import scipy.interpolate
 
-from ParseModelOutputs import model_setting_pattern
+from . import model_setting_pattern
+
+__all__ = [
+	"debug_output_pattern",
+	"debug_rademacher_pattern",
+]
 
 debug_output_pattern = re.compile(
 	r'^(?P<date>[\d-]+?) (?P<time>[\d:,]+?) \| (?P<name>[\w\.]+?) \| DEBUG \|\s+(?P<output>[\w]+?): loss (?P<loss>([-\w.]+?|nan)), objective (?P<objective>([-\w.]+?|nan)), regularizer (?P<regularizer>([-\w.]+?|nan)), accuracy (?P<accuracy>[\w.]+?)%$')
@@ -15,7 +20,7 @@ debug_rademacher_pattern = re.compile(
 	r'^(?P<date>[\d-]+?) (?P<time>[\d:,]+?) \| (?P<name>[\w\.]+?) \| DEBUG \|\s+Rademacher \(p=(?P<p_value>[\w]+?), q=(?P<q_value>[\w]+?)\) complexity: regularizer=(?P<regularizer>[-\w.]+?)$')
 
 
-def parse_model(model_log_file):
+def parse_model_obj_reg(model_log_file):
 	model_settings = {}
 
 	debug_output_logs_on_train = numpy.zeros((0, 4))
@@ -86,7 +91,7 @@ def parse_models_2d(model_directories, number_of_points=80, output_file_path=Non
 		if not os.path.exists(model_log_file):
 			continue
 
-		model_settings, debug_output_logs_on_train, debug_output_logs_on_test, debug_rademacher_logs_on_train, debug_rademacher_logs_on_test = parse_model(
+		model_settings, debug_output_logs_on_train, debug_output_logs_on_test, debug_rademacher_logs_on_train, debug_rademacher_logs_on_test = parse_model_obj_reg(
 			model_log_file)
 		if len(model_settings) == 0:
 			continue
@@ -207,7 +212,7 @@ def parse_models_3d(model_directories, number_of_points=10, plot_directory=None)
 		if not os.path.exists(model_log_file):
 			continue
 
-		model_settings, debug_output_logs_on_train, debug_output_logs_on_test, debug_rademacher_logs_on_train, debug_rademacher_logs_on_test = parse_model(
+		model_settings, debug_output_logs_on_train, debug_output_logs_on_test, debug_rademacher_logs_on_train, debug_rademacher_logs_on_test = parse_model_obj_reg(
 			model_log_file)
 		if len(model_settings) == 0:
 			continue

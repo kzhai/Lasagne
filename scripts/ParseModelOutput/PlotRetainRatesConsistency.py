@@ -6,8 +6,8 @@ import numpy
 import numpy.random
 import random
 
-from PlotRetainRates import retain_rates_file_name_pattern
-from ParseModelOutputs import parse_model
+from PlotRetainRates import noise_file_name_pattern
+from . import parse_model_output
 
 
 def plot_retain_rates(model_directories, layer_index=-1, snapshot_index=-1, plot_directory=None):
@@ -19,7 +19,7 @@ def plot_retain_rates(model_directories, layer_index=-1, snapshot_index=-1, plot
 				continue
 
 			for file_name in os.listdir(model_directory):
-				matcher = re.match(retain_rates_file_name_pattern, file_name)
+				matcher = re.match(noise_file_name_pattern, file_name)
 				if matcher is None:
 					continue
 
@@ -44,7 +44,7 @@ def plot_retain_rates_for_layer(model_directories, layer_index, snapshot_index=-
 			epoch_indices = set()
 
 			for file_name in os.listdir(model_directory):
-				matcher = re.match(retain_rates_file_name_pattern, file_name)
+				matcher = re.match(noise_file_name_pattern, file_name)
 				if matcher is None:
 					continue
 
@@ -57,7 +57,7 @@ def plot_retain_rates_for_layer(model_directories, layer_index, snapshot_index=-
 			epoch_index = max(epoch_indices)
 
 		model_log_file = os.path.join(model_directory, "model.log")
-		model_settings, train_logs, valid_logs, test_logs, best_model_logs = parse_model(model_log_file)
+		model_settings, train_logs, valid_logs, test_logs, best_model_logs = parse_model_output(model_log_file)
 
 		model_setting_tokens = [model_name]
 		# ["regularizer", "learning_rate_decay", "learning_rate"]
@@ -78,15 +78,15 @@ def plot_retain_rates_for_layer(model_directories, layer_index, snapshot_index=-
 	plot_bmh(model_retain_rates, model_names, output_file_path)
 
 
-def plot_bmh(matrix, labels=None, output_file_path=None, colors = plt.rcParams['axes.prop_cycle'].by_key()['color']):
+def plot_bmh(matrix, labels=None, output_file_path=None, colors=plt.rcParams['axes.prop_cycle'].by_key()['color']):
 	import matplotlib.pyplot as plt
 
-	#from matplotlib.colors import ColorConverter
-	#colors = list(ColorConverter.colors)
-	#random.shuffle(colors)
+	# from matplotlib.colors import ColorConverter
+	# colors = list(ColorConverter.colors)
+	# random.shuffle(colors)
 
-	#prop_cycle = plt.rcParams['axes.prop_cycle']
-	#colors = prop_cycle.by_key()['color']
+	# prop_cycle = plt.rcParams['axes.prop_cycle']
+	# colors = prop_cycle.by_key()['color']
 
 	if labels != None:
 		assert len(matrix) == len(labels)
@@ -104,11 +104,11 @@ def plot_bmh(matrix, labels=None, output_file_path=None, colors = plt.rcParams['
 		axe.plot(x_grid, kdepdf, alpha=1, lw=3, label=label, color=color)
 	# plt.legend()
 
-	#axe.set_title("'bmh' style sheet")
+	# axe.set_title("'bmh' style sheet")
 	axe.set_xlabel("retain rates")
 	axe.set_ylabel("# of neurons")
 
-	#legend = axe.legend(loc='upper right', shadow=True, fontsize='medium')
+	# legend = axe.legend(loc='upper right', shadow=True, fontsize='medium')
 	# Put a nicer background color on the legend.
 	# legend.get_frame().set_facecolor('#00FFCC')
 

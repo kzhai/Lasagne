@@ -4,14 +4,13 @@ import re
 import numpy
 import numpy.random
 
-retain_rates_file_name_pattern = re.compile(r'noise\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
-
+noise_file_name_pattern = re.compile(r'noise\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
 
 def plot_retain_rates(model_directory, snapshot_interval=[-1, -1, 1], plot_directory=None):
 	epoch_indices = set()
 	layer_dimensions = {}
 	for file_name in os.listdir(model_directory):
-		matcher = re.match(retain_rates_file_name_pattern, file_name)
+		matcher = re.match(noise_file_name_pattern, file_name)
 		if matcher is None:
 			continue
 
@@ -32,10 +31,10 @@ def plot_retain_rates(model_directory, snapshot_interval=[-1, -1, 1], plot_direc
 
 	layer_epoch_retain_rates = []
 	for layer_index in layer_dimensions:
-		layer_epoch_retain_rates.append(numpy.zeros((len(epoch_indices), layer_dimensions[layer_index])))
+		layer_epoch_retain_rates.append(-numpy.ones((len(epoch_indices), layer_dimensions[layer_index])))
 
 	for file_name in os.listdir(model_directory):
-		matcher = re.match(retain_rates_file_name_pattern, file_name)
+		matcher = re.match(noise_file_name_pattern, file_name)
 		if matcher is None:
 			continue
 
@@ -50,11 +49,12 @@ def plot_retain_rates(model_directory, snapshot_interval=[-1, -1, 1], plot_direc
 			continue
 
 		retain_rates = numpy.load(os.path.join(model_directory, file_name))
-		layer_epoch_retain_rates[layer_index][epoch_index / snapshot_interval[2], :] = retain_rates.flatten()
+		retain_rates = numpy.clip(retain_rates.flatten(), 0, 1)
+		layer_epoch_retain_rates[layer_index][epoch_index / snapshot_interval[2], :len(retain_rates)] = retain_rates
 
-	for layer_index in layer_dimensions:
-		layer_epoch_retain_rates[layer_index] = numpy.clip(layer_epoch_retain_rates[layer_index], 0, 1)
-		print(layer_epoch_retain_rates[layer_index])
+	#for layer_index in layer_dimensions:
+		#layer_epoch_retain_rates[layer_index] = numpy.clip(layer_epoch_retain_rates[layer_index], 0, 1)
+		#print(layer_epoch_retain_rates[layer_index])
 
 	output_file_path = None if plot_directory is None else os.path.join(plot_directory, "noise.pdf")
 	plot_2D_violins([layer_epoch_retain_rates[layer_index][-1] for layer_index in layer_dimensions], output_file_path)

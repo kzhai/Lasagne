@@ -4,6 +4,19 @@ import os
 import re
 import sys
 
+__all__ = [
+	"valid_log_pattern",
+	"test_log_pattern",
+	"train_log_pattern",
+	#
+	"train_progress_pattern",
+	"best_validate_minibatch_pattern",
+	#
+	"model_setting_pattern",
+	#
+	"parse_model_output",
+]
+
 valid_log_pattern = re.compile(
 	r'(?P<date>[\d-]+?) (?P<time>[\d:,]+?) \| (?P<name>[\w\.]+?) \| INFO \|\s+validate: epoch (?P<epoch>[\d]+?), minibatch (?P<minibatch>[\d]+?), duration (?P<duration>[\d.]+?)s, loss (?P<loss>([-\d.]+?|nan)), accuracy (?P<accuracy>[\d.]+?)%')
 test_log_pattern = re.compile(
@@ -33,7 +46,7 @@ def parse_models(model_directories, select_settings=None, output_file=None):
 		if not os.path.exists(model_log_file):
 			continue
 
-		model_settings, train_logs, valid_logs, test_logs, best_model_logs = parse_model(model_log_file)
+		model_settings, train_logs, valid_logs, test_logs, best_model_logs = parse_model_output(model_log_file)
 		if len(model_settings) == 0:
 			continue
 
@@ -84,7 +97,7 @@ def parse_models(model_directories, select_settings=None, output_file=None):
 		output_stream.close()
 
 
-def parse_model(model_log_file):
+def parse_model_output(model_log_file):
 	model_settings = {}
 
 	model_log_stream = open(model_log_file, "r")
@@ -172,11 +185,11 @@ if __name__ == '__main__':
 
 	argument_parser = argparse.ArgumentParser()
 	argument_parser.add_argument("--model_directories", dest="model_directories", action='store', default=None,
-								 help="directory contains model outputs [None]")
+	                             help="directory contains model outputs [None]")
 	argument_parser.add_argument("--select_settings", dest="select_settings", action='store', default="None",
-								 help="select settings to display [None]")
+	                             help="select settings to display [None]")
 	argument_parser.add_argument("--output_result_file", dest="output_result_file", action='store', default=None,
-								 help="output result file [None]")
+	                             help="output result file [None]")
 
 	arguments, additionals = argument_parser.parse_known_args()
 

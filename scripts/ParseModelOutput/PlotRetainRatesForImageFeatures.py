@@ -4,7 +4,7 @@ import re
 import numpy
 import numpy.random
 
-from PlotRetainRates import retain_rates_file_name_pattern
+from PlotRetainRates import noise_file_name_pattern
 
 
 def plot_retain_rates_for_image_features(model_directory, feature_map_size, layer_index=0,
@@ -13,7 +13,7 @@ def plot_retain_rates_for_image_features(model_directory, feature_map_size, laye
 	# retain_rates_file_name_pattern = re.compile(r'layer\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
 
 	for file_name in os.listdir(model_directory):
-		matcher = re.match(retain_rates_file_name_pattern, file_name)
+		matcher = re.match(noise_file_name_pattern, file_name)
 		if matcher is None:
 			continue
 

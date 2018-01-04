@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
 	"AdaptableDenseLayer",
-	"PrunableDenseLayer",
-	"SplitableDenseLayer",
+	# "PrunableDenseLayer",
+	# "SplitableDenseLayer",
 	"DynamicDenseLayer",
 	#
 	#
@@ -66,6 +66,136 @@ class AdaptableDenseLayer(DenseLayer):
 
 		return old_b
 
+
+class DynamicDenseLayer(AdaptableDenseLayer):
+	def __init__(self, incoming, num_units, W=init.GlorotUniform(), b=init.Constant(0.),
+	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, **kwargs):
+		super(DynamicDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity,
+		                                        num_leading_axes, **kwargs)
+
+	def prune_input(self, input_indices_to_keep):
+		# print('prune input of layer %s from %d to %d' % (self, int(np.prod(self.input_shape[self.num_leading_axes:])), len(input_indices_to_keep)))
+
+		self.input_shape = self.input_layer.output_shape
+		assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_keep)
+
+		W = self.W.eval()[input_indices_to_keep, :]
+		old_W = self._set_W(W)
+
+		return old_W
+
+	def prune_output(self, output_indices_to_keep):
+		# print('prune output of layer %s from size %d to %d' % (self, self.num_units, len(output_indices_to_keep)))
+
+		W = self.W.eval()[:, output_indices_to_keep]
+		b = self.b.eval()[output_indices_to_keep]
+
+		self.num_units = len(output_indices_to_keep)
+
+		old_W = self._set_W(W)
+		old_b = self._set_b(b)
+
+		return old_W, old_b
+
+	def split_input(self, input_indices_to_split):
+		self.input_shape = self.input_layer.output_shape
+		# assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_split)
+
+		W = self.W.eval()
+		W = numpy.vstack((W, W[input_indices_to_split, :]));
+		old_W = self._set_W(W)
+
+		return old_W
+
+	def split_output(self, output_indices_to_split):
+		W = self.W.eval()
+		W = numpy.hstack((W, W[:, output_indices_to_split]))
+		b = self.b.eval()
+		b = numpy.hstack((b, b[output_indices_to_split]))
+
+		self.num_units += len(output_indices_to_split)
+
+		old_W = self._set_W(W)
+		old_b = self._set_b(b)
+
+		return old_W, old_b
+
+
+#
+#
+#
+#
+#
+
+class MaskedDenseLayer(DenseLayer):
+	def __init__(self, incoming, num_units, W=init.GlorotUniform(), b=init.Constant(0.),
+	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, mask=None, **kwargs):
+		super(MaskedDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes,
+		                                       **kwargs)
+
+		num_inputs = int(numpy.prod(self.input_shape[self.num_leading_axes:]))
+		if mask == None:
+			self.mask = numpy.ones((num_inputs, self.num_units))
+		else:
+			assert mask.shape == (num_inputs, self.num_units)
+			self.mask = mask
+
+	def adjust_mask(self):
+		raise NotImplementedError("Not implemented in successor classes!")
+
+	def get_output_for(self, input, **kwargs):
+		num_leading_axes = self.num_leading_axes
+		if num_leading_axes < 0:
+			num_leading_axes += input.ndim
+		if input.ndim > num_leading_axes + 1:
+			# flatten trailing axes (into (n+1)-tensor for num_leading_axes=n)
+			input = input.flatten(num_leading_axes + 1)
+
+		activation = T.dot(input, self.mask * self.W)
+		if self.b is not None:
+			activation = activation + self.b
+		return self.nonlinearity(activation)
+
+
+class MaskedDenseLayerHan(MaskedDenseLayer):
+	def __init__(self, incoming, num_units, W=init.GlorotUniform(), b=init.Constant(0.),
+	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, mask=None, **kwargs):
+		super(MaskedDenseLayerHan, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes, mask,
+		                                          **kwargs)
+
+	def adjust_mask(self, threshold=1e-3):
+		# threshold = numpy.min(numpy.max(numpy.abs(self.W.eval()), axis=0))
+		# print("number of connections: %d" % np.sum(self.mask == 1))
+
+		# self.mask = numpy.abs(self.W.eval())
+		W = self.W.eval()
+		self.mask *= (numpy.abs(W) > threshold)
+		return self.mask
+
+
+class MaskedDenseLayerGuo(MaskedDenseLayer):
+	def __init__(self, incoming, num_units, W=init.GlorotUniform(), b=init.Constant(0.),
+	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, mask=None, **kwargs):
+		super(MaskedDenseLayerGuo, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes, mask,
+		                                          **kwargs)
+
+	def adjust_mask(self, thresholds=(0, 1)):
+		# threshold = numpy.min(numpy.max(numpy.abs(self.W.eval()), axis=0))
+		# print("number of connections: %d" % np.sum(self.mask == 1))
+
+		W = self.W.eval()
+		self.mask *= (numpy.abs(W) > thresholds[0])
+		self.mask *= (numpy.abs(W) < thresholds[1])
+		self.mask += (numpy.abs(W) > thresholds[1])
+
+		return self.mask
+
+
+#
+#
+#
+#
+#
 
 class ObstructedDenseLayer(Layer):
 	def __init__(self, incoming, num_units, obstructed_incoming, num_obstructed_units, W=init.GlorotUniform(),
@@ -190,70 +320,6 @@ class SplitableDenseLayer(AdaptableDenseLayer):
 		return old_W, old_b
 
 
-class DynamicDenseLayer(PrunableDenseLayer, SplitableDenseLayer):
-	def __init__(self, incoming, num_units, W=init.GlorotUniform(), b=init.Constant(0.),
-	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, **kwargs):
-		super(DynamicDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity,
-		                                        num_leading_axes, **kwargs)
-
-	'''
-	def prune_input(self, input_indices_to_keep):
-		# print('prune input of layer %s from %d to %d' % (self, int(np.prod(self.input_shape[self.num_leading_axes:])), len(input_indices_to_keep)))
-
-		self.input_shape = self.input_layer.output_shape
-		assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_keep)
-
-		W = self.W.eval()[input_indices_to_keep, :]
-		old_W = self._set_W(W)
-
-		return old_W
-
-	def prune_output(self, output_indices_to_keep):
-		# print('prune output of layer %s from size %d to %d' % (self, self.num_units, len(output_indices_to_keep)))
-
-		W = self.W.eval()[:, output_indices_to_keep]
-		b = self.b.eval()[output_indices_to_keep]
-
-		self.num_units = len(output_indices_to_keep)
-
-		old_W = self._set_W(W)
-		old_b = self._set_b(b)
-
-		return old_W, old_b
-
-	def split_input(self, input_indices_to_split):
-		self.input_shape = self.input_layer.output_shape
-		# assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_split)
-
-		W = self.W.eval()
-		W = numpy.vstack((W, W[input_indices_to_split, :]));
-		old_W = self._set_W(W)
-
-		return old_W
-
-	def split_output(self, output_indices_to_split):
-		W = self.W.eval()
-		W = numpy.hstack((W, W[:, output_indices_to_split]))
-		b = self.b.eval()
-		b = numpy.hstack((b, b[output_indices_to_split]))
-
-		self.num_units += len(output_indices_to_split)
-
-		old_W = self._set_W(W)
-		old_b = self._set_b(b)
-
-		return old_W, old_b
-	'''
-
-
-#
-#
-#
-#
-#
-
-
-
 class DenseLayerHanBackup(PrunableDenseLayer):
 	def __init__(self, incoming, num_units, W=init.GlorotUniform(), b=init.Constant(0.),
 	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, **kwargs):
@@ -302,70 +368,6 @@ class DenseLayerHanBackup(PrunableDenseLayer):
 		if self.b is not None:
 			activation = activation + self.b
 		return self.nonlinearity(activation)
-
-
-class MaskedDenseLayer(DenseLayer):
-	def __init__(self, incoming, num_units, W=init.GlorotUniform(), b=init.Constant(0.),
-	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, mask=None, **kwargs):
-		super(MaskedDenseLayer, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes,
-		                                          **kwargs)
-
-		num_inputs = int(numpy.prod(self.input_shape[self.num_leading_axes:]))
-		if mask == None:
-			self.mask = numpy.ones((num_inputs, self.num_units))
-		else:
-			assert mask.shape == (num_inputs, self.num_units)
-			self.mask = mask
-
-	def adjust_mask(self):
-		raise NotImplementedError("Not implemented in successor classes!")
-
-	def get_output_for(self, input, **kwargs):
-		num_leading_axes = self.num_leading_axes
-		if num_leading_axes < 0:
-			num_leading_axes += input.ndim
-		if input.ndim > num_leading_axes + 1:
-			# flatten trailing axes (into (n+1)-tensor for num_leading_axes=n)
-			input = input.flatten(num_leading_axes + 1)
-
-		activation = T.dot(input, self.mask * self.W)
-		if self.b is not None:
-			activation = activation + self.b
-		return self.nonlinearity(activation)
-
-
-class MaskedDenseLayerHan(MaskedDenseLayer):
-	def __init__(self, incoming, num_units, W=init.GlorotUniform(), b=init.Constant(0.),
-	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, mask=None, **kwargs):
-		super(MaskedDenseLayerHan, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes, mask,
-		                                          **kwargs)
-
-	def adjust_mask(self, threshold=1e-3):
-		# threshold = numpy.min(numpy.max(numpy.abs(self.W.eval()), axis=0))
-		# print("number of connections: %d" % np.sum(self.mask == 1))
-
-		#self.mask = numpy.abs(self.W.eval())
-		W = self.W.eval()
-		self.mask *= (numpy.abs(W) > threshold)
-		return self.mask
-
-
-class MaskedDenseLayerGuo(MaskedDenseLayer):
-	def __init__(self, incoming, num_units, W=init.GlorotUniform(), b=init.Constant(0.),
-	             nonlinearity=nonlinearities.rectify, num_leading_axes=1, mask=None, **kwargs):
-		super(MaskedDenseLayerGuo, self).__init__(incoming, num_units, W, b, nonlinearity, num_leading_axes, mask,
-		                                          **kwargs)
-
-	def adjust_mask(self, thresholds=(0, 1)):
-		# threshold = numpy.min(numpy.max(numpy.abs(self.W.eval()), axis=0))
-		# print("number of connections: %d" % np.sum(self.mask == 1))
-
-		W = self.W.eval()
-		self.mask *= (numpy.abs(W) > thresholds[0])
-		self.mask *= (numpy.abs(W) < thresholds[1])
-		self.mask += (numpy.abs(W) > thresholds[1])
-
-		return self.mask
 
 
 #

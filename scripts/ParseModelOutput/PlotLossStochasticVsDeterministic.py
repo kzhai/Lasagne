@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import numpy
 import numpy.random
 
-retain_rates_file_name_pattern = re.compile(r'function_outputs_train\.epoch_(?P<epoch>[\d]+?)\.npy')
-
+#from . import function_output_file_name_pattern
+function_output_file_name_pattern = re.compile(r'function_outputs_train\.epoch_(?P<epoch>[\d]+?)\.npy')
 
 def plot_loss_objective_regularizer(model_directories, snapshot_interval=[-1, -1, 1], plot_directory=None):
 	model_epoch_loss = []
@@ -26,7 +26,7 @@ def plot_loss_objective_regularizer(model_directories, snapshot_interval=[-1, -1
 			continue
 
 		for file_name in os.listdir(model_directory):
-			matcher = re.match(retain_rates_file_name_pattern, file_name)
+			matcher = re.match(function_output_file_name_pattern, file_name)
 			if matcher is None:
 				continue
 
@@ -50,7 +50,7 @@ def plot_loss_objective_regularizer(model_directories, snapshot_interval=[-1, -1
 		epoch_stochastic_regularizer = [x for x in epoch_indices]
 		epoch_deterministic_regularizer = [x for x in epoch_indices]
 		for file_name in os.listdir(model_directory):
-			matcher = re.match(retain_rates_file_name_pattern, file_name)
+			matcher = re.match(function_output_file_name_pattern, file_name)
 			if matcher is None:
 				continue
 

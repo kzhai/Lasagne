@@ -4,12 +4,12 @@ import re
 import numpy
 import numpy.random
 
-conv_filters_file_name_pattern = re.compile(r'conv\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
+conv_file_name_pattern = re.compile(r'conv\.(?P<layer>[\d]+?)\.epoch\.(?P<epoch>[\d]+?)\.npy')
 
 
 def plot_feature_map(model_directory, feature_map_size, layer_index=0, snapshot_interval=100, plot_directory=None):
 	for file_name in os.listdir(model_directory):
-		matcher = re.match(conv_filters_file_name_pattern, file_name)
+		matcher = re.match(conv_file_name_pattern, file_name)
 		if matcher is None:
 			continue
 

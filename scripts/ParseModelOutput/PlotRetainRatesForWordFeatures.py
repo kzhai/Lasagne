@@ -7,10 +7,7 @@ from operator import itemgetter
 import numpy
 import numpy.random
 
-from PlotRetainRates import retain_rates_file_name_pattern
-
-random.seed(time.time())
-
+from PlotRetainRates import noise_file_name_pattern
 
 def plot_retain_rates_for_word_features(model_directory, feature_mapping, layer_index=0, snapshot_interval=[0, 1000, 1],
                                         thresholds=20, plot_directory=None):
@@ -24,7 +21,7 @@ def plot_retain_rates_for_word_features(model_directory, feature_mapping, layer_
 	retain_rates = numpy.ones((len(word_features), snapshot_interval[1] + 1))
 
 	for file_name in os.listdir(model_directory):
-		matcher = re.match(retain_rates_file_name_pattern, file_name)
+		matcher = re.match(noise_file_name_pattern, file_name)
 		if matcher is None:
 			continue
 

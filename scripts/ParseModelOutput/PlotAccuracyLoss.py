@@ -3,13 +3,17 @@ import os
 import numpy
 import numpy.random
 
-from ParseModelOutputs import parse_model
+from ParseModelOutputs import parse_model_output
+
+__all__ = [
+	"plot_multiple_yaxis",
+]
 
 
 def plot_accuracy_loss(model_directory, maximum_iteration=0, plot_directory=None):
 	model_log_file = os.path.join(model_directory, "model.log")
 
-	model_settings, train_logs, valid_logs, test_logs, best_model_logs = parse_model(model_log_file)
+	model_settings, train_logs, valid_logs, test_logs, best_model_logs = parse_model_output(model_log_file)
 	if maximum_iteration > 0:
 		train_logs = train_logs[:maximum_iteration]
 		test_logs = test_logs[:maximum_iteration]

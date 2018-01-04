@@ -115,12 +115,11 @@ def train_mlpD():
 
 		objective_functions=settings.objective,
 		update_function=settings.update,
-		# pretrained_model=pretrained_model
-
 		learning_rate_policy=settings.learning_rate,
 
 		adaptable_learning_rate_policy=settings.adaptable_learning_rate,
-		adaptable_update_interval=settings.adaptable_update_interval,
+		#adaptable_update_interval=settings.adaptable_update_interval,
+		train_adaptables_mode=settings.train_adaptables_mode,
 
 		prune_threshold_policies=settings.prune_thresholds,
 		split_threshold_policies=settings.split_thresholds,
