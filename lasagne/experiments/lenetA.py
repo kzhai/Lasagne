@@ -96,7 +96,7 @@ def train_lenetA():
 
 		adaptable_learning_rate_policy=settings.adaptable_learning_rate,
 		# adaptable_update_interval=settings.adaptable_update_interval,
-		train_adaptables_mode=settings.train_adaptables_mode,
+		adaptable_training_mode=settings.train_adaptables_mode,
 
 		max_norm_constraint=settings.max_norm_constraint,
 		validation_interval=settings.validation_interval,

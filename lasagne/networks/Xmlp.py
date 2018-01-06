@@ -42,7 +42,7 @@ class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
 	             # adaptable_update_interval=1,
 	             # update_hidden_layer_dropout_only=False,
 	             # train_adaptables_mode="network",
-	             train_adaptables_mode="train_adaptables_networkwise",
+	             adaptable_training_mode="train_adaptables_networkwise",
 
 	             max_norm_constraint=0,
 	             # learning_rate_decay_style=None,
@@ -59,7 +59,7 @@ class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
 		                                                   adaptable_learning_rate_policy=adaptable_learning_rate_policy,
 		                                                   # dropout_learning_rate_decay,
 		                                                   # adaptable_update_interval=adaptable_update_interval,
-		                                                   train_adaptables_mode=train_adaptables_mode,
+		                                                   adaptable_training_mode=adaptable_training_mode,
 
 		                                                   max_norm_constraint=max_norm_constraint,
 		                                                   validation_interval=validation_interval,
@@ -149,7 +149,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 	             learning_rate_policy=[1e-3, Xpolicy.constant],
 
 	             adaptable_learning_rate_policy=[1e-3, Xpolicy.constant],
-	             train_adaptables_mode="train_adaptables_networkwise",
+	             adaptable_training_mode="train_adaptables_networkwise",
 
 	             prune_threshold_policies=None,
 	             split_threshold_policies=None,
@@ -165,7 +165,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 		                                                  learning_rate_policy=learning_rate_policy,
 
 		                                                  adaptable_learning_rate_policy=adaptable_learning_rate_policy,
-		                                                  train_adaptables_mode=train_adaptables_mode,
+		                                                  adaptable_training_mode=adaptable_training_mode,
 
 		                                                  # prune_threshold_policies=prune_threshold_policies,
 		                                                  # split_threshold_policies=split_threshold_policies,
@@ -214,22 +214,51 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 
 		self.build_functions()
 
-	def adjust_network(self, train_dataset=None, validate_dataset=None, test_dataset=None):
+	def adjust_network(self, train_dataset, validate_dataset=None, test_dataset=None):
 		if self.epoch_index < self.prune_split_interval[0] \
 				or self.prune_split_interval[1] <= 0 \
 				or self.epoch_index % self.prune_split_interval[1] != 0:
 			return
 
+		train_dataset_x, train_dataset_y = train_dataset
+		test_function_outputs = self._function_test(train_dataset_x, train_dataset_y)
+		average_test_loss, average_test_objective, average_test_accuracy = test_function_outputs
+		regularizer_before_adjustment = average_test_loss - average_test_objective
+
+		structure_changed = False
 		if self.prune_threshold_policies is not None:
 			prune_thresholds = [adjust_parameter_according_to_policy(prune_threshold_policy, self.epoch_index) for
 			                    prune_threshold_policy in self.prune_threshold_policies]
-			self.prune_neurons(prune_thresholds=prune_thresholds, validate_dataset=validate_dataset,
-			                   test_dataset=test_dataset)
+			structure_changed = structure_changed or self.prune_neurons(prune_thresholds=prune_thresholds,
+			                                                            validate_dataset=validate_dataset,
+			                                                            test_dataset=test_dataset)
 		if self.split_threshold_policies is not None:
 			split_thresholds = [adjust_parameter_according_to_policy(split_threshold_policy, self.epoch_index) for
 			                    split_threshold_policy in self.split_threshold_policies]
-			self.split_neurons(split_thresholds=split_thresholds, validate_dataset=validate_dataset,
-			                   test_dataset=test_dataset)
+			structure_changed = structure_changed or self.split_neurons(split_thresholds=split_thresholds,
+			                                                            validate_dataset=validate_dataset,
+			                                                            test_dataset=test_dataset)
+
+		if not structure_changed:
+			return
+
+		train_dataset_x, train_dataset_y = train_dataset
+		test_function_outputs = self._function_test(train_dataset_x, train_dataset_y)
+		average_test_loss, average_test_objective, average_test_accuracy = test_function_outputs
+		regularizer_after_adjustment = average_test_loss - average_test_objective
+
+		rescale_lambda = regularizer_before_adjustment / regularizer_after_adjustment
+		if rescale_lambda <= 0:
+			return
+		for regularizer_weight_variable in self._regularizer_lambda_policy.keys():
+			lambda_decay_policy = self._regularizer_lambda_policy[regularizer_weight_variable]
+			old_lambda_decay_policy = "%s" % lambda_decay_policy
+			lambda_decay_policy[0] *= rescale_lambda
+
+			logger.info("[adjustable] adjust regularizer %s from %s to %s" % (
+				regularizer_weight_variable, old_lambda_decay_policy, lambda_decay_policy))
+			print("[adjustable] adjust regularizer %s from %s to %s" % (
+				regularizer_weight_variable, old_lambda_decay_policy, lambda_decay_policy))
 
 	def prune_neurons(self, prune_thresholds, validate_dataset=None, test_dataset=None, output_directory=None):
 		structure_changed = False
@@ -264,13 +293,13 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			dropout_layer.prune_activation_probability(neuron_indices_to_keep)
 			post_dropout_layer.prune_input(neuron_indices_to_keep)
 
-			print("[prunable] prune layer %s from %d to %d with threshold %g" % (pre_dropout_layer, old_size, new_size,
-			                                                                     prune_threshold))
 			logger.info("[prunable] prune layer %s from %d to %d with threshold %g" % (pre_dropout_layer, old_size,
 			                                                                           new_size, prune_threshold))
+			print("[prunable] prune layer %s from %d to %d with threshold %g" % (pre_dropout_layer, old_size, new_size,
+			                                                                     prune_threshold))
 
 		if not structure_changed:
-			return
+			return False
 
 		self.build_functions()
 
@@ -284,6 +313,8 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			self.validate(validate_dataset, test_dataset, output_file)
 		elif test_dataset is not None:
 			self.test(test_dataset)
+
+		return True
 
 	def split_neurons(self, split_thresholds, validate_dataset=None, test_dataset=None, output_directory=None):
 		architecture_changed = False
@@ -324,7 +355,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			                                                                            new_size, split_threshold))
 
 		if not architecture_changed:
-			return
+			return False
 
 		self.build_functions()
 
@@ -339,7 +370,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 		elif test_dataset is not None:
 			self.test(test_dataset)
 
-		return
+		return True
 
 
 class AdaptiveMultiLayerPerceptronMinibatch(AdaptiveFeedForwardNetwork):

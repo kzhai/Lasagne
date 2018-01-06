@@ -43,7 +43,7 @@ class AdaptiveLeNet(AdaptiveFeedForwardNetwork):
 	             # adaptable_update_interval=1,
 	             # update_hidden_layer_dropout_only=False,
 	             # train_adaptables_mode="network",
-	             train_adaptables_mode="train_adaptables_networkwise",
+	             adaptable_training_mode="train_adaptables_networkwise",
 
 	             max_norm_constraint=0,
 	             validation_interval=-1,
@@ -65,7 +65,7 @@ class AdaptiveLeNet(AdaptiveFeedForwardNetwork):
 		                                    adaptable_learning_rate_policy=adaptable_learning_rate_policy,
 		                                    # dropout_learning_rate_decay,
 		                                    # adaptable_update_interval=adaptable_update_interval,
-		                                    train_adaptables_mode=train_adaptables_mode,
+		                                    adaptable_training_mode=adaptable_training_mode,
 
 		                                    max_norm_constraint=max_norm_constraint,
 		                                    validation_interval=validation_interval,

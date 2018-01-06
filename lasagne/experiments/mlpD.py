@@ -119,7 +119,7 @@ def train_mlpD():
 
 		adaptable_learning_rate_policy=settings.adaptable_learning_rate,
 		#adaptable_update_interval=settings.adaptable_update_interval,
-		train_adaptables_mode=settings.train_adaptables_mode,
+		adaptable_training_mode=settings.adaptable_training_mode,
 
 		prune_threshold_policies=settings.prune_thresholds,
 		split_threshold_policies=settings.split_thresholds,

@@ -344,12 +344,14 @@ class FeedForwardNetwork(Network):
 		# Create a train_loss expression for training, i.e., a scalar objective we want to minimize (for our multi-class problem, it is the cross-entropy train_loss):
 		nondeterministic_loss = self.get_loss(self._output_variable)
 		nondeterministic_objective = self.get_objectives(self._output_variable)
+		# nondeterministic_regularizer = self.get_regularizers()
 		nondeterministic_accuracy = self.get_objectives(self._output_variable,
 		                                                objective_functions="categorical_accuracy")
 
 		# Create a train_loss expression for validation/testing. The crucial difference here is that we do a deterministic forward pass through the networks, disabling dropout layers.
 		deterministic_loss = self.get_loss(self._output_variable, deterministic=True)
 		deterministic_objective = self.get_objectives(self._output_variable, deterministic=True)
+		# deterministic_regularizer = self.get_regularizers(deterministic=True)
 		deterministic_accuracy = self.get_objectives(self._output_variable, objective_functions="categorical_accuracy",
 		                                             deterministic=True)
 
@@ -393,41 +395,21 @@ class FeedForwardNetwork(Network):
 			on_unused_input='warn'
 		)
 
-		'''
-		# TODO: begin{this is only for adaptive dropout layers}
-		adaptable_params = self.get_network_params(adaptable=True)
-		adaptable_params_deterministic_updates = self._update_function(deterministic_loss, adaptable_params,
-		                                                               self._learning_rate_variable)
-
-		# Compile a second function computing the validation train_loss and accuracy:
-		self._function_train_adaptable_params_deterministic = theano.function(
-			inputs=[self._input_variable, self._output_variable],
-			outputs=[deterministic_objective, deterministic_accuracy],
-			updates=adaptable_params_deterministic_updates,
-			on_unused_input='warn'
-		)
-		# TODO: end{this is only for adaptive dropout layers}
-		'''
-
-		'''
-		self._function_debugger = theano.function(
-			inputs=[self._input_variable, self._output_variable],
-			outputs=[nondeterministic_loss, nondeterministic_objective, deterministic_loss, deterministic_objective],
-		)
-		'''
-
 	def test(self, test_dataset):
 		test_dataset_x, test_dataset_y = test_dataset
 		test_running_time = timeit.default_timer()
 		test_function_outputs = self._function_test(test_dataset_x, test_dataset_y)
 		average_test_loss, average_test_objective, average_test_accuracy = test_function_outputs
 		test_running_time = timeit.default_timer() - test_running_time
-		logger.info('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
-			self.epoch_index, self.minibatch_index, test_running_time, average_test_objective,
-			average_test_accuracy * 100))
-		print('\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
-			self.epoch_index, self.minibatch_index, test_running_time, average_test_objective,
-			average_test_accuracy * 100))
+
+		logger.info(
+			'\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, regularizer %f, accuracy %f%%' % (
+				self.epoch_index, self.minibatch_index, test_running_time, average_test_objective,
+				average_test_loss - average_test_objective, average_test_accuracy * 100))
+		print(
+			'\t\ttest: epoch %i, minibatch %i, duration %fs, objective %f = loss %f + regularizer %f, accuracy %f%%' % (
+				self.epoch_index, self.minibatch_index, test_running_time, average_test_loss, average_test_objective,
+				average_test_loss - average_test_objective, average_test_accuracy * 100))
 
 	def validate(self, validate_dataset, test_dataset=None, best_model_file_path=None):
 		validate_running_time = timeit.default_timer()
@@ -435,12 +417,15 @@ class FeedForwardNetwork(Network):
 		validate_function_outputs = self._function_test(validate_dataset_x, validate_dataset_y)
 		average_validate_loss, average_validate_objective, average_validate_accuracy = validate_function_outputs
 		validate_running_time = timeit.default_timer() - validate_running_time
-		logger.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+
+		logger.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, regularizer %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, validate_running_time, average_validate_objective,
-			average_validate_accuracy * 100))
-		print('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
-			self.epoch_index, self.minibatch_index, validate_running_time, average_validate_objective,
-			average_validate_accuracy * 100))
+			average_validate_loss - average_validate_objective, average_validate_accuracy * 100))
+		print(
+			'\tvalidate: epoch %i, minibatch %i, duration %fs, objective %f = loss %f + regularizer %f, accuracy %f%%' % (
+				self.epoch_index, self.minibatch_index, validate_running_time, average_validate_loss,
+				average_validate_objective, average_validate_loss - average_validate_objective,
+				average_validate_accuracy * 100))
 
 		# if we got the best validation score until now
 		if average_validate_accuracy > self.best_validate_accuracy:
@@ -452,9 +437,9 @@ class FeedForwardNetwork(Network):
 			if best_model_file_path is not None:
 				# save the best model
 				# cPickle.dump(self, open(best_model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
-				logger.info('\tbest model found: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
+				logger.info('\tbest model found: epoch %i, minibatch %i, loss %f, regularizer %f, accuracy %f%%' % (
 					self.epoch_index, self.minibatch_index, average_validate_objective,
-					average_validate_accuracy * 100))
+					average_validate_loss - average_validate_objective, average_validate_accuracy * 100))
 
 		if test_dataset is not None:
 			self.test(test_dataset)
@@ -476,14 +461,14 @@ class FeedForwardNetwork(Network):
 			# cPickle.dump(self, open(output_file, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
 			self.test(test_dataset)
 
-		logger.info('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
+		logger.info('train: epoch %i, minibatch %i, duration %fs, loss %f, regularizer %f, accuracy %f%%' % (
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
-			average_train_accuracy * 100))
-		print('train: epoch %i, minibatch %i, duration %fs, loss %f, accuracy %f%%' % (
-			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_objective,
-			average_train_accuracy * 100))
+			average_train_loss - average_train_objective, average_train_accuracy * 100))
+		print('train: epoch %i, minibatch %i, duration %fs, objective %f = loss %f + regularizer %f, accuracy %f%%' % (
+			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss, average_train_objective,
+			average_train_loss - average_train_objective, average_train_accuracy * 100))
 
-		return epoch_running_time
+		#return epoch_running_time
 
 	def train_epoch(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None,
 	                output_directory=None):
@@ -507,8 +492,8 @@ class FeedForwardNetwork(Network):
 			minibatch_x = train_dataset_x[minibatch_indices, :]
 			minibatch_y = train_dataset_y[minibatch_indices]
 
-			minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = self.train_minibatch(
-				minibatch_x, minibatch_y)
+			train_minibatch_function_output = self.train_minibatch(minibatch_x, minibatch_y)
+			minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = train_minibatch_function_output
 
 			epoch_running_time += minibatch_running_time
 
@@ -517,17 +502,14 @@ class FeedForwardNetwork(Network):
 			total_train_objective += minibatch_average_train_objective * current_minibatch_size
 			total_train_accuracy += minibatch_average_train_accuracy * current_minibatch_size
 
+			'''
 			# And a full pass over the validation data:
 			if validate_dataset is not None and self.validation_interval > 0 and self.minibatch_index % self.validation_interval == 0:
-				average_train_accuracy = total_train_accuracy / number_of_data
-				average_train_objective = total_train_objective / number_of_data
-				logger.info('train: epoch %i, minibatch %i, loss %f, accuracy %f%%' % (
-					self.epoch_index, self.minibatch_index, average_train_objective, average_train_accuracy * 100))
-
 				output_file = None
 				if output_directory is not None:
 					output_file = os.path.join(output_directory, 'model.pkl')
 				self.validate(validate_dataset, test_dataset, output_file)
+			'''
 
 			minibatch_start_index += minibatch_size
 			self.minibatch_index += 1
@@ -535,7 +517,12 @@ class FeedForwardNetwork(Network):
 		epoch_average_train_loss = total_train_loss / number_of_data
 		epoch_average_train_objective = total_train_objective / number_of_data
 		epoch_average_train_accuracy = total_train_accuracy / number_of_data
-		# epoch_running_time = timeit.default_timer() - epoch_running_time
+
+		'''
+		logger.debug('train: epoch %i, minibatch %i, duration %fs, loss %f, regularizer %f, accuracy %f%%' % (
+			self.epoch_index, self.minibatch_index, epoch_running_time, epoch_average_train_objective,
+			epoch_average_train_loss - epoch_average_train_objective, epoch_average_train_accuracy * 100))
+		'''
 
 		return epoch_running_time, epoch_average_train_loss, epoch_average_train_objective, epoch_average_train_accuracy
 
@@ -545,14 +532,13 @@ class FeedForwardNetwork(Network):
 		                                                                                                 minibatch_y)
 		minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = train_trainable_params_function_outputs
 
-		'''
-		# TODO: begin{this is only for adaptive dropout layers}
-		train_adaptable_params_function_outputs = self._function_train_adaptable_params_deterministic(minibatch_x,
-		                                                                                              minibatch_y)
-		# TODO: end{this is only for adaptive dropout layers}
-		'''
-
 		minibatch_running_time = timeit.default_timer() - minibatch_running_time
+
+		'''
+		logger.debug('train: epoch %i, minibatch %i, duration %fs, loss %f, regularizer %f, accuracy %f%%' % (
+			self.epoch_index, self.minibatch_index, minibatch_running_time, minibatch_average_train_objective,
+			minibatch_average_train_loss - minibatch_average_train_objective, minibatch_average_train_accuracy * 100))
+		'''
 
 		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy
 
