@@ -91,7 +91,7 @@ def parse_parameter_policy(policy_string):
 	policy_tokens = policy_string.split(param_deliminator)
 
 	policy_tokens[0] = float(policy_tokens[0])
-	assert policy_tokens[0] >= 0
+	#assert policy_tokens[0] >= 0
 	if len(policy_tokens) == 1:
 		policy_tokens.append(Xpolicy.constant)
 		return policy_tokens

@@ -97,7 +97,28 @@ class DynamicDropoutLayer(AdaptiveDropoutLayer):
 
 		return neuron_indices_to_split, neuron_indices_to_keep
 
-	def split_activation_probability(self, input_indices_to_split):
+	def split_activation_probability_dropout(self, input_indices_to_split):
+		old_size = int(numpy.prod(self.input_shape[self.num_leading_axes:]))
+		self.input_shape = self.input_layer.output_shape
+		assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == old_size + len(input_indices_to_split)
+
+		activation_probability = self.activation_probability.eval()
+		activation_probability_split = activation_probability[input_indices_to_split]
+		activation_probability = numpy.hstack((activation_probability, activation_probability_split))
+
+		'''
+		activation_probability = numpy.clip(activation_probability, 0, 1)
+		split_ratio = numpy.random.random(len(input_indices_to_split))
+		old_activation_probability = activation_probability[input_indices_to_split]
+		activation_probability_split = activation_probability[input_indices_to_split] * split_ratio
+		activation_probability[input_indices_to_split] *= 1 - split_ratio
+		activation_probability = numpy.hstack((activation_probability, activation_probability_split))
+		'''
+
+		old_activation_probability = self._set_r(activation_probability)
+		return old_activation_probability
+
+	def split_activation_probability_dense(self, input_indices_to_split):
 		old_size = int(numpy.prod(self.input_shape[self.num_leading_axes:]))
 		self.input_shape = self.input_layer.output_shape
 		assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == old_size + len(input_indices_to_split)
@@ -113,6 +134,7 @@ class DynamicDropoutLayer(AdaptiveDropoutLayer):
 		old_activation_probability = self._set_r(activation_probability)
 		return old_activation_probability
 
+	split_activation_probability = split_activation_probability_dense
 
 class BernoulliDropoutLayerHan(BernoulliDropoutLayer):
 	"""Bernoulli Dropout Layer

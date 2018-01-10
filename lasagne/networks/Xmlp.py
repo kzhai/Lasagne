@@ -214,16 +214,17 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 
 		self.build_functions()
 
-	def adjust_network(self, train_dataset, validate_dataset=None, test_dataset=None):
+	def adjust_network(self, train_dataset, validate_dataset=None, test_dataset=None, adjust_lambdas=True):
 		if self.epoch_index < self.prune_split_interval[0] \
 				or self.prune_split_interval[1] <= 0 \
 				or self.epoch_index % self.prune_split_interval[1] != 0:
 			return
 
-		train_dataset_x, train_dataset_y = train_dataset
-		test_function_outputs = self._function_test(train_dataset_x, train_dataset_y)
-		average_test_loss, average_test_objective, average_test_accuracy = test_function_outputs
-		regularizer_before_adjustment = average_test_loss - average_test_objective
+		if adjust_lambdas:
+			train_dataset_x, train_dataset_y = train_dataset
+			test_function_outputs = self._function_test(train_dataset_x, train_dataset_y)
+			average_test_loss, average_test_objective, average_test_accuracy = test_function_outputs
+			regularizer_before_adjustment = average_test_loss - average_test_objective
 
 		structure_changed = False
 		if self.prune_threshold_policies is not None:
@@ -238,27 +239,27 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			structure_changed = structure_changed or self.split_neurons(split_thresholds=split_thresholds,
 			                                                            validate_dataset=validate_dataset,
 			                                                            test_dataset=test_dataset)
-
 		if not structure_changed:
 			return
 
-		train_dataset_x, train_dataset_y = train_dataset
-		test_function_outputs = self._function_test(train_dataset_x, train_dataset_y)
-		average_test_loss, average_test_objective, average_test_accuracy = test_function_outputs
-		regularizer_after_adjustment = average_test_loss - average_test_objective
+		if adjust_lambdas:
+			train_dataset_x, train_dataset_y = train_dataset
+			test_function_outputs = self._function_test(train_dataset_x, train_dataset_y)
+			average_test_loss, average_test_objective, average_test_accuracy = test_function_outputs
+			regularizer_after_adjustment = average_test_loss - average_test_objective
 
-		rescale_lambda = regularizer_before_adjustment / regularizer_after_adjustment
-		if rescale_lambda <= 0:
-			return
-		for regularizer_weight_variable in self._regularizer_lambda_policy.keys():
-			lambda_decay_policy = self._regularizer_lambda_policy[regularizer_weight_variable]
-			old_lambda_decay_policy = "%s" % lambda_decay_policy
-			lambda_decay_policy[0] *= rescale_lambda
+			rescale_lambda = regularizer_before_adjustment / regularizer_after_adjustment
+			if rescale_lambda <= 0:
+				return
+			for regularizer_weight_variable in self._regularizer_lambda_policy.keys():
+				lambda_decay_policy = self._regularizer_lambda_policy[regularizer_weight_variable]
+				old_lambda_decay_policy = "%s" % lambda_decay_policy
+				lambda_decay_policy[0] *= rescale_lambda
 
-			logger.info("[adjustable] adjust regularizer %s from %s to %s" % (
-				regularizer_weight_variable, old_lambda_decay_policy, lambda_decay_policy))
-			print("[adjustable] adjust regularizer %s from %s to %s" % (
-				regularizer_weight_variable, old_lambda_decay_policy, lambda_decay_policy))
+				logger.info("[adjustable] adjust regularizer %s from %s to %s" % (
+					regularizer_weight_variable, old_lambda_decay_policy, lambda_decay_policy))
+				print("[adjustable] adjust regularizer %s from %s to %s" % (
+					regularizer_weight_variable, old_lambda_decay_policy, lambda_decay_policy))
 
 	def prune_neurons(self, prune_thresholds, validate_dataset=None, test_dataset=None, output_directory=None):
 		structure_changed = False
@@ -344,6 +345,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			architecture_changed = True
 			old_size = len(neuron_indices_to_split) + len(neuron_indices_to_keep)
 			new_size = 2 * len(neuron_indices_to_split) + len(neuron_indices_to_keep)
+
 
 			pre_dropout_layer.split_output(neuron_indices_to_split)
 			dropout_layer.split_activation_probability(neuron_indices_to_split)
