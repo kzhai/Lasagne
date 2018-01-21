@@ -4,7 +4,7 @@ import re
 import numpy
 import numpy.random
 
-from PlotRetainRates import noise_file_name_pattern
+from PlotRetainRateHistogramVsEpoch import noise_file_name_pattern
 
 
 def plot_retain_rates_for_image_features(model_directory, feature_map_size, layer_index=0,

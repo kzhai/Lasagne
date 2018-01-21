@@ -214,7 +214,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 
 		self.build_functions()
 
-	def adjust_network(self, train_dataset, validate_dataset=None, test_dataset=None, adjust_lambdas=True):
+	def adjust_network(self, train_dataset, validate_dataset=None, test_dataset=None, adjust_lambdas=False):
 		if self.epoch_index < self.prune_split_interval[0] \
 				or self.prune_split_interval[1] <= 0 \
 				or self.epoch_index % self.prune_split_interval[1] != 0:
@@ -225,6 +225,12 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			test_function_outputs = self._function_test(train_dataset_x, train_dataset_y)
 			average_test_loss, average_test_objective, average_test_accuracy = test_function_outputs
 			regularizer_before_adjustment = average_test_loss - average_test_objective
+
+		old_architecture = []
+		for layer in self.get_network_layers():
+			if not isinstance(layer, layers.DynamicDropoutLayer):
+				continue
+			old_architecture.append("%d" % int(numpy.prod(layer.activation_probability.eval().shape)))
 
 		structure_changed = False
 		if self.prune_threshold_policies is not None:
@@ -242,6 +248,17 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 		if not structure_changed:
 			return
 
+		new_architecture = []
+		for layer in self.get_network_layers():
+			if not isinstance(layer, layers.DynamicDropoutLayer):
+				continue
+			new_architecture.append("%d" % int(numpy.prod(layer.activation_probability.eval().shape)))
+
+		logger.info("[adjustable] architecture: epoch %i, from %s to %s" % (
+			self.epoch_index, "-".join(old_architecture), "-".join(new_architecture)))
+		print("[adjustable] architecture: epoch %i, from %s to %s" % (
+			self.epoch_index, "-".join(old_architecture), "-".join(new_architecture)))
+
 		if adjust_lambdas:
 			train_dataset_x, train_dataset_y = train_dataset
 			test_function_outputs = self._function_test(train_dataset_x, train_dataset_y)
@@ -256,10 +273,10 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 				old_lambda_decay_policy = "%s" % lambda_decay_policy
 				lambda_decay_policy[0] *= rescale_lambda
 
-				logger.info("[adjustable] adjust regularizer %s from %s to %s" % (
-					regularizer_weight_variable, old_lambda_decay_policy, lambda_decay_policy))
-				print("[adjustable] adjust regularizer %s from %s to %s" % (
-					regularizer_weight_variable, old_lambda_decay_policy, lambda_decay_policy))
+				logger.info("[adjustable] regularizer: epoch %i, regularizer %s, from %s to %s" % (
+					self.epoch_index, regularizer_weight_variable, old_lambda_decay_policy, lambda_decay_policy))
+				print("[adjustable] regularizer: epoch %i, regularizer %s, from %s to %s" % (
+					self.epoch_index, regularizer_weight_variable, old_lambda_decay_policy, lambda_decay_policy))
 
 	def prune_neurons(self, prune_thresholds, validate_dataset=None, test_dataset=None, output_directory=None):
 		structure_changed = False
@@ -294,19 +311,17 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			dropout_layer.prune_activation_probability(neuron_indices_to_keep)
 			post_dropout_layer.prune_input(neuron_indices_to_keep)
 
-			logger.info("[prunable] prune layer %s from %d to %d with threshold %g" % (pre_dropout_layer, old_size,
-			                                                                           new_size, prune_threshold))
-			print("[prunable] prune layer %s from %d to %d with threshold %g" % (pre_dropout_layer, old_size, new_size,
-			                                                                     prune_threshold))
+			logger.info("[prunable] prune: epoch %i, layer %d, from %d to %d, threshold %g" % (
+				self.epoch_index, dropout_layer_index, old_size, new_size, prune_threshold))
+			print("[prunable] prune: epoch %i, layer %d, from %d to %d, threshold %g" % (
+				self.epoch_index, dropout_layer_index, old_size, new_size, prune_threshold))
 
 		if not structure_changed:
 			return False
 
 		self.build_functions()
 
-		# print("Performance on validate and test set after pruning...")
-		# logger.info("Performance on validate and test set after pruning...")
-
+		'''
 		if validate_dataset is not None:
 			output_file = None
 			if output_directory is not None:
@@ -314,6 +329,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			self.validate(validate_dataset, test_dataset, output_file)
 		elif test_dataset is not None:
 			self.test(test_dataset)
+		'''
 
 		return True
 
@@ -346,24 +362,21 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			old_size = len(neuron_indices_to_split) + len(neuron_indices_to_keep)
 			new_size = 2 * len(neuron_indices_to_split) + len(neuron_indices_to_keep)
 
-
 			pre_dropout_layer.split_output(neuron_indices_to_split)
 			dropout_layer.split_activation_probability(neuron_indices_to_split)
 			post_dropout_layer.split_input(neuron_indices_to_split)
 
-			print("[splitable] split layer %s from %d to %d with threshold %g" % (pre_dropout_layer, old_size, new_size,
-			                                                                      split_threshold))
-			logger.info("[splitable] split layer %s from %d to %d with threshold %g" % (pre_dropout_layer, old_size,
-			                                                                            new_size, split_threshold))
+			logger.info("[splitable] split: epoch %i, layer %d, from %d to %d, threshold %g" % (
+				self.epoch_index, dropout_layer_index, old_size, new_size, split_threshold))
+			print("[splitable] split: epoch %i, layer %d, from %d to %d, threshold %g" % (
+				self.epoch_index, dropout_layer_index, old_size, new_size, split_threshold))
 
 		if not architecture_changed:
 			return False
 
 		self.build_functions()
 
-		# print("Performance on validate and test set after pruning...")
-		# logger.info("Performance on validate and test set after pruning...")
-
+		'''
 		if validate_dataset is not None:
 			output_file = None
 			if output_directory is not None:
@@ -371,6 +384,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			self.validate(validate_dataset, test_dataset, output_file)
 		elif test_dataset is not None:
 			self.test(test_dataset)
+		'''
 
 		return True
 

@@ -49,12 +49,9 @@ def plot_retain_rates(model_directory, snapshot_interval=[-1, -1, 1], plot_direc
 			continue
 
 		retain_rates = numpy.load(os.path.join(model_directory, file_name))
-		retain_rates = numpy.clip(retain_rates.flatten(), 0, 1)
+		retain_rates = retain_rates.flatten()
+		#retain_rates = numpy.clip(retain_rates.flatten(), 0, 1)
 		layer_epoch_retain_rates[layer_index][epoch_index / snapshot_interval[2], :len(retain_rates)] = retain_rates
-
-	#for layer_index in layer_dimensions:
-		#layer_epoch_retain_rates[layer_index] = numpy.clip(layer_epoch_retain_rates[layer_index], 0, 1)
-		#print(layer_epoch_retain_rates[layer_index])
 
 	output_file_path = None if plot_directory is None else os.path.join(plot_directory, "noise.pdf")
 	plot_2D_violins([layer_epoch_retain_rates[layer_index][-1] for layer_index in layer_dimensions], output_file_path)

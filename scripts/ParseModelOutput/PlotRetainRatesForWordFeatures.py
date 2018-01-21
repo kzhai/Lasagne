@@ -7,7 +7,7 @@ from operator import itemgetter
 import numpy
 import numpy.random
 
-from PlotRetainRates import noise_file_name_pattern
+from PlotRetainRateHistogramVsEpoch import noise_file_name_pattern
 
 def plot_retain_rates_for_word_features(model_directory, feature_mapping, layer_index=0, snapshot_interval=[0, 1000, 1],
                                         thresholds=20, plot_directory=None):
