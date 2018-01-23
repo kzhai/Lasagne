@@ -107,10 +107,15 @@ class DynamicDenseLayer(AdaptableDenseLayer):
 
 		return old_W
 
+	"""
+	@deprecated
+	"""
+
 	def split_output_dropout(self, output_indices_to_split):
 		W = self.W.eval()
-		W = numpy.hstack((W, W[:, output_indices_to_split]))
 		b = self.b.eval()
+
+		W = numpy.hstack((W, W[:, output_indices_to_split]))
 		b = numpy.hstack((b, b[output_indices_to_split]))
 
 		self.num_units += len(output_indices_to_split)
@@ -120,29 +125,41 @@ class DynamicDenseLayer(AdaptableDenseLayer):
 
 		return old_W, old_b
 
-	def split_output_dense(self, output_indices_to_split, split_mode = "weightwise"):
+	def split_output(self, output_indices_to_split, **kwargs):
 		W = self.W.eval()
 		b = self.b.eval()
 
-		if split_mode == "layerwise":
-			W_split_ratio = numpy.random.random()
-			b_split_ratio = numpy.random.random()
-		elif split_mode == "neuronwise":
-			W_split_ratio = numpy.random.random((1, len(output_indices_to_split)))
-			b_split_ratio = numpy.random.random(len(output_indices_to_split))
-		elif split_mode == "weightwise":
-			W_split_ratio = numpy.random.random(W[:, output_indices_to_split].shape)
-			b_split_ratio = numpy.random.random(len(output_indices_to_split))
+		split_mode = kwargs.get("split_mode", "dense")
+		if split_mode == "dense":
+			W, b = split_W_and_b(W, b, output_indices_to_split)
+
+			'''
+			split_strategy = kwargs.get("split_strategy", "weightwise")
+			if split_strategy == "layerwise":
+				W_split_ratio = numpy.random.random()
+				b_split_ratio = numpy.random.random()
+			elif split_strategy == "neuronwise":
+				W_split_ratio = numpy.random.random((1, len(output_indices_to_split)))
+				b_split_ratio = numpy.random.random(len(output_indices_to_split))
+			elif split_strategy == "weightwise":
+				W_split_ratio = numpy.random.random(W[:, output_indices_to_split].shape)
+				b_split_ratio = numpy.random.random(len(output_indices_to_split))
+			else:
+				raise ValueError("Unrecognized split strategy %s." % (split_strategy))
+
+			W_split = W[:, output_indices_to_split] * W_split_ratio
+			W[:, output_indices_to_split] *= 1 - W_split_ratio
+			W = numpy.hstack((W, W_split))
+
+			b_split = b[output_indices_to_split] * b_split_ratio
+			b[output_indices_to_split] *= 1 - b_split_ratio
+			b = numpy.hstack((b, b_split))
+			'''
+		elif split_mode == "dropout":
+			W = numpy.hstack((W, W[:, output_indices_to_split]))
+			b = numpy.hstack((b, b[output_indices_to_split]))
 		else:
-			raise ValueError("Unrecognized split mode %s." %(split_mode))
-
-		W_split = W[:, output_indices_to_split] * W_split_ratio
-		W[:, output_indices_to_split] *= 1 - W_split_ratio
-		W = numpy.hstack((W, W_split))
-
-		b_split = b[output_indices_to_split] * b_split_ratio
-		b[output_indices_to_split] *= 1 - b_split_ratio
-		b = numpy.hstack((b, b_split))
+			raise ValueError("Unrecognized split model %s." % (split_mode))
 
 		self.num_units += len(output_indices_to_split)
 
@@ -151,7 +168,30 @@ class DynamicDenseLayer(AdaptableDenseLayer):
 
 		return old_W, old_b
 
-	split_output = split_output_dense
+def split_W_and_b(W, b, indices_to_split, split_strategy="weightwise"):
+	# split_strategy = kwargs.get("split_strategy", "weightwise")
+	if split_strategy == "layerwise":
+		W_split_ratio = numpy.random.random()
+		b_split_ratio = numpy.random.random()
+	elif split_strategy == "neuronwise":
+		W_split_ratio = numpy.random.random((1, len(indices_to_split)))
+		b_split_ratio = numpy.random.random(len(indices_to_split))
+	elif split_strategy == "weightwise":
+		W_split_ratio = numpy.random.random(W[:, indices_to_split].shape)
+		b_split_ratio = numpy.random.random(len(indices_to_split))
+	else:
+		raise ValueError("Unrecognized split strategy %s." % (split_strategy))
+
+	W_split = W[:, indices_to_split] * W_split_ratio
+	W[:, indices_to_split] *= 1 - W_split_ratio
+
+	b_split = b[indices_to_split] * b_split_ratio
+	b[indices_to_split] *= 1 - b_split_ratio
+
+	# W = numpy.hstack((W, W_split))
+	# b = numpy.hstack((b, b_split))
+
+	return numpy.hstack((W, W_split)), numpy.hstack((b, b_split))
 
 
 #
@@ -354,45 +394,45 @@ class SplitableDenseLayer(AdaptableDenseLayer):
 
 
 if __name__ == '__main__':
-	x = numpy.random.random((2, 5))
+	for i in range(100):
+		x = numpy.random.random((2, 5))
 
-	W_1 = numpy.random.random((5, 10))
-	b_1 = numpy.random.random(10)
+		W_1 = numpy.random.random((5, 10))
+		b_1 = numpy.random.random(10)
 
-	W_2 = numpy.random.random((10, 20))
-	b_2 = numpy.random.random(20)
+		W_2 = numpy.random.random((10, 20))
+		b_2 = numpy.random.random(20)
 
-	old_output_1 = numpy.dot(x, W_1) + b_1
-	print(W_1.shape, old_output_1.shape)
-	old_output_2 = numpy.dot(old_output_1, W_2) + b_2
-	print(W_2.shape, old_output_2.shape)
-	# print(old_output_2)
+		old_output_1 = numpy.dot(x, W_1) + b_1
+		old_output_2 = numpy.dot(old_output_1, W_2) + b_2
+		# print(old_output_2)
 
-	input_indices_to_split = range(7)
+		input_indices_to_split = range(7)
 
-	'''
-	split_ratio = numpy.random.random((1, len(input_indices_to_split)))
-	W_1_split = W_1[:, input_indices_to_split] * split_ratio
-	W_1[:, input_indices_to_split] *= 1 - split_ratio
-	W_1 = numpy.hstack((W_1, W_1_split))
-	'''
+		'''
+		split_ratio = numpy.random.random((1, len(input_indices_to_split)))
+		W_1_split = W_1[:, input_indices_to_split] * split_ratio
+		W_1[:, input_indices_to_split] *= 1 - split_ratio
+		W_1 = numpy.hstack((W_1, W_1_split))
+		'''
 
-	split_ratio = numpy.random.random(W_1[:, input_indices_to_split].shape)
-	W_1_split = W_1[:, input_indices_to_split] * split_ratio
-	W_1[:, input_indices_to_split] *= 1 - split_ratio
-	W_1 = numpy.hstack((W_1, W_1_split))
+		W_1, b_1 = split_W_and_b(W_1, b_1, input_indices_to_split)
 
-	split_ratio = numpy.random.random(len(input_indices_to_split))
-	b_1_split = b_1[input_indices_to_split] * split_ratio
-	b_1[input_indices_to_split] *= 1 - split_ratio
-	b_1 = numpy.hstack((b_1, b_1_split))
+		'''
+		split_ratio = numpy.random.random(W_1[:, input_indices_to_split].shape)
+		W_1_split = W_1[:, input_indices_to_split] * split_ratio
+		W_1[:, input_indices_to_split] *= 1 - split_ratio
+		W_1 = numpy.hstack((W_1, W_1_split))
 
-	W_2 = numpy.vstack((W_2, W_2[input_indices_to_split, :]))
+		split_ratio = numpy.random.random(len(input_indices_to_split))
+		b_1_split = b_1[input_indices_to_split] * split_ratio
+		b_1[input_indices_to_split] *= 1 - split_ratio
+		b_1 = numpy.hstack((b_1, b_1_split))
+		'''
 
-	new_output_1 = numpy.dot(x, W_1) + b_1
-	print(W_1.shape, new_output_1.shape)
-	new_output_2 = numpy.dot(new_output_1, W_2) + b_2
-	print(W_2.shape, new_output_2.shape)
+		W_2 = numpy.vstack((W_2, W_2[input_indices_to_split, :]))
 
-	print(old_output_2, new_output_2)
-	print(numpy.allclose(old_output_2, new_output_2))
+		new_output_1 = numpy.dot(x, W_1) + b_1
+		new_output_2 = numpy.dot(new_output_1, W_2) + b_2
+
+		assert numpy.allclose(old_output_2, new_output_2), i

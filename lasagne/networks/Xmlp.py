@@ -19,6 +19,8 @@ __all__ = [
 	"MultiLayerPerceptronGuo",
 ]
 
+numpy.random.seed(0)
+
 
 class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
 	def __init__(self,
@@ -362,7 +364,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			old_size = len(neuron_indices_to_split) + len(neuron_indices_to_keep)
 			new_size = 2 * len(neuron_indices_to_split) + len(neuron_indices_to_keep)
 
-			pre_dropout_layer.split_output(neuron_indices_to_split)
+			pre_dropout_layer.split_output(neuron_indices_to_split, )
 			dropout_layer.split_activation_probability(neuron_indices_to_split)
 			post_dropout_layer.split_input(neuron_indices_to_split)
 
