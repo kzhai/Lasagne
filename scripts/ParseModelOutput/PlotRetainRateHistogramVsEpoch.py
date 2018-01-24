@@ -50,7 +50,9 @@ def plot_retain_rates(model_directory, snapshot_interval=[-1, -1, 1], plot_direc
 
 		retain_rates = numpy.load(os.path.join(model_directory, file_name))
 		retain_rates = retain_rates.flatten()
-		#retain_rates = numpy.clip(retain_rates.flatten(), 0, 1)
+		retain_rates = numpy.clip(retain_rates.flatten(), -1, 1)
+		if len(retain_rates)>layer_epoch_retain_rates[layer_index].shape[1]:
+			layer_epoch_retain_rates[layer_index] = numpy.hstack((layer_epoch_retain_rates[layer_index], -numpy.ones((layer_epoch_retain_rates[layer_index].shape[0], len(retain_rates)-layer_epoch_retain_rates[layer_index].shape[1]))))
 		layer_epoch_retain_rates[layer_index][epoch_index / snapshot_interval[2], :len(retain_rates)] = retain_rates
 
 	output_file_path = None if plot_directory is None else os.path.join(plot_directory, "noise.pdf")

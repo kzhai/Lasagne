@@ -19,8 +19,6 @@ __all__ = [
 	"MultiLayerPerceptronGuo",
 ]
 
-numpy.random.seed(0)
-
 
 class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
 	def __init__(self,
