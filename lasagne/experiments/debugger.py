@@ -119,20 +119,22 @@ def debug_function_output(network, dataset, **kwargs):
 
 	assert numpy.sum(minibatch_outputs[:, 0]) == number_of_data, (numpy.sum(minibatch_outputs[:, 0]), number_of_data)
 
-	if output_file!=None:
+	if output_file != None:
 		numpy.save(output_file, minibatch_outputs)
 
-	dataset_outputs = numpy.sum(minibatch_outputs[:, 0][:, numpy.newaxis] * minibatch_outputs[:, 1:], axis=0) / number_of_data
+	dataset_outputs = numpy.sum(minibatch_outputs[:, 0][:, numpy.newaxis] * minibatch_outputs[:, 1:],
+	                            axis=0) / number_of_data
 
 	logger.debug("stochastic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
 	             (dataset_outputs[1], dataset_outputs[2], dataset_outputs[3], dataset_outputs[0] * 100))
 	print("debug: stochastic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
-	             (dataset_outputs[1], dataset_outputs[2], dataset_outputs[3], dataset_outputs[0] * 100))
+	      (dataset_outputs[1], dataset_outputs[2], dataset_outputs[3], dataset_outputs[0] * 100))
 
 	logger.debug("deterministic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
 	             (dataset_outputs[5], dataset_outputs[6], dataset_outputs[7], dataset_outputs[4] * 100))
 	print("debug: deterministic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
-	             (dataset_outputs[5], dataset_outputs[6], dataset_outputs[7], dataset_outputs[4] * 100))
+	      (dataset_outputs[5], dataset_outputs[6], dataset_outputs[7], dataset_outputs[4] * 100))
+
 
 def debug_rademacher_p_2_q_2(network, minibatch, rescale=False, **kwargs):
 	input_layer = Xregularization.find_input_layer(network)
@@ -152,11 +154,11 @@ def debug_rademacher_p_2_q_2(network, minibatch, rescale=False, **kwargs):
 		if isinstance(layer, AdaptiveDropoutLayer):
 			retain_probability = T.clip(layer.activation_probability, 0, 1)
 			mapping.append("sqrt(sum(retain_probability ** 2))")
-			output.append(T.sqrt(T.sum(retain_probability ** 2)))
+			output.append(T.sqrt(T.sum(abs(retain_probability))))
 		elif isinstance(layer, DenseLayer):
 			# compute B_l * p_l, with a layer-wise scale constant
 			mapping.append("max(sqrt(sum(layer.W ** 2, axis=0)))")
-			output.append(T.max(T.sqrt(T.sum(layer.W ** 2, axis=0))))
+			output.append(2 * T.max(T.sqrt(T.sum(layer.W ** 2, axis=0))))
 
 			if rescale:
 				d1, d2 = layer.W.shape
@@ -182,57 +184,6 @@ def debug_rademacher_p_2_q_2(network, minibatch, rescale=False, **kwargs):
 	print("debug: Rademacher (p=2, q=2) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
 
 
-debug_rademacher = debug_rademacher_p_2_q_2
-
-
-def debug_rademacher_p_1_q_inf(network, minibatch, rescale=False, **kwargs):
-	input_layer = Xregularization.find_input_layer(network)
-	input_shape = layers.get_output_shape(input_layer)
-	input_value = layers.get_output(input_layer)
-	n = network._input_variable.shape[0]
-	d = T.prod(input_shape[1:])
-	dummy, k = network.get_output_shape()
-
-	output, mapping = [], []
-	mapping.append("k * sqrt(log(d) / n)")
-	output.append(k * T.sqrt(T.log(d) / n))
-	mapping.append("max(abs(input_value))")
-	output.append(T.max(abs(input_value)))
-
-	for layer in network.get_network_layers():
-		if isinstance(layer, AdaptiveDropoutLayer):
-			# retain_probability = numpy.clip(layer.activation_probability.eval(), 0, 1)
-			retain_probability = T.clip(layer.activation_probability, 0, 1)
-			mapping.append("max(abs(retain_probability))")
-			output.append(T.max(abs(retain_probability)))
-		elif isinstance(layer, DenseLayer):
-			# compute B_l * p_l, with a layer-wise scale constant
-			mapping.append("max(sum(abs(layer.W), axis=0))")
-			output.append(T.max(T.sum(abs(layer.W), axis=0)))
-
-			if rescale:
-				d1, d2 = layer.W.shape
-				mapping.append("1. / (d1 * sqrt(log(d2)))")
-				output.append(1. / (d1 * T.sqrt(T.log(d2))))
-				mapping.append("sqrt(d1 + d2)")
-				output.append(T.sqrt(d1 + d2))
-
-	function_debugger = theano.function(
-		inputs=[network._input_variable, network._output_variable],
-		outputs=output,
-		on_unused_input='warn'
-	)
-
-	minibatch_x, minibatch_y = minibatch
-	debugger_function_outputs = function_debugger(minibatch_x, minibatch_y)
-	'''
-	for token_mapping, token_output in zip(mapping, debugger_function_outputs):
-		print("debug: %s = %g" % (token_mapping, token_output))
-	'''
-	logger.debug("Rademacher (p=1, q=inf) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
-	print("debug: Rademacher (p=1, q=inf) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
-
-
 def debug_rademacher_p_inf_q_1(network, minibatch, rescale=False, **kwargs):
 	input_layer = Xregularization.find_input_layer(network)
 	input_shape = layers.get_output_shape(input_layer)
@@ -256,7 +207,7 @@ def debug_rademacher_p_inf_q_1(network, minibatch, rescale=False, **kwargs):
 		elif isinstance(layer, DenseLayer):
 			# compute B_l * p_l, with a layer-wise scale constant
 			mapping.append("max(abs(layer.W))")
-			output.append(T.max(abs(layer.W)))
+			output.append(2 * T.max(abs(layer.W)))
 
 			if rescale:
 				d1, d2 = layer.W.shape
@@ -279,6 +230,9 @@ def debug_rademacher_p_inf_q_1(network, minibatch, rescale=False, **kwargs):
 	'''
 	logger.debug("Rademacher (p=inf, q=1) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
 	print("debug: Rademacher (p=inf, q=1) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
+
+
+debug_rademacher = debug_rademacher_p_inf_q_1
 
 
 def snapshot_dropout(network, settings=None, **kwargs):
@@ -318,6 +272,7 @@ def snapshot_dropout(network, settings=None, **kwargs):
 			numpy.save(retain_rate_file, layer_retain_probability)
 		dropout_layer_index += 1
 
+
 def snapshot_dense(network, settings=None, **kwargs):
 	dense_layer_index = 0
 	for network_layer in network.get_network_layers():
@@ -329,9 +284,11 @@ def snapshot_dense(network, settings=None, **kwargs):
 
 		if settings is not None:
 			# layer_retain_probability = numpy.reshape(layer_retain_probability, numpy.prod(layer_retain_probability.shape))
-			dense_file = os.path.join(settings.output_directory, "dense.%d.epoch.%d.npy" % (dense_layer_index, network.epoch_index))
+			dense_file = os.path.join(settings.output_directory,
+			                          "dense.%d.epoch.%d.npy" % (dense_layer_index, network.epoch_index))
 			numpy.save(dense_file, [layer_weight, layer_bias])
 		dense_layer_index += 1
+
 
 def snapshot_convolution(network, settings, **kwargs):
 	conv_layer_index = 0

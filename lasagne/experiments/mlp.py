@@ -140,12 +140,10 @@ def validate_dropout_arguments(arguments, number_of_layers):
 				arguments.regularizer[Xregularization.kl_divergence_sparse] = [1.0, Xpolicy.constant]
 			assert Xregularization.kl_divergence_sparse in arguments.regularizer
 		elif layer_activation_types[layer_activation_type_index] in {"AdaptiveDropoutLayer", "DynamicDropoutLayer"}:
-			if (Xregularization.rademacher_p_1_q_inf not in arguments.regularizer) and \
-					(Xregularization.rademacher_p_2_q_2 not in arguments.regularizer) and \
+			if (Xregularization.rademacher_p_2_q_2 not in arguments.regularizer) and \
 					(Xregularization.rademacher_p_inf_q_1 not in arguments.regularizer):
-				arguments.regularizer[Xregularization.rademacher_p_2_q_2] = [1.0, Xpolicy.constant]
-			assert (Xregularization.rademacher_p_1_q_inf in arguments.regularizer) or \
-			       (Xregularization.rademacher_p_2_q_2 in arguments.regularizer) or \
+				arguments.regularizer[Xregularization.rademacher] = [1.0, Xpolicy.constant]
+			assert (Xregularization.rademacher_p_2_q_2 in arguments.regularizer) or \
 			       (Xregularization.rademacher_p_inf_q_1 in arguments.regularizer)
 		else:
 			logger.error("unrecognized dropout type %s..." % (layer_activation_types[layer_activation_type_index]))

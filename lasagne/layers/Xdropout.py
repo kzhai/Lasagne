@@ -126,12 +126,12 @@ class DynamicDropoutLayer(AdaptiveDropoutLayer):
 		activation_probability = self.activation_probability.eval()
 		activation_probability = numpy.clip(activation_probability, 0, 1)
 
-		split_mode = kwargs.get("split_mode", "dense")
+		split_mode = kwargs.get("split_mode", "dropout")
 		if split_mode == "dense":
 			activation_probability_split = activation_probability[input_indices_to_split]
 			activation_probability = numpy.hstack((activation_probability, activation_probability_split))
 		elif split_mode == "dropout":
-			#activation_probability = numpy.clip(activation_probability, 0, 1)
+			activation_probability = numpy.clip(activation_probability, 0, 1)
 			split_ratio = numpy.random.random(len(input_indices_to_split))
 			old_activation_probability = activation_probability[input_indices_to_split]
 			activation_probability_split = activation_probability[input_indices_to_split] * split_ratio

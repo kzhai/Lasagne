@@ -157,7 +157,7 @@ class Network(object):
 			if regularizer_function in set(
 					[Xregularization.rademacher,
 					 Xregularization.rademacher_p_2_q_2,
-					 Xregularization.rademacher_p_1_q_inf,
+					 #Xregularization.rademacher_p_1_q_inf,
 					 Xregularization.rademacher_p_inf_q_1,
 					 Xregularization.kl_divergence_kingma,
 					 Xregularization.kl_divergence_sparse]):

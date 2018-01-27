@@ -19,6 +19,7 @@ __all__ = [
 	"MultiLayerPerceptronGuo",
 ]
 
+numpy.random.seed(0)
 
 class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
 	def __init__(self,
@@ -291,10 +292,6 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 					(not isinstance(post_dropout_layer, layers.DynamicDenseLayer)):
 				continue
 
-			# print("layer %s size %d" % (pre_dropout_layer, pre_dropout_layer.num_units))
-			# print("layer %s size %s" % (dropout_layer, dropout_layer.input_shape))
-			# print("layer %s size %d" % (post_dropout_layer, post_dropout_layer.num_units))
-
 			prune_threshold = prune_thresholds[dropout_layer_index]
 			dropout_layer_index += 1
 			neuron_indices_to_prune, neuron_indices_to_keep = dropout_layer.find_neuron_indices_to_prune(
@@ -345,10 +342,6 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 					(not isinstance(dropout_layer, layers.DynamicDropoutLayer)) or \
 					(not isinstance(post_dropout_layer, layers.DynamicDenseLayer)):
 				continue
-
-			# print("layer %s size %d" % (pre_dropout_layer, pre_dropout_layer.num_units))
-			# print("layer %s size %s" % (dropout_layer, dropout_layer.input_shape))
-			# print("layer %s size %d" % (post_dropout_layer, post_dropout_layer.num_units))
 
 			split_threshold = split_thresholds[dropout_layer_index]
 			dropout_layer_index += 1

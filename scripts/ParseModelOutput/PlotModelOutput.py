@@ -42,20 +42,23 @@ def plot_model_output(model_directory, snapshot_interval=[-1, -1, 1], plot_direc
 	output_file_path = None if plot_directory is None else os.path.join(plot_directory, "objective.pdf")
 
 	matrix = numpy.hstack((train_logs[:, field_indices], test_logs[:, field_indices[1:]]))
+	'''
 	plot_multiple_subplots(matrix, col_names=["epoch", "train", "train", "train", "test", "test", "test"],
 	                       y_col_groups=[[3, 6], [1, 4], [2, 5]],
 	                       y_col_group_labels=["accuracy", "loss", "regularizer"], x_col=0,
 	                       output_file_path=output_file_path)
+	'''
 	plot_multiple_yaxis(matrix, col_names=["epoch", "train", "train", "train", "test", "test", "test"],
 	                    y_col_groups=[[3, 6], [1, 4], [2, 5]],
 	                    y_col_group_labels=["accuracy", "loss", "regularizer"], x_col=0,
 	                    output_file_path=output_file_path)
 
+	'''
 	plot_multiple_subplots_backup(train_logs[:, field_indices], valid_logs[:, field_indices],
 	                              test_logs[:, field_indices],
 	                              field_names, output_file_path)
 	plot_multiple_yaxis_backup(train_logs, valid_logs, test_logs, output_file_path)
-
+	'''
 
 def plot_multiple_subplots(matrix, col_names, y_col_groups=None, y_col_group_labels=None, x_col=0,
                            output_file_path=None):
@@ -118,7 +121,8 @@ def plot_multiple_yaxis(matrix, col_names, y_col_groups=None, y_col_group_labels
 	min_xlim = numpy.min(matrix[:, x_col])
 	max_xlim = numpy.max(matrix[:, x_col])
 
-	fig, host = plt.subplots()
+	#fig, host = plt.subplots()
+	fig, host = plt.subplots(figsize=(12,8))
 	# fig.subplots_adjust(right=0.75)
 	pars = [host]
 	for x in range(len(y_col_groups) - 1):

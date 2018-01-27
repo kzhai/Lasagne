@@ -129,7 +129,7 @@ class DynamicDenseLayer(AdaptableDenseLayer):
 		W = self.W.eval()
 		b = self.b.eval()
 
-		split_mode = kwargs.get("split_mode", "dense")
+		split_mode = kwargs.get("split_mode", "dropout")
 		if split_mode == "dense":
 			W, b = split_W_and_b(W, b, output_indices_to_split)
 
@@ -167,6 +167,7 @@ class DynamicDenseLayer(AdaptableDenseLayer):
 		old_b = self._set_b(b)
 
 		return old_W, old_b
+
 
 def split_W_and_b(W, b, indices_to_split, split_strategy="weightwise"):
 	# split_strategy = kwargs.get("split_strategy", "weightwise")
@@ -397,14 +398,16 @@ if __name__ == '__main__':
 	for i in range(100):
 		x = numpy.random.random((2, 5))
 
-		W_1 = numpy.random.random((5, 10))
-		b_1 = numpy.random.random(10)
+		W_1 = 2 * numpy.random.random((5, 10)) - 0.5
+		b_1 = 2 * numpy.random.random(10) - 0.5
 
-		W_2 = numpy.random.random((10, 20))
-		b_2 = numpy.random.random(20)
+		W_2 = 2 * numpy.random.random((10, 20)) - 0.5
+		b_2 = 2 * numpy.random.random(20) - 0.5
 
 		old_output_1 = numpy.dot(x, W_1) + b_1
+		old_output_1 = numpy.clip(old_output_1, 0, 1e6)
 		old_output_2 = numpy.dot(old_output_1, W_2) + b_2
+		old_output_2 = numpy.clip(old_output_2, 0, 1e6)
 		# print(old_output_2)
 
 		input_indices_to_split = range(7)
@@ -433,6 +436,8 @@ if __name__ == '__main__':
 		W_2 = numpy.vstack((W_2, W_2[input_indices_to_split, :]))
 
 		new_output_1 = numpy.dot(x, W_1) + b_1
+		new_output_1 = numpy.clip(new_output_1, 0, 1e6)
 		new_output_2 = numpy.dot(new_output_1, W_2) + b_2
+		new_output_2 = numpy.clip(new_output_2, 0, 1e6)
 
-		assert numpy.allclose(old_output_2, new_output_2), i
+		assert numpy.allclose(old_output_2, new_output_2), (old_output_2==new_output_2, old_output_2, new_output_2)
