@@ -60,7 +60,7 @@ find_input_layer = __find_pre_dropout_layer
 # find_input_layer = __find_input_layer
 
 def rademacher_p_2_q_2(network, **kwargs):
-	kwargs['rescale'] = kwargs.get('rescale', False)
+	kwargs['rescale'] = kwargs.get('rescale', True)
 
 	input_layer = find_input_layer(network)
 
@@ -110,7 +110,7 @@ def rademacher_p_2_q_2(network, **kwargs):
 
 
 def rademacher_p_inf_q_1(network, **kwargs):
-	kwargs['rescale'] = kwargs.get('rescale', False)
+	kwargs['rescale'] = kwargs.get('rescale', True)
 
 	input_layer = find_input_layer(network)
 
