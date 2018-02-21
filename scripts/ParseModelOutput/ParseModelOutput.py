@@ -119,8 +119,9 @@ def parse_model_output(model_log_file):
 	train_logs = parse_file_to_matrix(model_log_file, train_log_pattern, output_field_names)
 	valid_logs = parse_file_to_matrix(model_log_file, valid_log_pattern, output_field_names)
 	test_logs = parse_file_to_matrix(model_log_file, test_log_pattern, output_field_names)
-	assert len(test_logs) == len(train_logs)
-	assert len(valid_logs) == 0 or len(valid_logs) == len(train_logs)
+
+	#assert len(test_logs) == len(train_logs), (len(test_logs), len(train_logs))
+	#assert len(valid_logs) == 0 or len(valid_logs) == len(train_logs)
 	# model_settings, train_logs, valid_logs, test_logs = parse_model_output(model_log_file, output_log_pattern_field_names)
 
 	return model_settings, train_logs, valid_logs, test_logs

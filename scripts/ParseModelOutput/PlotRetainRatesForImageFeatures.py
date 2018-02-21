@@ -59,6 +59,7 @@ def plot_image(matrix, output_file_path=None, interpolation='bilinear'):
 	import matplotlib.pyplot as plt
 
 	plt.figure()
+	plt.style.use('classic')
 	plt.imshow(matrix, interpolation=interpolation)
 	plt.grid(False)
 	plt.tight_layout()
