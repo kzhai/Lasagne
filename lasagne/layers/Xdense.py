@@ -125,11 +125,11 @@ class DynamicDenseLayer(AdaptableDenseLayer):
 
 		return old_W, old_b
 
-	def split_output(self, output_indices_to_split, **kwargs):
+	def split_output(self, output_indices_to_split, split_mode="dropout", **kwargs):
 		W = self.W.eval()
 		b = self.b.eval()
 
-		split_mode = kwargs.get("split_mode", "dropout")
+		# split_mode = kwargs.get("split_mode", "dropout")
 		if split_mode == "dense":
 			W, b = split_W_and_b(W, b, output_indices_to_split)
 
@@ -440,4 +440,4 @@ if __name__ == '__main__':
 		new_output_2 = numpy.dot(new_output_1, W_2) + b_2
 		new_output_2 = numpy.clip(new_output_2, 0, 1e6)
 
-		assert numpy.allclose(old_output_2, new_output_2), (old_output_2==new_output_2, old_output_2, new_output_2)
+		assert numpy.allclose(old_output_2, new_output_2), (old_output_2 == new_output_2, old_output_2, new_output_2)

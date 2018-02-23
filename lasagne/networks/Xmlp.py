@@ -244,6 +244,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			split_thresholds = [adjust_parameter_according_to_policy(split_threshold_policy, self.epoch_index) for
 			                    split_threshold_policy in self.split_threshold_policies]
 			structure_changed = structure_changed or self.split_neurons(split_thresholds=split_thresholds,
+			                                                            split_mode="dropout",
 			                                                            validate_dataset=validate_dataset,
 			                                                            test_dataset=test_dataset)
 		if not structure_changed:
@@ -330,7 +331,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 
 		return True
 
-	def split_neurons(self, split_thresholds, validate_dataset=None, test_dataset=None, output_directory=None):
+	def split_neurons(self, split_thresholds, split_mode="dropout", validate_dataset=None, test_dataset=None, output_directory=None):
 		architecture_changed = False
 
 		dropout_layer_index = 0
@@ -355,9 +356,9 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 			old_size = len(neuron_indices_to_split) + len(neuron_indices_to_keep)
 			new_size = 2 * len(neuron_indices_to_split) + len(neuron_indices_to_keep)
 
-			pre_dropout_layer.split_output(neuron_indices_to_split, )
-			dropout_layer.split_activation_probability(neuron_indices_to_split)
-			post_dropout_layer.split_input(neuron_indices_to_split)
+			pre_dropout_layer.split_output(neuron_indices_to_split, split_mode)
+			dropout_layer.split_activation_probability(neuron_indices_to_split, split_mode)
+			post_dropout_layer.split_input(neuron_indices_to_split, split_mode)
 
 			logger.info("[splitable] split: epoch %i, layer %d, from %d to %d, threshold %g" % (
 				self.epoch_index, dropout_layer_index, old_size, new_size, split_threshold))

@@ -103,7 +103,7 @@ def validate_elman_arguments(arguments):
 	layer_nonlinearities = []
 	recurrent_mode = False
 	start_index = 0
-	for end_index in xrange(len(options_layer_nonlinearities)):
+	for end_index in range(len(options_layer_nonlinearities)):
 		if options_layer_nonlinearities[end_index] == "[":
 			assert (not recurrent_mode)
 			recurrent_mode = True
