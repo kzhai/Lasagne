@@ -187,7 +187,7 @@ class ElmanNetwork(RecurrentNetwork):
 				# print_output_dimension("after recurrent layer %i" % layer_index, neural_network, sequence_length, window_size)
 			else:
 				logger.error("Unrecognized layer specifications...")
-				sys.stderr.write("Unrecognized layer specifications...\n")
+				sys.stderr.serialize("Unrecognized layer specifications...\n")
 				sys.exit()
 
 		self._neural_network = neural_network
@@ -384,7 +384,7 @@ class DynamicElmanNetwork(AdaptiveRecurrentNetwork):
 				                       window_size)
 			else:
 				logger.error("Unrecognized layer specifications...")
-				sys.stderr.write("Unrecognized layer specifications...\n")
+				sys.stderr.serialize("Unrecognized layer specifications...\n")
 				sys.exit()
 
 		self._neural_network = neural_network

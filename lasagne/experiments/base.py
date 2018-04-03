@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import logging
+import pickle
 import os
 import random
 import sys
@@ -32,9 +33,9 @@ __all__ = [
 ]
 
 layer_deliminator = "*"
-#layer_deliminator = ","
+# layer_deliminator = ","
 param_deliminator = ","
-#param_deliminator = "*"
+# param_deliminator = "*"
 specs_deliminator = ":"
 
 
@@ -91,7 +92,7 @@ def parse_parameter_policy(policy_string):
 	policy_tokens = policy_string.split(param_deliminator)
 
 	policy_tokens[0] = float(policy_tokens[0])
-	#assert policy_tokens[0] >= 0
+	# assert policy_tokens[0] >= 0
 	if len(policy_tokens) == 1:
 		policy_tokens.append(Xpolicy.constant)
 		return policy_tokens
@@ -431,9 +432,9 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 		if debugger.debug_rademacher_p_2_q_2 in settings.debug:
 			debugger.debug_rademacher_p_2_q_2(network, train_dataset)
 			debugger.debug_rademacher_p_2_q_2(network, test_dataset)
-		#if debugger.debug_rademacher_p_1_q_inf in settings.debug:
-			#debugger.debug_rademacher_p_1_q_inf(network, train_dataset)
-			#debugger.debug_rademacher_p_1_q_inf(network, test_dataset)
+		# if debugger.debug_rademacher_p_1_q_inf in settings.debug:
+		# debugger.debug_rademacher_p_1_q_inf(network, train_dataset)
+		# debugger.debug_rademacher_p_1_q_inf(network, test_dataset)
 		if debugger.debug_rademacher_p_inf_q_1 in settings.debug:
 			debugger.debug_rademacher_p_inf_q_1(network, train_dataset)
 			debugger.debug_rademacher_p_inf_q_1(network, test_dataset)
@@ -443,7 +444,7 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 			                                     "function_outputs_train.epoch_%d.npy" % (network.epoch_index))
 			debugger.debug_function_output(network, train_dataset, minibatch_size=settings.minibatch_size,
 			                               output_file=function_outputs_file)
-			#debugger.debug_function_output(network, test_dataset)
+		# debugger.debug_function_output(network, test_dataset)
 
 		network.train(train_dataset, validate_dataset, test_dataset, settings.minibatch_size, output_directory)
 		network.epoch_index += 1
@@ -463,10 +464,120 @@ def train_model(network, settings, dataset_preprocessing_function=None):
 		                                     "function_outputs_train.epoch_%d.npy" % (network.epoch_index))
 		debugger.debug_function_output(network, train_dataset, minibatch_size=settings.minibatch_size,
 		                               output_file=function_outputs_file)
-		#debugger.debug_function_output(network, test_dataset)
+	# debugger.debug_function_output(network, test_dataset)
 
-	# model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
-	# pickle.dump(network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+	model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
+	pickle.dump(network._neural_network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+
+	end_train = timeit.default_timer()
+
+	print("Optimization complete...")
+	logger.info("Best validation score of %f%% obtained at epoch %i or minibatch %i" % (
+		network.best_validate_accuracy * 100., network.best_epoch_index, network.best_minibatch_index))
+	print('The code for file %s ran for %.2fm' % (os.path.split(__file__)[1], (end_train - start_train) / 60.))
+
+
+def resume_model(network, settings, dataset_preprocessing_function=None):
+	input_directory = settings.input_directory
+	output_directory = settings.output_directory
+	model_directory = settings.model_directory
+	assert not os.path.exists(output_directory)
+	os.mkdir(output_directory)
+
+	logging.basicConfig(filename=os.path.join(settings.output_directory, "model.log"), level=logging.DEBUG,
+	                    format='%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+
+	#
+	#
+	# TODO:
+	#
+	#
+	validation_data = settings.validation_data
+	test_dataset = load_data(input_directory, dataset="test")
+	if validation_data >= 0:
+		train_dataset_info, validate_dataset_info = load_and_split_data(input_directory, validation_data)
+		train_dataset, train_indices = train_dataset_info
+		validate_dataset, validate_indices = validate_dataset_info
+		train_indices = numpy.load(os.path.join(model_directory, "train.index.npy"))
+		validate_indices = numpy.load(os.path.join(model_directory, "validate.index.npy"))
+	else:
+		train_dataset = load_data(input_directory, dataset="train")
+		validate_dataset = load_data(input_directory, dataset="validate")
+
+	if debugger.subsample_dataset in settings.debug:
+		train_dataset, validate_dataset, test_dataset = debugger.subsample_dataset(train_dataset, validate_dataset,
+		                                                                           test_dataset)
+
+	if dataset_preprocessing_function is not None:
+		train_dataset = dataset_preprocessing_function(train_dataset)
+		validate_dataset = dataset_preprocessing_function(validate_dataset)
+		test_dataset = dataset_preprocessing_function(test_dataset)
+
+	print("========== ==========", "parameters", "========== ==========")
+	for key, value in list(vars(settings).items()):
+		print("%s=%s" % (key, value))
+	print("========== ==========", "parameters", "========== ==========")
+
+	logger.info("========== ==========" + "parameters" + "========== ==========")
+	for key, value in list(vars(settings).items()):
+		logger.info("%s=%s" % (key, value))
+	logger.info("========== ==========" + "parameters" + "========== ==========")
+
+	# pickle.dump(settings, open(os.path.join(output_directory, "settings.pkl"), 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+
+	########################
+	# START MODEL TRAINING #
+	########################
+
+	for snapshot_function in settings.snapshot:
+		snapshot_function(network, settings)
+
+	if debugger.display_architecture in settings.debug:
+		debugger.display_architecture(network)
+
+	start_train = timeit.default_timer()
+	# Finally, launch the training loop.
+	# We iterate over epochs:
+	for epoch_index in range(settings.number_of_epochs):
+		if debugger.debug_rademacher_p_2_q_2 in settings.debug:
+			debugger.debug_rademacher_p_2_q_2(network, train_dataset)
+			debugger.debug_rademacher_p_2_q_2(network, test_dataset)
+		# if debugger.debug_rademacher_p_1_q_inf in settings.debug:
+		# debugger.debug_rademacher_p_1_q_inf(network, train_dataset)
+		# debugger.debug_rademacher_p_1_q_inf(network, test_dataset)
+		if debugger.debug_rademacher_p_inf_q_1 in settings.debug:
+			debugger.debug_rademacher_p_inf_q_1(network, train_dataset)
+			debugger.debug_rademacher_p_inf_q_1(network, test_dataset)
+
+		if debugger.debug_function_output in settings.debug:
+			function_outputs_file = os.path.join(settings.output_directory,
+			                                     "function_outputs_train.epoch_%d.npy" % (network.epoch_index))
+			debugger.debug_function_output(network, train_dataset, minibatch_size=settings.minibatch_size,
+			                               output_file=function_outputs_file)
+		# debugger.debug_function_output(network, test_dataset)
+
+		network.train(train_dataset, validate_dataset, test_dataset, settings.minibatch_size, output_directory)
+		network.epoch_index += 1
+
+		# if settings.snapshot_interval > 0 and network.epoch_index % settings.snapshot_interval == 0:
+		# model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
+		# pickle.dump(network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+
+		for snapshot_function in settings.snapshot:
+			if network.epoch_index % settings.snapshot[snapshot_function] == 0:
+				snapshot_function(network, settings)
+
+		print("PROGRESS: %f%%" % (100. * (epoch_index + 1) / settings.number_of_epochs))
+
+	if debugger.debug_function_output in settings.debug:
+		function_outputs_file = os.path.join(settings.output_directory,
+		                                     "function_outputs_train.epoch_%d.npy" % (network.epoch_index))
+		debugger.debug_function_output(network, train_dataset, minibatch_size=settings.minibatch_size,
+		                               output_file=function_outputs_file)
+	# debugger.debug_function_output(network, test_dataset)
+
+	model_file_path = os.path.join(output_directory, 'model-%d.pkl' % network.epoch_index)
+	pickle.dump(network._neural_network, open(model_file_path, 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
 
 	end_train = timeit.default_timer()
 

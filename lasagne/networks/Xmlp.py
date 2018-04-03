@@ -1,4 +1,5 @@
 import logging
+import pickle
 import os
 import timeit
 
@@ -19,7 +20,7 @@ __all__ = [
 	"MultiLayerPerceptronGuo",
 ]
 
-numpy.random.seed(0)
+#numpy.random.seed(0)
 
 class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
 	def __init__(self,
@@ -133,6 +134,21 @@ class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
 	# self.train_adaptables_networkwise(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
 	'''
 
+	def serialize(self, model_path):
+
+		pickle.dumps()
+
+	@staticmethod
+	def load(model_path):
+		model = pickle.load(model_path)
+		if type(model) is AdaptiveMultiLayerPerceptron:
+			pass
+		else:
+			raise TypeError("Unrecongnized type for the object:" + type(model))
+
+		model.build_functions()
+
+		return model
 
 class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 	def __init__(self,

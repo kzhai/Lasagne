@@ -73,7 +73,7 @@ def parse_data(label_information, type_information, input_file, output_feature_f
 		line = line.strip()
 		fields = line.split("\t")
 		if len(fields) != 2:
-			sys.stderr.write("document collapsed: %s\n" % line)
+			sys.stderr.serialize("document collapsed: %s\n" % line)
 			continue
 
 		tokens = [type_to_index[token] for token in fields[0].split()]
@@ -117,7 +117,7 @@ def collect_statistics(input_file):
 		line = line.strip()
 		fields = line.split("\t")
 		if len(fields) != 2:
-			sys.stderr.write("document collapsed: %s\n" % line)
+			sys.stderr.serialize("document collapsed: %s\n" % line)
 			continue
 
 		token_list = fields[0].split()

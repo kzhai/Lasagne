@@ -55,11 +55,6 @@ def validate_mlpA_arguments(arguments):
 
 
 def train_mlpA():
-	"""
-	Demonstrate stochastic gradient descent optimization for a multilayer perceptron
-	This is demonstrated on MNIST.
-	"""
-
 	from . import config_model, validate_config
 	settings = config_model(construct_mlpA_parser, validate_mlpA_arguments)
 	settings = validate_config(settings)
@@ -93,6 +88,16 @@ def train_mlpA():
 	from . import train_model
 	train_model(network, settings)
 
+
+def resume_mlpA():
+	from . import config_model, validate_config
+	settings = config_model(construct_mlpA_parser, validate_mlpA_arguments)
+	settings = validate_config(settings)
+
+	network = networks.AdaptiveMultiLayerPerceptron.load()
+
+	from . import train_model
+	train_model(network, settings)
 
 if __name__ == '__main__':
 	train_mlpA()

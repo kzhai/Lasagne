@@ -95,7 +95,7 @@ def sample_activation_probability(input_dimensions, activation_style, activation
 		activation_probability = activation_parameter / numpy.arange(1, input_dimensions + 1)
 		activation_probability = numpy.clip(activation_probability, 0., 1.)
 	else:
-		sys.stderr.write("error: unrecognized configuration...\n")
+		sys.stderr.serialize("error: unrecognized configuration...\n")
 		sys.exit()
 
 	return activation_probability.astype(theano.config.floatX)
@@ -445,7 +445,7 @@ class VariationalDropoutLayer(Layer):
 			self.logit_sigma = self.add_param(logit_sigma, thetashape, name="variational.dropout.logit_sigma",
 			                                  trainable=True, regularizable=False)
 		else:
-			sys.stderr.write("error: unrecognized configuration...\n")
+			sys.stderr.serialize("error: unrecognized configuration...\n")
 			sys.exit()
 
 	'''

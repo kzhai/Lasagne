@@ -1,4 +1,5 @@
 import logging
+import pickle
 import os
 import timeit
 
@@ -43,7 +44,6 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 
 	             max_norm_constraint=0,
 	             validation_interval=-1,
-
 	             ):
 		super(AdaptiveFeedForwardNetwork, self).__init__(incoming,
 		                                                 objective_functions,
@@ -413,7 +413,6 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 			epoch_running_time_temp = timeit.default_timer() - epoch_running_time_temp
 
 		# return epoch_running_time
-
 
 class DynamicFeedForwardNetwork(AdaptiveFeedForwardNetwork):
 	def __init__(self,

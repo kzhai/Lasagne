@@ -21,7 +21,7 @@ __all__ = [
 	"parse_model_output",
 ]
 
-#'''
+'''
 valid_log_pattern = re.compile(
 	r'(?P<date>[\d-]+?) (?P<time>[\d:,]+?) \| (?P<name>[\w\.]+?) \| INFO \|\s+validate: epoch (?P<epoch>[\d]+?), minibatch (?P<minibatch>[\d]+?), duration (?P<duration>[\d.]+?)s, loss (?P<loss>([-\d.]+?|nan)), accuracy (?P<accuracy>[\d.]+?)%')
 test_log_pattern = re.compile(
@@ -29,9 +29,9 @@ test_log_pattern = re.compile(
 train_log_pattern = re.compile(
 	r'(?P<date>[\d-]+?) (?P<time>[\d:,]+?) \| (?P<name>[\w\.]+?) \| INFO \|\s+train: epoch (?P<epoch>[\d]+?), minibatch (?P<minibatch>[\d]+?), duration (?P<duration>[\d.]+?)s, loss (?P<loss>([-\d.]+?|nan)), accuracy (?P<accuracy>[\d.]+?)%')
 output_field_names = ["epoch", "minibatch", "loss", "accuracy"]
-#'''
-
 '''
+
+
 train_log_pattern = re.compile(
 	r'(?P<date>[\d-]+?) (?P<time>[\d:,]+?) \| (?P<name>[\w\.]+?) \| INFO \|\s+train: epoch (?P<epoch>[\d]+?), minibatch (?P<minibatch>[\d]+?), duration (?P<duration>[\d.]+?)s, loss (?P<loss>([-\d.]+?|nan)), regularizer (?P<regularizer>([-\d.]+?|nan)), accuracy (?P<accuracy>[\d.]+?)%')
 valid_log_pattern = re.compile(
@@ -39,7 +39,7 @@ valid_log_pattern = re.compile(
 test_log_pattern = re.compile(
 	r'(?P<date>[\d-]+?) (?P<time>[\d:,]+?) \| (?P<name>[\w\.]+?) \| INFO \|\s+test: epoch (?P<epoch>[\d]+?), minibatch (?P<minibatch>[\d]+?), duration (?P<duration>[\d.]+?)s, loss (?P<loss>([-\d.]+?|nan)), regularizer (?P<regularizer>([-\d.]+?|nan)), accuracy (?P<accuracy>[\d.]+?)%')
 output_field_names = ["epoch", "minibatch", "loss", "regularizer", "accuracy"]
-'''
+
 
 # train_progress_pattern = re.compile(r'(?P<date>[\d-]+?) (?P<time>[\d:,]+?) \| (?P<name>[\w\.]+?) \| INFO \|\s+train: epoch (?P<epoch>[\d]+?), minibatch (?P<minibatch>[\d]+?), loss (?P<loss>([-\d.]+?|nan)), accuracy (?P<accuracy>[\d.]+?)%')
 # best_validate_minibatch_pattern = re.compile(r'(?P<date>[\d-]+?) (?P<time>[\d:,]+?) \| (?P<name>[\w\.]+?) \| INFO \|\s+best model found: epoch (?P<epoch>\d+?), minibatch (?P<minibatch>\d+?), loss (?P<loss>([-\d.]+?|nan)), accuracy (?P<accuracy>[\d.]+?)%')

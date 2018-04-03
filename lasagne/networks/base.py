@@ -1,5 +1,6 @@
 import logging
 import os
+import pickle
 import timeit
 import types
 from itertools import chain
@@ -157,7 +158,7 @@ class Network(object):
 			if regularizer_function in set(
 					[Xregularization.rademacher,
 					 Xregularization.rademacher_p_2_q_2,
-					 #Xregularization.rademacher_p_1_q_inf,
+					 # Xregularization.rademacher_p_1_q_inf,
 					 Xregularization.rademacher_p_inf_q_1,
 					 Xregularization.kl_divergence_kingma,
 					 Xregularization.kl_divergence_sparse]):
@@ -291,6 +292,62 @@ class Network(object):
 	def debug(self, settings, **kwargs):
 		raise NotImplementedError("Not implemented in successor classes!")
 
+	def serialize(self, model_path):
+		# raise NotImplementedError("Not implemented in successor classes!")
+		object_list = []
+
+		object_list.append(self._input_layer)
+		object_list.append(self._input_shape)
+		#object_list.append(self._input_variable)
+		# object_list.append(self._learning_rate_variable)
+		# object_list.append(self._objective_functions)
+		# object_list.append(self._regularizer_functions)
+		# object_list.append(self._regularizer_lambda_policy)
+		# object_list.append(self._update_function)
+		object_list.append(self.epoch_index)
+		object_list.append(self.minibatch_index)
+		object_list.append(self.learning_rate_policy)
+		object_list.append(self.max_norm_constraint)
+		# object_list.append(self.learning_rate_policy_change_stack)
+		# object_list.append(self.max_norm_constraint_change_stack)
+		# object_list.append(self.objective_functions_change_stack)
+		# object_list.append(self.regularizer_functions_change_stack)
+		# object_list.append(self.update_function_change_stack)
+
+		return
+
+	# @staticmethod
+	@classmethod
+	def load(cls, object_list):
+		input_layer = object_list.pop(0)
+		input_shape = object_list.pop(0)
+		#input_variable = object_list.pop(0)
+		#learning_rate_variable = object_list.pop(0)
+		#objective_functions = object_list.pop(0)
+		#regularizer_functions = object_list.pop(0)
+		#regularizer_lambda_policy = object_list.pop(0)
+		#update_function = object_list.pop(0)
+		epoch_index = object_list.pop(0)
+		minibatch_index = object_list.pop(0)
+		learning_rate_policy = object_list.pop(0)
+		max_norm_constraint = object_list.pop(0)
+		#learning_rate_policy_change_stack = object_list.pop(0)
+		#max_norm_constraint_change_stack = object_list.pop(0)
+		#objective_functions_change_stack = object_list.pop(0)
+		#regularizer_functions_change_stack = object_list.pop(0)
+		#update_function_change_stack = object_list.pop(0)
+
+		return __init__(self,
+		             incoming,
+		             objective_functions,
+		             update_function,
+		             learning_rate_policy=[1e-3, Xpolicy.constant],
+		             # learning_rate_decay=None,
+		             max_norm_constraint=0,
+		             ):
+
+		raise NotImplementedError("Not implemented in successor classes!")
+
 
 class FeedForwardNetwork(Network):
 	def __init__(self,
@@ -300,8 +357,6 @@ class FeedForwardNetwork(Network):
 	             learning_rate_policy=[1e-3, Xpolicy.constant],
 	             # learning_rate_decay=None,
 	             max_norm_constraint=0,
-	             # learning_rate_decay_style=None,
-	             # learning_rate_decay_parameter=0,
 	             validation_interval=-1,
 	             ):
 
@@ -468,7 +523,7 @@ class FeedForwardNetwork(Network):
 			self.epoch_index, self.minibatch_index, epoch_running_time, average_train_loss, average_train_objective,
 			average_train_loss - average_train_objective, average_train_accuracy * 100))
 
-		#return epoch_running_time
+	# return epoch_running_time
 
 	def train_epoch(self, train_dataset, minibatch_size, validate_dataset=None, test_dataset=None,
 	                output_directory=None):
