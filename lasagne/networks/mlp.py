@@ -94,6 +94,37 @@ class MultiLayerPerceptron(FeedForwardNetwork):
 		self.build_functions()
 
 
+def constructMultiLayerPerceptron(input_layer,
+                                  dense_dimensions,
+                                  dense_nonlinearities,
+
+                                  layer_activation_types,
+                                  layer_activation_parameters,
+                                  layer_activation_styles,
+                                  ):
+	assert len(dense_dimensions) == len(layer_activation_types)
+	assert len(dense_dimensions) == len(dense_nonlinearities)
+	assert len(dense_dimensions) == len(layer_activation_parameters)
+	assert len(dense_dimensions) == len(layer_activation_styles)
+
+	neural_network = input_layer
+	for layer_index in range(len(dense_dimensions)):
+		previous_layer_dimension = layers.get_output_shape(neural_network)[1:]
+		activation_probability = layers.sample_activation_probability(previous_layer_dimension,
+		                                                              layer_activation_styles[layer_index],
+		                                                              layer_activation_parameters[layer_index])
+		neural_network = layer_activation_types[layer_index](neural_network,
+		                                                     activation_probability=activation_probability)
+
+		layer_dimension = dense_dimensions[layer_index]
+		layer_nonlinearity = dense_nonlinearities[layer_index]
+
+		neural_network = layers.DenseLayer(neural_network, layer_dimension, W=init.GlorotUniform(
+			gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
+
+	return neural_network
+
+
 def main():
 	from ..experiments import load_mnist
 

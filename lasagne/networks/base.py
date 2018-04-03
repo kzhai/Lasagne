@@ -292,62 +292,6 @@ class Network(object):
 	def debug(self, settings, **kwargs):
 		raise NotImplementedError("Not implemented in successor classes!")
 
-	def serialize(self, model_path):
-		# raise NotImplementedError("Not implemented in successor classes!")
-		object_list = []
-
-		object_list.append(self._input_layer)
-		object_list.append(self._input_shape)
-		#object_list.append(self._input_variable)
-		# object_list.append(self._learning_rate_variable)
-		# object_list.append(self._objective_functions)
-		# object_list.append(self._regularizer_functions)
-		# object_list.append(self._regularizer_lambda_policy)
-		# object_list.append(self._update_function)
-		object_list.append(self.epoch_index)
-		object_list.append(self.minibatch_index)
-		object_list.append(self.learning_rate_policy)
-		object_list.append(self.max_norm_constraint)
-		# object_list.append(self.learning_rate_policy_change_stack)
-		# object_list.append(self.max_norm_constraint_change_stack)
-		# object_list.append(self.objective_functions_change_stack)
-		# object_list.append(self.regularizer_functions_change_stack)
-		# object_list.append(self.update_function_change_stack)
-
-		return
-
-	# @staticmethod
-	@classmethod
-	def load(cls, object_list):
-		input_layer = object_list.pop(0)
-		input_shape = object_list.pop(0)
-		#input_variable = object_list.pop(0)
-		#learning_rate_variable = object_list.pop(0)
-		#objective_functions = object_list.pop(0)
-		#regularizer_functions = object_list.pop(0)
-		#regularizer_lambda_policy = object_list.pop(0)
-		#update_function = object_list.pop(0)
-		epoch_index = object_list.pop(0)
-		minibatch_index = object_list.pop(0)
-		learning_rate_policy = object_list.pop(0)
-		max_norm_constraint = object_list.pop(0)
-		#learning_rate_policy_change_stack = object_list.pop(0)
-		#max_norm_constraint_change_stack = object_list.pop(0)
-		#objective_functions_change_stack = object_list.pop(0)
-		#regularizer_functions_change_stack = object_list.pop(0)
-		#update_function_change_stack = object_list.pop(0)
-
-		return __init__(self,
-		             incoming,
-		             objective_functions,
-		             update_function,
-		             learning_rate_policy=[1e-3, Xpolicy.constant],
-		             # learning_rate_decay=None,
-		             max_norm_constraint=0,
-		             ):
-
-		raise NotImplementedError("Not implemented in successor classes!")
-
 
 class FeedForwardNetwork(Network):
 	def __init__(self,
@@ -359,7 +303,6 @@ class FeedForwardNetwork(Network):
 	             max_norm_constraint=0,
 	             validation_interval=-1,
 	             ):
-
 		super(FeedForwardNetwork, self).__init__(incoming,
 		                                         objective_functions,
 		                                         update_function,
