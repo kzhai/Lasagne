@@ -4,8 +4,8 @@ from .base import *
 #
 try:
 	from .Xbase import *
-	from .Xlenet import *
-	from .Xmlp import *
+	#from .Xlenet import *
+	#from .Xmlp import *
 	#from .XmlpDebug import *
 except ImportError:
 	raise ImportError("Could not load some of the XModules...")

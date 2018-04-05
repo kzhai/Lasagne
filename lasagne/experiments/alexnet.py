@@ -10,9 +10,9 @@ __all__ = [
 
 
 def construct_alexnet_parser():
-	from . import construct_discriminative_parser, add_convpool_options, add_dense_options, add_dropout_options
+	from . import discriminative_parser, add_convpool_options, add_dense_options, add_dropout_options
 
-	model_parser = construct_discriminative_parser()
+	model_parser = discriminative_parser()
 	model_parser = add_convpool_options(model_parser)
 	model_parser = add_dense_options(model_parser)
 	model_parser = add_dropout_options(model_parser)
@@ -68,10 +68,10 @@ def construct_alexnet_parser():
 
 
 def validate_alexnet_arguments(arguments):
-	from . import validate_discriminative_arguments, validate_convpool_arguments, validate_dense_arguments, \
+	from . import discriminative_validator, validate_convpool_arguments, validate_dense_arguments, \
 		validate_dropout_arguments
 
-	arguments = validate_discriminative_arguments(arguments)
+	arguments = discriminative_validator(arguments)
 
 	arguments = validate_convpool_arguments(arguments)
 	number_of_convolution_layers = len(arguments.convolution_filters)
@@ -231,8 +231,8 @@ def train_alexnet():
 
 	network.set_regularizers(settings.regularizer)
 
-	from . import train_model
-	train_model(network, settings)
+	from . import start_training
+	start_training(network, settings)
 
 
 if __name__ == '__main__':

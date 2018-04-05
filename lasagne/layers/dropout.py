@@ -126,7 +126,7 @@ class BernoulliDropoutLayer(Layer):
 
 		self.shared_axes = tuple(shared_axes)
 
-	def _set_r(self, activation_probability=init.Uniform(range=(0, 1))):
+	def _set_activation_probability(self, activation_probability=init.Uniform(range=(0, 1))):
 		old_activation_probability = self.activation_probability.eval()
 		self.params.pop(self.activation_probability)
 

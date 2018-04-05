@@ -11,9 +11,9 @@ __all__ = [
 
 
 def construct_elman_parser():
-	from . import construct_discriminative_parser, add_dropout_options
+	from . import discriminative_parser, add_dropout_options
 
-	model_parser = construct_discriminative_parser()
+	model_parser = discriminative_parser()
 	model_parser.description = "elman net argument"
 
 	model_parser = add_dropout_options(model_parser)
@@ -64,9 +64,9 @@ def construct_elman_parser():
 
 
 def validate_elman_arguments(arguments):
-	from . import validate_discriminative_arguments, validate_dropout_arguments
+	from . import discriminative_validator, validate_dropout_arguments
 
-	arguments = validate_discriminative_arguments(arguments)
+	arguments = discriminative_validator(arguments)
 
 	# model argument set 1
 	number_of_recurrent_layers = 0
@@ -232,8 +232,8 @@ def train_elman():
 	# network.set_L2_regularizer_lambda(L2_regularizer_lambdas)
 	# network.set_dae_regularizer_lambda(dae_regularizer_lambdas, layer_corruption_levels)
 
-	from . import train_model
-	train_model(network, settings, network.parse_sequence)
+	from . import start_training
+	start_training(network, settings, network.parse_sequence)
 
 
 if __name__ == '__main__':

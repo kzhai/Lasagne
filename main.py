@@ -3,7 +3,8 @@ import argparse
 
 def main():
 	model_selector = argparse.ArgumentParser(description="model selector")
-	model_selector.add_argument("--model", dest="model", action='store', default=None, help="model [None]");
+	model_selector.add_argument("--model", dest="model", action='store', default=None, help="model [None]")
+	model_selector.add_argument("--mode", dest="mode", action='store', default="train", help="mode [None]")
 
 	arguments, additionals = model_selector.parse_known_args()
 
@@ -15,14 +16,17 @@ def main():
 	print("========== ========== ========== ========== ==========")
 
 	if arguments.model == "mlp":
-		from lasagne.experiments.mlp import train_mlp
-		train_mlp()
+		from lasagne.experiments.mlp import start_mlp, resume_mlp
+		if arguments.mode == "start":
+			start_mlp()
+		elif arguments.mode=="resume":
+			resume_mlp()
 	elif arguments.model == "mlpA":
-		from lasagne.experiments.mlpA import train_mlpA
-		train_mlpA()
+		from lasagne.experiments.mlpA import start_mlpA
+		start_mlpA()
 	elif arguments.model == "mlpD":
-		from lasagne.experiments.mlpD import train_mlpD
-		train_mlpD()
+		from lasagne.experiments.mlpD import start_mlpD
+		start_mlpD()
 	elif arguments.model == "mlpHan":
 		from lasagne.experiments.mlpHan import train_mlpHan
 		train_mlpHan()
@@ -30,8 +34,8 @@ def main():
 		from lasagne.experiments.snn import train_snn
 		train_snn()
 	elif arguments.model == "lenet":
-		from lasagne.experiments.lenet import train_lenet
-		train_lenet()
+		from lasagne.experiments.lenet import start_lenet
+		start_lenet()
 	elif arguments.model == "lenetA":
 		from lasagne.experiments.lenetA import train_lenetA
 		train_lenetA()

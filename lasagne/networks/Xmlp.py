@@ -13,14 +13,17 @@ from .. import layers
 logger = logging.getLogger(__name__)
 
 __all__ = [
-	"AdaptiveMultiLayerPerceptron",
-	"DynamicMultiLayerPerceptron",
+	# "AdaptiveMultiLayerPerceptron",
+	# "DynamicMultiLayerPerceptron",
 	#
 	"MultiLayerPerceptronHan",
 	"MultiLayerPerceptronGuo",
 ]
 
-#numpy.random.seed(0)
+
+# numpy.random.seed(0)
+
+
 
 class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
 	def __init__(self,
@@ -134,21 +137,6 @@ class AdaptiveMultiLayerPerceptron(AdaptiveFeedForwardNetwork):
 	# self.train_adaptables_networkwise(train_dataset, validate_dataset, test_dataset, minibatch_size, output_directory)
 	'''
 
-	def serialize(self, model_path):
-
-		pickle.dumps()
-
-	@staticmethod
-	def load(model_path):
-		model = pickle.load(model_path)
-		if type(model) is AdaptiveMultiLayerPerceptron:
-			pass
-		else:
-			raise TypeError("Unrecongnized type for the object:" + type(model))
-
-		model.build_functions()
-
-		return model
 
 class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 	def __init__(self,
@@ -231,172 +219,7 @@ class DynamicMultiLayerPerceptron(DynamicFeedForwardNetwork):
 
 		self.build_functions()
 
-	def adjust_network(self, train_dataset, validate_dataset=None, test_dataset=None, adjust_lambdas=False):
-		if self.epoch_index < self.prune_split_interval[0] \
-				or self.prune_split_interval[1] <= 0 \
-				or self.epoch_index % self.prune_split_interval[1] != 0:
-			return
 
-		if adjust_lambdas:
-			train_dataset_x, train_dataset_y = train_dataset
-			test_function_outputs = self._function_test(train_dataset_x, train_dataset_y)
-			average_test_loss, average_test_objective, average_test_accuracy = test_function_outputs
-			regularizer_before_adjustment = average_test_loss - average_test_objective
-
-		old_architecture = []
-		for layer in self.get_network_layers():
-			if not isinstance(layer, layers.DynamicDropoutLayer):
-				continue
-			old_architecture.append("%d" % int(numpy.prod(layer.activation_probability.eval().shape)))
-
-		structure_changed = False
-		if self.prune_threshold_policies is not None:
-			prune_thresholds = [adjust_parameter_according_to_policy(prune_threshold_policy, self.epoch_index) for
-			                    prune_threshold_policy in self.prune_threshold_policies]
-			structure_changed = structure_changed or self.prune_neurons(prune_thresholds=prune_thresholds,
-			                                                            validate_dataset=validate_dataset,
-			                                                            test_dataset=test_dataset)
-		if self.split_threshold_policies is not None:
-			split_thresholds = [adjust_parameter_according_to_policy(split_threshold_policy, self.epoch_index) for
-			                    split_threshold_policy in self.split_threshold_policies]
-			structure_changed = structure_changed or self.split_neurons(split_thresholds=split_thresholds,
-			                                                            split_mode="dropout",
-			                                                            validate_dataset=validate_dataset,
-			                                                            test_dataset=test_dataset)
-		if not structure_changed:
-			return
-
-		new_architecture = []
-		for layer in self.get_network_layers():
-			if not isinstance(layer, layers.DynamicDropoutLayer):
-				continue
-			new_architecture.append("%d" % int(numpy.prod(layer.activation_probability.eval().shape)))
-
-		logger.info("[adjustable] architecture: epoch %i, from %s to %s" % (
-			self.epoch_index, "-".join(old_architecture), "-".join(new_architecture)))
-		print("[adjustable] architecture: epoch %i, from %s to %s" % (
-			self.epoch_index, "-".join(old_architecture), "-".join(new_architecture)))
-
-		if adjust_lambdas:
-			train_dataset_x, train_dataset_y = train_dataset
-			test_function_outputs = self._function_test(train_dataset_x, train_dataset_y)
-			average_test_loss, average_test_objective, average_test_accuracy = test_function_outputs
-			regularizer_after_adjustment = average_test_loss - average_test_objective
-
-			rescale_lambda = regularizer_before_adjustment / regularizer_after_adjustment
-			if rescale_lambda <= 0:
-				return
-			for regularizer_weight_variable in self._regularizer_lambda_policy.keys():
-				lambda_decay_policy = self._regularizer_lambda_policy[regularizer_weight_variable]
-				old_lambda_decay_policy = "%s" % lambda_decay_policy
-				lambda_decay_policy[0] *= rescale_lambda
-
-				logger.info("[adjustable] regularizer: epoch %i, regularizer %s, from %s to %s" % (
-					self.epoch_index, regularizer_weight_variable, old_lambda_decay_policy, lambda_decay_policy))
-				print("[adjustable] regularizer: epoch %i, regularizer %s, from %s to %s" % (
-					self.epoch_index, regularizer_weight_variable, old_lambda_decay_policy, lambda_decay_policy))
-
-	def prune_neurons(self, prune_thresholds, validate_dataset=None, test_dataset=None, output_directory=None):
-		structure_changed = False
-
-		dropout_layer_index = 0
-		for pre_dropout_layer, dropout_layer, post_dropout_layer in zip(self.get_network_layers()[:-2],
-		                                                                self.get_network_layers()[1:-1],
-		                                                                self.get_network_layers()[2:]):
-
-			if (not isinstance(pre_dropout_layer, layers.DynamicDenseLayer)) or \
-					(not isinstance(dropout_layer, layers.DynamicDropoutLayer)) or \
-					(not isinstance(post_dropout_layer, layers.DynamicDenseLayer)):
-				continue
-
-			prune_threshold = prune_thresholds[dropout_layer_index]
-			dropout_layer_index += 1
-			neuron_indices_to_prune, neuron_indices_to_keep = dropout_layer.find_neuron_indices_to_prune(
-				prune_threshold)
-
-			if len(neuron_indices_to_prune) == 0:
-				continue
-
-			structure_changed = True
-			old_size = len(neuron_indices_to_prune) + len(neuron_indices_to_keep)
-			new_size = len(neuron_indices_to_keep)
-
-			pre_dropout_layer.prune_output(neuron_indices_to_keep)
-			dropout_layer.prune_activation_probability(neuron_indices_to_keep)
-			post_dropout_layer.prune_input(neuron_indices_to_keep)
-
-			logger.info("[prunable] prune: epoch %i, layer %d, from %d to %d, threshold %g" % (
-				self.epoch_index, dropout_layer_index, old_size, new_size, prune_threshold))
-			print("[prunable] prune: epoch %i, layer %d, from %d to %d, threshold %g" % (
-				self.epoch_index, dropout_layer_index, old_size, new_size, prune_threshold))
-
-		if not structure_changed:
-			return False
-
-		self.build_functions()
-
-		'''
-		if validate_dataset is not None:
-			output_file = None
-			if output_directory is not None:
-				output_file = os.path.join(output_directory, 'model.pkl')
-			self.validate(validate_dataset, test_dataset, output_file)
-		elif test_dataset is not None:
-			self.test(test_dataset)
-		'''
-
-		return True
-
-	def split_neurons(self, split_thresholds, split_mode="dropout", validate_dataset=None, test_dataset=None, output_directory=None):
-		architecture_changed = False
-
-		dropout_layer_index = 0
-		for pre_dropout_layer, dropout_layer, post_dropout_layer in zip(self.get_network_layers()[:-2],
-		                                                                self.get_network_layers()[1:-1],
-		                                                                self.get_network_layers()[2:]):
-
-			if (not isinstance(pre_dropout_layer, layers.DynamicDenseLayer)) or \
-					(not isinstance(dropout_layer, layers.DynamicDropoutLayer)) or \
-					(not isinstance(post_dropout_layer, layers.DynamicDenseLayer)):
-				continue
-
-			split_threshold = split_thresholds[dropout_layer_index]
-			dropout_layer_index += 1
-			neuron_indices_to_split, neuron_indices_to_keep = dropout_layer.find_neuron_indices_to_split(
-				split_threshold)
-
-			if len(neuron_indices_to_split) == 0:
-				continue
-
-			architecture_changed = True
-			old_size = len(neuron_indices_to_split) + len(neuron_indices_to_keep)
-			new_size = 2 * len(neuron_indices_to_split) + len(neuron_indices_to_keep)
-
-			pre_dropout_layer.split_output(neuron_indices_to_split, split_mode)
-			dropout_layer.split_activation_probability(neuron_indices_to_split, split_mode)
-			post_dropout_layer.split_input(neuron_indices_to_split, split_mode)
-
-			logger.info("[splitable] split: epoch %i, layer %d, from %d to %d, threshold %g" % (
-				self.epoch_index, dropout_layer_index, old_size, new_size, split_threshold))
-			print("[splitable] split: epoch %i, layer %d, from %d to %d, threshold %g" % (
-				self.epoch_index, dropout_layer_index, old_size, new_size, split_threshold))
-
-		if not architecture_changed:
-			return False
-
-		self.build_functions()
-
-		'''
-		if validate_dataset is not None:
-			output_file = None
-			if output_directory is not None:
-				output_file = os.path.join(output_directory, 'model.pkl')
-			self.validate(validate_dataset, test_dataset, output_file)
-		elif test_dataset is not None:
-			self.test(test_dataset)
-		'''
-
-		return True
 
 
 class AdaptiveMultiLayerPerceptronMinibatch(AdaptiveFeedForwardNetwork):
@@ -969,7 +792,7 @@ class MultiLayerPerceptronHanBackup(AdjustableFeedForwardNetwork):
 
 		self.build_functions()
 
-		if validate_dataset is not None:
+		if validate_dataset is not None and len(validate_dataset[1]) > 0:
 			output_file = None
 			if output_directory is not None:
 				output_file = os.path.join(output_directory, 'model.pkl')
@@ -1083,6 +906,64 @@ class AdaptiveMultiLayerPerceptronBackup(AdaptiveFeedForwardNetwork):
 		self.train_minibatch_adaptables(minibatch_x, minibatch_y)
 
 		return minibatch_running_time, minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy
+
+
+class MultiLayerPerceptron(FeedForwardNetwork):
+	def __init__(self,
+	             incoming,
+
+	             dense_dimensions,
+	             dense_nonlinearities,
+
+	             layer_activation_types,
+	             layer_activation_parameters,
+	             layer_activation_styles,
+
+	             objective_functions=objectives.categorical_crossentropy,
+	             update_function=updates.nesterov_momentum,
+	             learning_rate_policy=[1e-3, Xpolicy.constant],
+	             max_norm_constraint=0,
+
+	             validation_interval=-1,
+	             ):
+		super(MultiLayerPerceptron, self).__init__(incoming,
+		                                           objective_functions,
+		                                           update_function,
+		                                           learning_rate_policy,
+		                                           max_norm_constraint,
+		                                           validation_interval,
+		                                           )
+
+		# x = theano.tensor.matrix('x')  # the data is presented as rasterized images
+		# self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
+
+		# self._input_layer = layers.InputLayer(shape=input_shape)
+		# self._input_variable = self._input_layer.input_var
+
+		assert len(dense_dimensions) == len(layer_activation_types)
+		assert len(dense_dimensions) == len(dense_nonlinearities)
+		assert len(dense_dimensions) == len(layer_activation_parameters)
+		assert len(dense_dimensions) == len(layer_activation_styles)
+
+		# neural_network = input_network
+		neural_network = self._input_layer
+		for layer_index in range(len(dense_dimensions)):
+			previous_layer_dimension = layers.get_output_shape(neural_network)[1:]
+			activation_probability = layers.sample_activation_probability(previous_layer_dimension,
+			                                                              layer_activation_styles[layer_index],
+			                                                              layer_activation_parameters[layer_index])
+			neural_network = layer_activation_types[layer_index](neural_network,
+			                                                     activation_probability=activation_probability)
+
+			layer_dimension = dense_dimensions[layer_index]
+			layer_nonlinearity = dense_nonlinearities[layer_index]
+
+			neural_network = layers.DenseLayer(neural_network, layer_dimension, W=init.GlorotUniform(
+				gain=init.GlorotUniformGain[layer_nonlinearity]), nonlinearity=layer_nonlinearity)
+
+		self._neural_network = neural_network
+
+		self.build_functions()
 
 
 def main():

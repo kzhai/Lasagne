@@ -24,7 +24,7 @@ class AdaptiveDropoutLayer(BernoulliDropoutLayer):
 		                                             name="adaptable.r", trainable=False, regularizable=False,
 		                                             adaptable=True)
 
-	def _set_r(self, activation_probability=init.Uniform(range=(0, 1))):
+	def _set_activation_probability(self, activation_probability=init.Uniform(range=(0, 1))):
 		old_activation_probability = self.activation_probability.eval()
 		self.params.pop(self.activation_probability)
 
@@ -86,7 +86,7 @@ class DynamicDropoutLayer(AdaptiveDropoutLayer):
 		assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_keep)
 
 		activation_probability = self.activation_probability.eval()[input_indices_to_keep]
-		old_activation_probability = self._set_r(activation_probability)
+		old_activation_probability = self._set_activation_probability(activation_probability)
 
 		return old_activation_probability
 
@@ -119,7 +119,7 @@ class DynamicDropoutLayer(AdaptiveDropoutLayer):
 		activation_probability = numpy.hstack((activation_probability, activation_probability_split))
 		'''
 
-		old_activation_probability = self._set_r(activation_probability)
+		old_activation_probability = self._set_activation_probability(activation_probability)
 		return old_activation_probability
 
 	def split_activation_probability(self, input_indices_to_split, split_mode="dropout", **kwargs):
@@ -144,7 +144,7 @@ class DynamicDropoutLayer(AdaptiveDropoutLayer):
 		else:
 			raise ValueError("Unrecognized split model %s." % (split_mode))
 
-		old_activation_probability = self._set_r(activation_probability)
+		old_activation_probability = self._set_activation_probability(activation_probability)
 		return old_activation_probability
 
 	# split_activation_probability = split_activation_probability_dense
@@ -164,7 +164,7 @@ class BernoulliDropoutLayerHan(BernoulliDropoutLayer):
 		assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_keep)
 
 		activation_probability = self.activation_probability.eval()[input_indices_to_keep]
-		old_activation_probability = self._set_r(activation_probability)
+		old_activation_probability = self._set_activation_probability(activation_probability)
 
 		return old_activation_probability
 
