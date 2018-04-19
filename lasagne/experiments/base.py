@@ -123,15 +123,15 @@ def split_train_data_to_cross_validate(input_directory, number_of_folds=5, outpu
 
 	return
 
-
-def config_model(construct_parser_function, validate_arguments_function):
+#def config_model(construct_parser_function, validate_arguments_function):
+def config_model(model_parser, validate_arguments_function):
 	"""
 	Demonstrate stochastic gradient descent optimization for a multilayer perceptron
 	This is demonstrated on MNIST.
 	"""
 
-	arguments, additionals = construct_parser_function().parse_known_args()
-	# arguments, additionals = model_parser.parse_known_args()
+	#arguments, additionals = construct_parser_function().parse_known_args()
+	arguments, additionals = model_parser.parse_known_args()
 
 	settings = validate_arguments_function(arguments)
 

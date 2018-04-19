@@ -20,23 +20,23 @@ __all__ = [
 	"layer_deliminator",
 	"param_deliminator",
 	#
-	"discriminative_parser",
-	"discriminative_validator",
+	"add_discriminative_options",
+	"validate_discriminative_options",
 	#
-	"discriminative_resume_parser",
-	"discriminative_resume_validator",
+	"add_resume_options",
+	"validate_resume_options",
 	#
-	"discriminative_adaptive_parser",
-	"discriminative_adaptive_validator",
+	"add_adaptive_options",
+	"validate_adaptive_options",
 	#
-	"discriminative_adaptive_resume_parser",
-	"discriminative_adaptive_resume_validator",
+	"add_dynamic_options",
+	"validate_dynamic_options",
 	#
-	"discriminative_adaptive_dynamic_parser",
-	"discriminative_adaptive_dynamic_validator",
+	# "discriminative_adaptive_dynamic_resume_parser",
+	# "discriminative_adaptive_dynamic_resume_validator",
 	#
-	"discriminative_adaptive_dynamic_resume_parser",
-	"discriminative_adaptive_dynamic_resume_validator",
+	# "discriminative_adaptive_resume_parser",
+	# "discriminative_adaptive_resume_validator",
 ]
 
 layer_deliminator = "*"
@@ -91,30 +91,30 @@ def parse_parameter_policy(policy_string):
 	return policy_tokens
 
 
-def generic_parser():
-	generic_parser = argparse.ArgumentParser(description="generic neural network arguments", add_help=True)
+def add_generic_options(model_parser):
+	# model_parser = argparse.ArgumentParser(description="generic neural network arguments", add_help=True)
 
 	# generic argument set 1
-	generic_parser.add_argument("--input_directory", dest="input_directory", action='store', default=None,
-	                            help="input directory [None]")
-	generic_parser.add_argument("--output_directory", dest="output_directory", action='store', default=None,
-	                            help="output directory [None]")
+	model_parser.add_argument("--input_directory", dest="input_directory", action='store', default=None,
+	                          help="input directory [None]")
+	model_parser.add_argument("--output_directory", dest="output_directory", action='store', default=None,
+	                          help="output directory [None]")
 
 	# generic argument set 2
-	generic_parser.add_argument("--objective", dest="objective", action='store', default="categorical_crossentropy",
-	                            help="objective function [categorical_crossentropy] defined in objectives.py")
-	generic_parser.add_argument("--update", dest="update", action='store', default="nesterov_momentum",
-	                            help="update function [nesterov_momentum] defined updates.py")
-	generic_parser.add_argument("--regularizer", dest='regularizer', action='append', default=[],
-	                            help="regularizer function [None] defined in regularization.py")
+	model_parser.add_argument("--objective", dest="objective", action='store', default="categorical_crossentropy",
+	                          help="objective function [categorical_crossentropy] defined in objectives.py")
+	model_parser.add_argument("--update", dest="update", action='store', default="nesterov_momentum",
+	                          help="update function [nesterov_momentum] defined updates.py")
+	model_parser.add_argument("--regularizer", dest='regularizer', action='append', default=[],
+	                          help="regularizer function [None] defined in regularization.py")
 	# "'l2:0.1'=l2-regularizer with lambda 0.1 applied over all layers, " +
 	# "'l1:0.1;0.2;0.3'=l1-regularizer with lambda 0.1, 0.2, 0.3 applied over three layers"
 
 	# generic argument set 3
-	generic_parser.add_argument("--minibatch_size", dest="minibatch_size", type=int, action='store', default=-1,
-	                            help="mini-batch size [-1]")
-	generic_parser.add_argument("--number_of_epochs", dest="number_of_epochs", type=int, action='store', default=-1,
-	                            help="number of epochs [-1]")
+	model_parser.add_argument("--minibatch_size", dest="minibatch_size", type=int, action='store', default=-1,
+	                          help="mini-batch size [-1]")
+	model_parser.add_argument("--number_of_epochs", dest="number_of_epochs", type=int, action='store', default=-1,
+	                          help="number of epochs [-1]")
 	# generic_parser.add_argument("--snapshot_interval", dest="snapshot_interval", type=int, action='store', default=0,
 	# help="snapshot interval in number of epochs [0 - no snapshot]")
 
@@ -125,17 +125,17 @@ def generic_parser():
 	generic_parser.add_argument("--learning_rate_decay", dest="learning_rate_decay", action='store', default=None,
 	                            help="learning rate decay [None], example, 'iteration,inverse_t,0.2,0.1', 'epoch,exponential,1.7,0.1', 'epoch,step,0.2,100'")
 	'''
-	generic_parser.add_argument("--learning_rate", dest="learning_rate", action='store', default="1e-2",
-	                            help="learning policy [1e-2,constant]")
+	model_parser.add_argument("--learning_rate", dest="learning_rate", action='store', default="1e-2",
+	                          help="learning policy [1e-2,constant]")
 
-	generic_parser.add_argument("--max_norm_constraint", dest="max_norm_constraint", type=float, action='store',
-	                            default=0, help="max norm constraint [0 - None]")
+	model_parser.add_argument("--max_norm_constraint", dest="max_norm_constraint", type=float, action='store',
+	                          default=0, help="max norm constraint [0 - None]")
 
 	# generic_parser.add_argument('--debug', dest="debug", action='store_true', default=False, help="debug mode [False]")
 
-	generic_parser.add_argument("--snapshot", dest='snapshot', action='append', default=[],
-	                            help="snapshot function [None]")
-	generic_parser.add_argument("--debug", dest='debug', action='append', default=[], help="debug function [None]")
+	model_parser.add_argument("--snapshot", dest='snapshot', action='append', default=[],
+	                          help="snapshot function [None]")
+	model_parser.add_argument("--debug", dest='debug', action='append', default=[], help="debug function [None]")
 
 	'''
 	subparsers = generic_parser.add_subparsers(dest="subparser_name")
@@ -145,10 +145,10 @@ def generic_parser():
 	start_parser = subparsers.add_parser('start', parents=[generic_parser], help='start training')
 	'''
 
-	return generic_parser
+	return model_parser
 
 
-def generic_validator(arguments):
+def validate_generic_options(arguments):
 	# generic argument set 4
 	'''
 	assert arguments.learning_rate > 0
@@ -245,8 +245,8 @@ def generic_validator(arguments):
 	return arguments
 
 
-def discriminative_parser():
-	model_parser = generic_parser()
+def add_discriminative_options(model_parser):
+	model_parser = add_generic_options(model_parser)
 
 	# model argument set
 	model_parser.add_argument("--validation_data", dest="validation_data", type=int, action='store', default=0,
@@ -258,8 +258,8 @@ def discriminative_parser():
 	return model_parser
 
 
-def discriminative_validator(arguments):
-	arguments = generic_validator(arguments)
+def validate_discriminative_options(arguments):
+	arguments = validate_generic_options(arguments)
 
 	# model argument set
 	assert (arguments.validation_data >= -1)
@@ -268,20 +268,20 @@ def discriminative_validator(arguments):
 	return arguments
 
 
-def discriminative_resume_parser():
-	from . import discriminative_parser
+def add_resume_options(model_parser):
+	# from . import add_discriminative_options
 
-	model_parser = discriminative_parser()
+	# model_parser = add_discriminative_options()
 	model_parser.add_argument("--model_file", dest="model_file", action='store', default=None,
 	                          help="model file to resume from [None]")
 
 	return model_parser
 
 
-def discriminative_resume_validator(arguments):
-	from . import discriminative_validator
+def validate_resume_options(arguments):
+	# from . import validate_discriminative_options
 
-	arguments = discriminative_validator(arguments)
+	# arguments = validate_discriminative_options(arguments)
 
 	# assert os.path.exists(arguments.model_directory)
 	assert os.path.exists(arguments.model_file)
@@ -292,10 +292,10 @@ def discriminative_resume_validator(arguments):
 	return arguments
 
 
-def discriminative_adaptive_parser():
-	from . import discriminative_parser
-	model_parser = discriminative_parser()
-	model_parser.description = "adaptive multi-layer perceptron argument"
+def add_adaptive_options(model_parser):
+	# from . import add_discriminative_options
+	# model_parser = add_discriminative_options()
+	# model_parser.description = "adaptive multi-layer perceptron argument"
 
 	# model argument set 1
 	model_parser.add_argument("--adaptable_learning_rate", dest="adaptable_learning_rate", action='store',
@@ -309,9 +309,9 @@ def discriminative_adaptive_parser():
 	return model_parser
 
 
-def discriminative_adaptive_validator(arguments):
-	from . import discriminative_validator
-	arguments = discriminative_validator(arguments)
+def validate_adaptive_options(arguments):
+	# from . import validate_discriminative_options
+	# arguments = validate_discriminative_options(arguments)
 
 	# model argument set 1
 	from . import parse_parameter_policy
@@ -329,34 +329,10 @@ def discriminative_adaptive_validator(arguments):
 	return arguments
 
 
-def discriminative_adaptive_resume_parser():
-	from . import discriminative_adaptive_parser
-
-	model_parser = discriminative_adaptive_parser()
-	model_parser.add_argument("--model_file", dest="model_file", action='store', default=None,
-	                          help="model file to resume from [None]")
-
-	return model_parser
-
-
-def discriminative_adaptive_resume_validator(arguments):
-	from . import discriminative_adaptive_validator
-
-	arguments = discriminative_adaptive_validator(arguments)
-
-	# assert os.path.exists(arguments.model_directory)
-	assert os.path.exists(arguments.model_file)
-	arguments.model_directory = os.path.dirname(arguments.model_file)
-	assert os.path.exists(os.path.join(arguments.model_directory, "train.index.npy"))
-	assert os.path.exists(os.path.join(arguments.model_directory, "validate.index.npy"))
-
-	return arguments
-
-
-def discriminative_adaptive_dynamic_parser():
-	from . import discriminative_adaptive_parser
-	model_parser = discriminative_adaptive_parser()
-	model_parser.description = "dynamic multi-layer perceptron argument"
+def add_dynamic_options(model_parser):
+	# from . import add_adaptive_options
+	# model_parser = add_adaptive_options()
+	# model_parser.description = "dynamic multi-layer perceptron argument"
 
 	# model argument set 1
 	model_parser.add_argument("--prune_thresholds", dest="prune_thresholds", action='store', default="-0.001",
@@ -372,29 +348,29 @@ def discriminative_adaptive_dynamic_parser():
 
 	# model_parser.add_argument("--prune_split_interval", dest="prune_split_interval", action='store', default=1,
 	# type=int, help="prune split interval [1]")
-	model_parser.add_argument("--prune_split_interval", dest="prune_split_interval", action='store', default="1",
-	                          help="prune split interval [1]")
+	model_parser.add_argument("--prune_split_interval", dest="prune_split_interval", action='store', default="10",
+	                          help="prune split interval [10]")
 
 	return model_parser
 
 
-def discriminative_adaptive_dynamic_validator(arguments):
-	from . import discriminative_adaptive_validator
-	arguments = discriminative_adaptive_validator(arguments)
+def validate_dynamic_options(arguments):
+	# from . import validate_adaptive_options
+	# arguments = validate_adaptive_options(arguments)
 
 	# model argument set 1
 	# arguments.adaptable_learning_rate = parse_parameter_policy(arguments.adaptable_learning_rate)
 	from . import parse_parameter_policy
-	#number_of_layers = sum(layer_activation_type is layers.DynamicDropoutLayer for layer_activation_type in arguments.layer_activation_types)
+	# number_of_layers = sum(layer_activation_type is layers.DynamicDropoutLayer for layer_activation_type in arguments.layer_activation_types)
 
 	if arguments.prune_thresholds is not None:
 		prune_thresholds = arguments.prune_thresholds
 		prune_thresholds_tokens = prune_thresholds.split(layer_deliminator)
 		prune_thresholds = [parse_parameter_policy(prune_thresholds_token) for prune_thresholds_token in
 		                    prune_thresholds_tokens]
-		#if len(prune_thresholds) == 1:
-			#prune_thresholds *= number_of_layers
-		#assert len(prune_thresholds) == number_of_layers
+		# if len(prune_thresholds) == 1:
+		# prune_thresholds *= number_of_layers
+		# assert len(prune_thresholds) == number_of_layers
 		arguments.prune_thresholds = prune_thresholds
 
 	if arguments.split_thresholds is not None:
@@ -402,9 +378,9 @@ def discriminative_adaptive_dynamic_validator(arguments):
 		split_thresholds_tokens = split_thresholds.split(layer_deliminator)
 		split_thresholds = [parse_parameter_policy(split_thresholds_token) for split_thresholds_token in
 		                    split_thresholds_tokens]
-		#if len(split_thresholds) == 1:
-			#split_thresholds *= number_of_layers
-		#assert len(split_thresholds) == number_of_layers
+		# if len(split_thresholds) == 1:
+		# split_thresholds *= number_of_layers
+		# assert len(split_thresholds) == number_of_layers
 		arguments.split_thresholds = split_thresholds
 
 	prune_split_interval = arguments.prune_split_interval
@@ -419,9 +395,9 @@ def discriminative_adaptive_dynamic_validator(arguments):
 
 
 def discriminative_adaptive_dynamic_resume_parser():
-	from . import discriminative_adaptive_dynamic_parser
+	from . import add_dynamic_options
 
-	model_parser = discriminative_adaptive_dynamic_parser()
+	model_parser = add_dynamic_options()
 	model_parser.add_argument("--model_file", dest="model_file", action='store', default=None,
 	                          help="model file to resume from [None]")
 
@@ -429,9 +405,33 @@ def discriminative_adaptive_dynamic_resume_parser():
 
 
 def discriminative_adaptive_dynamic_resume_validator(arguments):
-	from . import discriminative_adaptive_dynamic_validator
+	from . import validate_dynamic_options
 
-	arguments = discriminative_adaptive_dynamic_validator(arguments)
+	arguments = validate_dynamic_options(arguments)
+
+	# assert os.path.exists(arguments.model_directory)
+	assert os.path.exists(arguments.model_file)
+	arguments.model_directory = os.path.dirname(arguments.model_file)
+	assert os.path.exists(os.path.join(arguments.model_directory, "train.index.npy"))
+	assert os.path.exists(os.path.join(arguments.model_directory, "validate.index.npy"))
+
+	return arguments
+
+
+def discriminative_adaptive_resume_parser():
+	from . import add_adaptive_options
+
+	model_parser = add_adaptive_options()
+	model_parser.add_argument("--model_file", dest="model_file", action='store', default=None,
+	                          help="model file to resume from [None]")
+
+	return model_parser
+
+
+def discriminative_adaptive_resume_validator(arguments):
+	from . import validate_adaptive_options
+
+	arguments = validate_adaptive_options(arguments)
 
 	# assert os.path.exists(arguments.model_directory)
 	assert os.path.exists(arguments.model_file)

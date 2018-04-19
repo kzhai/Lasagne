@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
 	"start_mlpD",
+	"resume_mlpD",
 ]
 
 from . import mlpD_parser, mlpD_validator

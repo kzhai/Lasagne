@@ -10,8 +10,8 @@ __all__ = [
 
 
 def construct_snn_parser():
-	from . import discriminative_parser, add_dense_options
-	model_parser = discriminative_parser()
+	from . import add_discriminative_options, add_dense_options
+	model_parser = add_discriminative_options()
 	model_parser = add_dense_options(model_parser)
 
 	# model argument set 1
@@ -33,8 +33,8 @@ def construct_snn_parser():
 
 
 def validate_snn_arguments(arguments):
-	from . import discriminative_validator, validate_dense_arguments
-	arguments = discriminative_validator(arguments)
+	from . import validate_discriminative_options, validate_dense_arguments
+	arguments = validate_discriminative_options(arguments)
 	arguments = validate_dense_arguments(arguments)
 	number_of_layers = len(arguments.dense_dimensions)
 

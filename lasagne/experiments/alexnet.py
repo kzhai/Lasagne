@@ -10,9 +10,9 @@ __all__ = [
 
 
 def construct_alexnet_parser():
-	from . import discriminative_parser, add_convpool_options, add_dense_options, add_dropout_options
+	from . import add_discriminative_options, add_convpool_options, add_dense_options, add_dropout_options
 
-	model_parser = discriminative_parser()
+	model_parser = add_discriminative_options()
 	model_parser = add_convpool_options(model_parser)
 	model_parser = add_dense_options(model_parser)
 	model_parser = add_dropout_options(model_parser)
@@ -68,10 +68,10 @@ def construct_alexnet_parser():
 
 
 def validate_alexnet_arguments(arguments):
-	from . import discriminative_validator, validate_convpool_arguments, validate_dense_arguments, \
+	from . import validate_discriminative_options, validate_convpool_arguments, validate_dense_arguments, \
 		validate_dropout_arguments
 
-	arguments = discriminative_validator(arguments)
+	arguments = validate_discriminative_options(arguments)
 
 	arguments = validate_convpool_arguments(arguments)
 	number_of_convolution_layers = len(arguments.convolution_filters)

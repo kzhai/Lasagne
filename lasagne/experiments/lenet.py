@@ -98,9 +98,9 @@ def validate_convpool_arguments(arguments):
 
 
 def lenet_parser():
-	from . import discriminative_parser, add_dense_options, add_dropout_options
+	from . import add_discriminative_options, add_dense_options, add_dropout_options
 
-	model_parser = discriminative_parser()
+	model_parser = add_discriminative_options()
 	model_parser = add_convpool_options(model_parser)
 	model_parser = add_dense_options(model_parser)
 	model_parser = add_dropout_options(model_parser)
@@ -109,9 +109,9 @@ def lenet_parser():
 
 
 def lenet_validator(arguments):
-	from . import discriminative_validator, validate_dense_arguments, validate_dropout_arguments
+	from . import validate_discriminative_options, validate_dense_arguments, validate_dropout_arguments
 
-	arguments = discriminative_validator(arguments)
+	arguments = validate_discriminative_options(arguments)
 
 	arguments = validate_convpool_arguments(arguments)
 	number_of_convolution_layers = len(arguments.convolution_filters)
@@ -212,9 +212,9 @@ def start_lenet():
 
 
 def resume_lenet():
-	from . import config_model, validate_config, discriminative_resume_parser, discriminative_resume_validator
+	from . import config_model, validate_config, add_resume_options, validate_resume_options
 
-	settings = config_model(discriminative_resume_parser, discriminative_resume_validator)
+	settings = config_model(add_resume_options, validate_resume_options)
 	settings = validate_config(settings)
 
 	network = networks.FeedForwardNetwork(

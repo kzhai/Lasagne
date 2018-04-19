@@ -11,8 +11,8 @@ __all__ = [
 
 
 def construct_mlpGuo_parser():
-	from . import discriminative_parser, add_dense_options, add_dropout_init_options
-	model_parser = discriminative_parser()
+	from . import add_discriminative_options, add_dense_options, add_dropout_init_options
+	model_parser = add_discriminative_options()
 	model_parser = add_dense_options(model_parser)
 	model_parser = add_dropout_init_options(model_parser)
 
@@ -39,8 +39,8 @@ def construct_mlpGuo_parser():
 
 
 def validate_mlpGuo_arguments(arguments):
-	from . import discriminative_validator, validate_dense_arguments, validate_dropout_init_arguments
-	arguments = discriminative_validator(arguments)
+	from . import validate_discriminative_options, validate_dense_arguments, validate_dropout_init_arguments
+	arguments = validate_discriminative_options(arguments)
 	arguments = validate_dense_arguments(arguments)
 	number_of_layers = len(arguments.dense_dimensions)
 	arguments = validate_dropout_init_arguments(arguments, number_of_layers)

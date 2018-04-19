@@ -12,7 +12,8 @@ from .snn import *
 
 try:
 	from .lenetA import *
-	from .mlpA import *
+	#from .mlpA import *
+	pass
 except ImportError:
 	raise ImportError("Could not load some of the XModules...")
 	pass

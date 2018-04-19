@@ -97,7 +97,7 @@ class DynamicDenseLayer(AdaptableDenseLayer):
 
 		return old_W, old_b
 
-	def split_input(self, input_indices_to_split):
+	def split_input(self, input_indices_to_split, split_mode="dropout", **kwargs):
 		self.input_shape = self.input_layer.output_shape
 		# assert int(numpy.prod(self.input_shape[self.num_leading_axes:])) == len(input_indices_to_split)
 
