@@ -19,13 +19,13 @@ if not gpu:
         from theano.sandbox import cuda
         theano_backend = "cuda_sandbox"
         gpu = cuda.cuda_enabled
-    except Exception:  # Theano 0.10+ raises nose.SkipTest
+    except ImportError:
         gpu = False
     if not gpu:
         theano_backend = "cpu"
 
 
-def convNd(input, kernel, pad, stride=1, groups=1, n=None):
+def convNd(input, kernel, pad, stride=1, n=None):
     """Execute a batch of a stack of N-dimensional convolutions.
 
     Parameters
@@ -34,20 +34,12 @@ def convNd(input, kernel, pad, stride=1, groups=1, n=None):
     kernel : numpy array
     pad : {0, 'valid', 'same', 'full'}, int or tuple of int
     stride : int or tuple of int
-    groups: int
     n : int
 
     Returns
     -------
     numpy array
     """
-    if groups > 1:
-        input = input.reshape(input.shape[0], groups, -1, *input.shape[2:])
-        kernel = kernel.reshape(groups, -1, *kernel.shape[1:])
-        return np.concatenate([convNd(input[:, g], kernel[g], pad, stride,
-                                      groups=1, n=n)
-                               for g in range(groups)], axis=1)
-
     if n is None:
         n = input.ndim - 2
     if pad not in ['valid', 'same', 'full']:
@@ -178,14 +170,6 @@ def convNd_test_sets(n):
     flip = (slice(None), slice(None)) + (slice(None, None, -1),) * n
     output = convNd(input, kernel[flip], pad='valid')
     yield _convert(input, kernel, output, {'flip_filters': False})
-
-    # num_groups=3 case
-    input_shape = (2, 6) + extra_shape[-n:]
-    input = np.random.random(input_shape)
-    kernel = np.random.random((9, 2) + (3,) * n)
-    output = convNd(input, kernel, pad='valid', groups=3)
-    yield _convert(input, kernel, output, {'num_groups': 3,
-                                           'flip_filters': True})
 
 
 def conv3d_test_sets():
@@ -390,15 +374,6 @@ class TestBaseConvLayer:
             BaseConvLayer((10, 20, 30, 40), 1, 3, n=1)
         assert "Expected 3 input dimensions" in exc.value.args[0]
 
-    def test_fail_on_mismatching_groups(self):
-        from lasagne.layers.conv import BaseConvLayer
-        with pytest.raises(ValueError) as exc:
-            BaseConvLayer((2, 3, 4), 1, 3, num_groups=2)
-        assert "evenly divide" in exc.value.args[0]
-        with pytest.raises(ValueError) as exc:
-            BaseConvLayer((2, 3, 4), 1, 3, num_groups=-3)
-        assert "must be positive" in exc.value.args[0]
-
 
 class TestConv1DLayer:
 
@@ -422,7 +397,7 @@ class TestConv1DLayer:
             assert actual.shape == layer.output_shape
             assert np.allclose(actual, output)
 
-        except (NotImplementedError, RuntimeError):
+        except NotImplementedError:
             pass
 
     def test_init_none_nonlinearity_bias(self, DummyInputLayer):
@@ -485,7 +460,7 @@ class TestConv2DLayerImplementations:
             assert actual.shape == layer.output_shape
             assert np.allclose(actual, output)
 
-        except (NotImplementedError, RuntimeError):
+        except NotImplementedError:
             pytest.skip()
 
     @pytest.mark.parametrize(
@@ -513,7 +488,7 @@ class TestConv2DLayerImplementations:
             assert actual.shape == output.shape
             assert np.allclose(actual, output)
 
-        except (NotImplementedError, RuntimeError):
+        except NotImplementedError:
             pytest.skip()
 
     def test_init_none_nonlinearity_bias(self, Conv2DImpl, DummyInputLayer):
@@ -582,7 +557,7 @@ class TestConv3DLayerImplementations:
             assert actual.shape == layer.output_shape
             assert np.allclose(actual, output)
 
-        except (NotImplementedError, RuntimeError):
+        except NotImplementedError:
             pytest.skip()
 
     @pytest.mark.parametrize(
@@ -611,7 +586,7 @@ class TestConv3DLayerImplementations:
             assert actual.shape == output.shape
             assert np.allclose(actual, output)
 
-        except (NotImplementedError, RuntimeError):
+        except NotImplementedError:
             pytest.skip()
 
     def test_init_none_nonlinearity_bias(self, Conv3DImpl, DummyInputLayer):

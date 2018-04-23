@@ -20,7 +20,7 @@ gpu_enabled = gpu.pygpu_activated
 if not gpu_enabled:
     try:
         from theano.sandbox import cuda as gpu
-    except Exception:  # Theano 0.10+ raises nose.SkipTest
+    except ImportError:
         gpu_enabled = False
     else:
         gpu_enabled = gpu.cuda_enabled
@@ -136,12 +136,6 @@ class Conv2DMMLayer(BaseConvLayer):
         be set to ``True`` if weights are loaded into it that were learnt using
         a regular :class:`lasagne.layers.Conv2DLayer`, for example.
 
-    num_groups : int (default: 1)
-        The number of groups to split the input channels and output channels
-        into, such that data does not cross the group boundaries. Requires the
-        number of channels to be divisible by the number of groups, and
-        requires Theano 0.10 or later for more than one group.
-
     **kwargs
         Any additional keyword arguments are passed to the `Layer` superclass.
 
@@ -156,16 +150,14 @@ class Conv2DMMLayer(BaseConvLayer):
     def __init__(self, incoming, num_filters, filter_size, stride=(1, 1),
                  pad=0, untie_biases=False, W=init.GlorotUniform(),
                  b=init.Constant(0.), nonlinearity=nonlinearities.rectify,
-                 flip_filters=False, num_groups=1, **kwargs):
+                 flip_filters=False, **kwargs):
         super(Conv2DMMLayer, self).__init__(incoming, num_filters, filter_size,
                                             stride, pad, untie_biases, W, b,
-                                            nonlinearity, flip_filters,
-                                            num_groups, n=2, **kwargs)
+                                            nonlinearity, flip_filters, n=2,
+                                            **kwargs)
         border_mode = 'half' if self.pad == 'same' else self.pad
-        extra_kwargs = {'num_groups': num_groups} if num_groups > 1 else {}
         self.corr_mm_op = GpuCorrMM(subsample=self.stride,
-                                    border_mode=border_mode,
-                                    **extra_kwargs)
+                                    border_mode=border_mode)
 
     def convolve(self, input, **kwargs):
         filters = self.W

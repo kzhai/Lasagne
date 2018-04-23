@@ -259,11 +259,9 @@ class BatchNormLayer(Layer):
             self.gamma = self.add_param(gamma, shape, 'gamma',
                                         trainable=True, regularizable=True)
         self.mean = self.add_param(mean, shape, 'mean',
-                                   trainable=False, regularizable=False,
-                                   batch_norm_stat=True)
+                                   trainable=False, regularizable=False)
         self.inv_std = self.add_param(inv_std, shape, 'inv_std',
-                                      trainable=False, regularizable=False,
-                                      batch_norm_stat=True)
+                                      trainable=False, regularizable=False)
 
     def get_output_for(self, input, deterministic=False,
                        batch_norm_use_averages=None,
