@@ -50,8 +50,8 @@ def plot_images(conv_filters, feature_map_size, output_file_path=None, interpola
 
 	for x in range(feature_map_size[0]):
 		for y in range(feature_map_size[1]):
-			ax = axes[x, y];
-			ax.imshow(conv_filters[x, y, :, :], interpolation=interpolation)
+			ax = axes[x, y]
+			ax.imshow(conv_filters[x, y, :, :], interpolation=interpolation, cmap="Greys")
 	# ax.set_title(interp_method)
 
 	plt.grid(False)
