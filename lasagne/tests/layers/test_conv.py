@@ -374,6 +374,19 @@ class TestBaseConvLayer:
             BaseConvLayer((10, 20, 30, 40), 1, 3, n=1)
         assert "Expected 3 input dimensions" in exc.value.args[0]
 
+    def test_fail_on_mismatching_groups(self):
+        from lasagne.layers.conv import BaseConvLayer
+        with pytest.raises(ValueError) as exc:
+            BaseConvLayer((2, 3, 4), 1, 3, num_groups=2)
+        assert "evenly divide" in exc.value.args[0]
+        with pytest.raises(ValueError) as exc:
+            BaseConvLayer((2, 3, 4), 1, 3, num_groups=-3)
+        assert "must be positive" in exc.value.args[0]
+
+    def test_integer_types(self):
+        from lasagne.layers.conv import BaseConvLayer
+        BaseConvLayer((2, 3, 4), np.int64(1), np.int64(3))
+        BaseConvLayer((2, 3, 4, 5), 1, np.empty((3, 3)).shape)
 
 class TestConv1DLayer:
 
