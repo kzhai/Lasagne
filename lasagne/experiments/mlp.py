@@ -5,10 +5,10 @@ logger = logging.getLogger(__name__)
 
 from lasagne import layers, nonlinearities, networks
 from lasagne import Xregularization, Xpolicy
-from . import layer_deliminator
+from . import layer_deliminator, validate_config
+from . import start_training, resume_training
 
 __all__ = [
-	#
 	"add_dense_options",
 	"validate_dense_arguments",
 	"add_dropout_options",
@@ -161,7 +161,7 @@ def start_mlp(settings):
 	Demonstrate stochastic gradient descent optimization for a multilayer perceptron
 	This is demonstrated on MNIST.
 	"""
-	from . import validate_config
+
 	# settings = config_model(parser, validator)
 	settings = validate_config(settings)
 
@@ -184,13 +184,10 @@ def start_mlp(settings):
 	network.set_network(mlp)
 	network.set_regularizers(settings.regularizer)
 
-	from . import start_training
 	start_training(network, settings)
 
 
 def resume_mlp(settings):
-	from . import validate_config
-
 	# settings = config_model(add_resume_options, validate_resume_options)
 	settings = validate_config(settings)
 
@@ -211,12 +208,10 @@ def resume_mlp(settings):
 	network.set_network(mlp)
 	network.set_regularizers(settings.regularizer)
 
-	from . import resume_training
 	resume_training(network, settings)
 
 
 def start_mlpA(settings):
-	from . import validate_config
 	# settings = config_model(mlpA_parser, mlpA_validator)
 	settings = validate_config(settings)
 
@@ -243,13 +238,10 @@ def start_mlpA(settings):
 	network.set_network(mlp)
 	network.set_regularizers(settings.regularizer)
 
-	from . import start_training
 	start_training(network, settings)
 
 
 def resume_mlpA(settings):
-	from . import validate_config
-
 	# settings = config_model(discriminative_adaptive_resume_parser, discriminative_adaptive_resume_validator)
 	settings = validate_config(settings)
 
@@ -273,7 +265,6 @@ def resume_mlpA(settings):
 	network.set_network(mlp)
 	network.set_regularizers(settings.regularizer)
 
-	from . import resume_training
 	resume_training(network, settings)
 
 
@@ -348,68 +339,3 @@ def main():
 
 if __name__ == '__main__':
 	main()
-
-'''
-def mlp_parser(model_parser):
-	from . import add_discriminative_options
-	model_parser = add_discriminative_options(model_parser)
-
-	# model_parser = add_dense_options(model_parser)
-	# model_parser = add_dropout_options(model_parser)
-
-	# subparsers = model_parser.add_subparsers()
-	# resume_parser = subparsers.add_parser('resume', help='resume training')
-	# resume_parser = add_resume_options(resume_parser)
-
-	model_parser = add_dense_options(model_parser)
-	model_parser = add_dropout_options(model_parser)
-
-	return model_parser
-
-
-def mlp_validator(arguments):
-	from . import validate_discriminative_options
-	arguments = validate_discriminative_options(arguments)
-
-	arguments = validate_dense_arguments(arguments)
-	number_of_layers = len(arguments.dense_dimensions)
-	arguments = validate_dropout_arguments(arguments, number_of_layers)
-
-	return arguments
-
-
-def mlpA_parser(model_parser):
-	model_parser = mlp_parser(model_parser)
-
-	from . import add_adaptive_options
-	model_parser = add_adaptive_options(model_parser)
-
-	return model_parser
-
-
-def mlpA_validator(arguments):
-	arguments = mlp_validator(arguments)
-
-	from . import validate_adaptive_options
-	arguments = validate_adaptive_options(arguments)
-
-	return arguments
-
-
-def mlpD_parser(model_parser):
-	model_parser = mlpA_parser(model_parser)
-
-	from . import add_dynamic_options
-	model_parser = add_dynamic_options()
-
-	return model_parser
-
-
-def mlpD_validator(arguments):
-	arguments = mlpA_validator(arguments)
-
-	from . import validate_dynamic_options
-	arguments = validate_dynamic_options(arguments)
-
-	return arguments
-'''
