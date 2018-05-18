@@ -17,11 +17,13 @@ __all__ = [
 	#
 	"BernoulliDropoutLayer",
 	#
-	"GaussianDropoutLayer",
-	"FastDropoutLayer",
+	"GaussianDropoutSrivastavaLayer",
+	"GaussianDropoutWangLayer",
+	#
+	"VariationalDropoutSrivastavaLayer",
+	"VariationalDropoutWangLayer",
+	#
 	"VariationalDropoutLayer",
-	"VariationalDropoutTypeALayer",
-	"VariationalDropoutTypeBLayer",
 	"SparseVariationalDropoutLayer",
 	#
 	"AdaptiveDropoutLayer",
@@ -173,7 +175,7 @@ def _sigmoid(x):
 	return 1. / (1 + numpy.exp(-x)).astype(theano.config.floatX)
 
 
-class GaussianDropoutLayer(Layer):
+class GaussianDropoutSrivastavaLayer(Layer):
 	"""
 	Replication of the Gaussian dropout of Srivastava et al. 2014 (section
 	10). Applies noise to the activations prior to the weight matrix
@@ -189,7 +191,7 @@ class GaussianDropoutLayer(Layer):
 	"""
 
 	def __init__(self, incoming, activation_probability=0.5, shared_axes=(), num_leading_axes=1, **kwargs):
-		super(GaussianDropoutLayer, self).__init__(incoming, **kwargs)
+		super(GaussianDropoutSrivastavaLayer, self).__init__(incoming, **kwargs)
 		self._srng = RandomStreams(get_rng().randint(1, 2147462579))
 
 		self.shared_axes = tuple(shared_axes)
@@ -232,7 +234,7 @@ class GaussianDropoutLayer(Layer):
 			return input * perturbation
 
 
-class FastDropoutLayer(MergeLayer):
+class GaussianDropoutWangLayer(MergeLayer):
 	"""
 	Replication of the Gaussian dropout of Wang and Manning 2012.
 	This layer will only work after a dense layer, but can probably be extended
@@ -301,7 +303,7 @@ class FastDropoutLayer(MergeLayer):
 			return self.nonlinearity(mu_z + sigma_z * randn)
 
 
-class VariationalDropoutLayer(Layer):
+class VariationalDropoutBaseLayer(Layer):
 	"""
 	Base class for variational dropout layers, because the noise sampling
 	and initialisation can be shared between type A and B.
@@ -318,7 +320,7 @@ class VariationalDropoutLayer(Layer):
 	"""
 
 	def __init__(self, incoming, activation_probability=0.5, adaptive="elementwise", **kwargs):
-		super(VariationalDropoutLayer, self).__init__(incoming, **kwargs)
+		super(VariationalDropoutBaseLayer, self).__init__(incoming, **kwargs)
 
 		'''
 		num_inputs = int(numpy.prod(self.input_shape[num_leading_axes:]))
@@ -370,7 +372,7 @@ class VariationalDropoutLayer(Layer):
 			sys.exit()
 
 
-class VariationalDropoutTypeALayer(VariationalDropoutLayer, GaussianDropoutLayer):
+class VariationalDropoutSrivastavaLayer(VariationalDropoutBaseLayer, GaussianDropoutSrivastavaLayer):
 	"""
 	Variational dropout layer, implementing correlated weight noise over the
 	output of a layer. Adaptive version of Srivastava's Gaussian dropout.
@@ -389,11 +391,11 @@ class VariationalDropoutTypeALayer(VariationalDropoutLayer, GaussianDropoutLayer
 
 	def __init__(self, incoming, activation_probability=0.5, adaptive="elementwise",
 	             **kwargs):
-		VariationalDropoutLayer.__init__(self, incoming, activation_probability=activation_probability,
-		                                 adaptive=adaptive, **kwargs)
+		VariationalDropoutBaseLayer.__init__(self, incoming, activation_probability=activation_probability,
+		                                     adaptive=adaptive, **kwargs)
 
 
-class VariationalDropoutTypeBLayer(FastDropoutLayer, VariationalDropoutLayer):
+class VariationalDropoutWangLayer(GaussianDropoutWangLayer, VariationalDropoutBaseLayer):
 	"""
 	Variational dropout layer, implementing independent weight noise. Adaptive
 	version of Wang's Gaussian dropout.
@@ -411,7 +413,7 @@ class VariationalDropoutTypeBLayer(FastDropoutLayer, VariationalDropoutLayer):
 	"""
 
 	def __init__(self, incoming, activation_probability=0.5, adaptive="elementwise", **kwargs):
-		FastDropoutLayer.__init__(self, incoming, activation_probability, **kwargs)
+		GaussianDropoutWangLayer.__init__(self, incoming, activation_probability, **kwargs)
 		self.init_adaptive(activation_probability, adaptive)
 
 
@@ -428,7 +430,8 @@ def _validate_activation_probability_for_logit_parameterization(activation_proba
 	return numpy.asarray(activation_probability).astype(theano.config.floatX)
 
 
-SparseVariationalDropoutLayer = VariationalDropoutTypeALayer
+VariationalDropoutLayer = VariationalDropoutSrivastavaLayer
+SparseVariationalDropoutLayer = VariationalDropoutSrivastavaLayer
 
 
 class AdaptiveDropoutLayer(BernoulliDropoutLayer):
