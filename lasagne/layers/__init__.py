@@ -12,3 +12,8 @@ from .normalization import *
 from .embedding import *
 from .recurrent import *
 from .special import *
+
+try:
+	from lasagne.layers.Xnoise import *
+except ImportError:
+	raise ImportError("Could not load some of the XModules...")
