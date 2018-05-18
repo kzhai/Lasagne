@@ -9,7 +9,7 @@ The package also features an implementation of [adaptive dropout learning](https
 
 > Ke Zhai and Huan Wang, [Adaptive Dropout with Rademacher Complexity Regularization](https://openreview.net/pdf?id=S1uxsye0Z), International Conference on Learning Representations (ICLR-2018), Apr 2018.
 
-Please send any bugs or problems to [Ke Zhai](<FIRST><LAST>@microsoft.com).
+Please send any bugs or problems to Ke Zhai, _fullname_@microsoft.com.
 
 ## Launch and Execute
 
