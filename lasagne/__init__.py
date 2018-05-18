@@ -30,5 +30,12 @@ from . import regularization
 from . import updates
 from . import utils
 
+try:
+	from . import Xinit
+	from . import Xpolicy
+	from . import Xregularization
+except ImportError:
+	raise ImportError("Could not load some of the XModules...")
+
 
 __version__ = "0.2.dev1"
