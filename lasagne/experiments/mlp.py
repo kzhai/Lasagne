@@ -13,8 +13,8 @@ __all__ = [
 	"validate_dense_arguments",
 	"add_dropout_options",
 	"validate_dropout_arguments",
-	"add_dropout_init_options",
-	"validate_dropout_init_arguments",
+	#"add_dropout_init_options",
+	#"validate_dropout_init_arguments",
 ]
 
 

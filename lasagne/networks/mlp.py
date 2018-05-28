@@ -3,9 +3,9 @@ import timeit
 
 import numpy
 
+from lasagne import Xinit
 from lasagne import init, nonlinearities, objectives, updates
 from lasagne import layers
-from lasagne import Xinit
 
 logger = logging.getLogger(__name__)
 
@@ -86,9 +86,6 @@ def AdaptedMultiLayerPerceptronFromPretrainedModel(input_layer, pretrained_netwo
 			                                             activation_probability=layer.activation_probability)
 
 	return neural_network
-
-
-
 
 
 '''
