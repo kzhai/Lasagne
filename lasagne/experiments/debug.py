@@ -224,10 +224,9 @@ def debug_rademacher_p_inf_q_1(network, minibatch, rescale=False, **kwargs):
 
 	minibatch_x, minibatch_y = minibatch
 	debugger_function_outputs = function_debugger(minibatch_x, minibatch_y)
-	'''
+
 	for token_mapping, token_output in zip(mapping, debugger_function_outputs):
 		print("debug: %s = %g" % (token_mapping, token_output))
-	'''
 	logger.debug("Rademacher (p=inf, q=1) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
 	print("debug: Rademacher (p=inf, q=1) complexity: regularizer=%g" % (numpy.prod(debugger_function_outputs)))
 
