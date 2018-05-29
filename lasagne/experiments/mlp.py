@@ -41,7 +41,7 @@ def validate_dense_arguments(arguments):
 
 	assert len(arguments.dense_nonlinearities) == len(arguments.dense_dimensions)
 
-	return arguments
+	return arguments, len(arguments.dense_dimensions)
 
 
 def add_dropout_init_options(model_parser):
@@ -311,7 +311,7 @@ def main():
 
 	if arguments.run_model == "start-mlp":
 		arguments = validate_discriminative_options(arguments)
-		arguments = validate_dense_arguments(arguments)
+		arguments, number_of_layers = validate_dense_arguments(arguments)
 		number_of_layers = len(arguments.dense_dimensions)
 		arguments = validate_dropout_arguments(arguments, number_of_layers)
 
@@ -323,8 +323,8 @@ def main():
 		resume_mlp(arguments)
 	elif arguments.run_model == "start-mlpA":
 		arguments = validate_discriminative_options(arguments)
-		arguments = validate_dense_arguments(arguments)
-		number_of_layers = len(arguments.dense_dimensions)
+		arguments, number_of_layers = validate_dense_arguments(arguments)
+		#number_of_layers = len(arguments.dense_dimensions)
 		arguments = validate_dropout_arguments(arguments, number_of_layers)
 		arguments = validate_adaptive_options(arguments)
 
