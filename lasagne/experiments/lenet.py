@@ -97,35 +97,7 @@ def validate_convpool_arguments(arguments):
 	pool_strides = arguments.pool_strides.split(param_deliminator)
 	arguments.pool_strides = tuple([int(pool_stride) for pool_stride in pool_strides])
 
-	return arguments
-
-
-def lenet_parser():
-	from . import add_discriminative_options, add_dense_options, add_dropout_options
-
-	model_parser = add_discriminative_options()
-	model_parser = add_convpool_options(model_parser)
-	model_parser = add_dense_options(model_parser)
-	model_parser = add_dropout_options(model_parser)
-
-	return model_parser
-
-
-def lenet_validator(arguments):
-	from . import validate_discriminative_options, validate_dense_arguments, validate_dropout_arguments
-
-	arguments = validate_discriminative_options(arguments)
-
-	arguments = validate_convpool_arguments(arguments)
-	number_of_convolution_layers = len(arguments.convolution_filters)
-
-	arguments = validate_dense_arguments(arguments)
-	number_of_dense_layers = len(arguments.dense_dimensions)
-
-	number_of_layers = number_of_convolution_layers + number_of_dense_layers
-	arguments = validate_dropout_arguments(arguments, number_of_layers)
-
-	return arguments
+	return arguments, len(arguments.convolution_filters)
 
 
 def start_lenet(settings):
@@ -309,9 +281,9 @@ def main():
 
 	if arguments.run_model == "start-lenet":
 		arguments = validate_discriminative_options(arguments)
-		arguments = validate_convpool_arguments(arguments)
-		arguments = validate_dense_arguments(arguments)
-		number_of_layers = len(arguments.dense_dimensions) + len(arguments.convolution_filters)
+		arguments, number_of_convolution_layers = validate_convpool_arguments(arguments)
+		arguments, number_of_dense_layers = validate_dense_arguments(arguments)
+		number_of_layers = number_of_dense_layers + number_of_convolution_layers
 		arguments = validate_dropout_arguments(arguments, number_of_layers)
 
 		start_lenet(arguments)
@@ -322,9 +294,9 @@ def main():
 		resume_lenet(arguments)
 	elif arguments.run_model == "start-lenetA":
 		arguments = validate_discriminative_options(arguments)
-		arguments = validate_convpool_arguments(arguments)
-		arguments = validate_dense_arguments(arguments)
-		number_of_layers = len(arguments.dense_dimensions) + len(arguments.convolution_filters)
+		arguments, number_of_convolution_layers = validate_convpool_arguments(arguments)
+		arguments, number_of_dense_layers = validate_dense_arguments(arguments)
+		number_of_layers = number_of_dense_layers + number_of_convolution_layers
 		arguments = validate_dropout_arguments(arguments, number_of_layers)
 		arguments = validate_adaptive_options(arguments)
 
