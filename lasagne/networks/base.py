@@ -925,5 +925,3 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 			epoch_running_time_temp = timeit.default_timer() - epoch_running_time_temp
 
 		# return epoch_running_time
-
-

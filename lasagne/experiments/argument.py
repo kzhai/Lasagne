@@ -2,7 +2,7 @@ import datetime
 import logging
 import os
 
-from . import debug
+from . import debug, data
 from lasagne import objectives, updates
 from lasagne import Xregularization, Xpolicy
 
@@ -116,7 +116,9 @@ def add_generic_options(model_parser):
 	model_parser.add_argument("--max_norm_constraint", dest="max_norm_constraint", type=float, action='store',
 	                          default=0, help="max norm constraint [0 - None]")
 
-	# generic_parser.add_argument('--debug', dest="debug", action='store_true', default=False, help="debug mode [False]")
+	# generic argument set 5
+	model_parser.add_argument("--data_pipe", dest='data_pipe', action='append', default=["load_features_labels"],
+	                          help="dataset loading/preprocessing pipeline [None]")
 
 	model_parser.add_argument("--snapshot", dest='snapshot', action='append', default=[],
 	                          help="snapshot function [None]")
@@ -152,6 +154,13 @@ def validate_generic_options(arguments):
 
 	arguments.learning_rate = parse_parameter_policy(arguments.learning_rate)
 	assert arguments.max_norm_constraint >= 0
+
+	# generic argument set data pipe
+	data_pipe = []
+	for data_function in arguments.data_pipe:
+		data_function = getattr(data, data_function)
+		data_pipe.append(data_function)
+	arguments.data_pipe = data_pipe
 
 	# generic argument set snapshots
 	snapshots = {}

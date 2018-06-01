@@ -7,14 +7,11 @@ import timeit
 
 import numpy
 
-from . import debug
+from . import debug, data
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-	"load_data",
-	#
-	"config_model",
 	"validate_config",
 	#
 	"start_training",
@@ -23,15 +20,6 @@ __all__ = [
 	# "split_data",
 	# "load_mnist",
 ]
-
-
-def load_data(input_directory, dataset="test"):
-	data_set_x = numpy.load(os.path.join(input_directory, "%s.feature.npy" % dataset))
-	data_set_y = numpy.load(os.path.join(input_directory, "%s.label.npy" % dataset))
-	assert len(data_set_x) == len(data_set_y)
-	logger.info("successfully load %d %s data from %s..." % (len(data_set_x), dataset, input_directory))
-	return (data_set_x, data_set_y)
-
 
 '''
 def split_indices(data_size, number_of_validate_data=0):
@@ -121,29 +109,14 @@ def split_train_data_to_cross_validate(input_directory, number_of_folds=5, outpu
 	return
 
 
-# def config_model(construct_parser_function, validate_arguments_function):
-def config_model(model_parser, validate_arguments_function):
-	"""
-	Demonstrate stochastic gradient descent optimization for a multilayer perceptron
-	This is demonstrated on MNIST.
-	"""
-
-	# arguments, additionals = construct_parser_function().parse_known_args()
-	arguments, additionals = model_parser.parse_known_args()
-
-	settings = validate_arguments_function(arguments)
-
-	if len(additionals) > 0:
-		print("========== ==========", "additional", "========== ==========")
-		for addition in additionals:
-			print("%s" % (addition))
-		print("========== ==========", "additional", "========== ==========")
-
-	return settings
-
-
 def validate_config(settings):
-	test_dataset = load_data(settings.input_directory, dataset="test")
+	#test_dataset = load_features_labels(settings.input_directory, dataset="test")
+	dataset_loading_functions = settings.data_pipe
+	input_directory = settings.input_directory
+	test_dataset = dataset_loading_functions[0](input_directory, dataset="test")
+	for dataset_loading_function in dataset_loading_functions[1:]:
+		test_dataset = dataset_loading_function(test_dataset)
+
 	test_set_x, test_set_y = test_dataset
 	input_shape = list(test_set_x.shape[1:])
 	input_shape.insert(0, None)
@@ -154,15 +127,15 @@ def validate_config(settings):
 
 
 def _load_datasets_to_start(input_directory, output_directory, number_of_validate_data,
-                            dataset_preprocessing_functions=[]):
-	test_dataset = load_data(input_directory, dataset="test")
-	for dataset_preprocessing_function in dataset_preprocessing_functions:
-		test_dataset = dataset_preprocessing_function(test_dataset)
+                            dataset_loading_functions=[data.load_features_labels]):
+	test_dataset = dataset_loading_functions[0](input_directory, dataset="test")
+	for dataset_loading_function in dataset_loading_functions[1:]:
+		test_dataset = dataset_loading_function(test_dataset)
 
 	if number_of_validate_data >= 0:
-		train_dataset_temp = load_data(input_directory, dataset="train")
-		for dataset_preprocessing_function in dataset_preprocessing_functions:
-			train_dataset_temp = dataset_preprocessing_function(train_dataset_temp)
+		train_dataset_temp = dataset_loading_functions[0](input_directory, dataset="train")
+		for dataset_loading_function in dataset_loading_functions[1:]:
+			train_dataset_temp = dataset_loading_function(train_dataset_temp)
 
 		total_data_x, total_data_y = train_dataset_temp
 
@@ -187,25 +160,26 @@ def _load_datasets_to_start(input_directory, output_directory, number_of_validat
 	# else:
 	# validate_dataset = None
 	else:
-		train_dataset = load_data(input_directory, dataset="train")
-		for dataset_preprocessing_function in dataset_preprocessing_functions:
-			train_dataset = dataset_preprocessing_function(train_dataset)
+		train_dataset = dataset_loading_functions[0](input_directory, dataset="train")
+		for dataset_loading_function in dataset_loading_functions[1:]:
+			train_dataset = dataset_loading_function(train_dataset)
 
-		validate_dataset = load_data(input_directory, dataset="validate")
-		for dataset_preprocessing_function in dataset_preprocessing_functions:
-			validate_dataset = dataset_preprocessing_function(validate_dataset)
+		validate_dataset = dataset_loading_functions[0](input_directory, dataset="validate")
+		for dataset_loading_function in dataset_loading_functions[1:]:
+			validate_dataset = dataset_loading_function(validate_dataset)
 
 	return train_dataset, validate_dataset, test_dataset
 
 
-def _load_datasets_to_resume(input_directory, model_directory, output_directory, dataset_preprocessing_functions=[]):
-	test_dataset = load_data(input_directory, dataset="test")
-	for dataset_preprocessing_function in dataset_preprocessing_functions:
-		test_dataset = dataset_preprocessing_function(test_dataset)
+def _load_datasets_to_resume(input_directory, model_directory, output_directory,
+                             dataset_loading_functions=[data.load_features_labels]):
+	test_dataset = dataset_loading_functions[0](input_directory, dataset="test")
+	for dataset_loading_function in dataset_loading_functions[1:]:
+		test_dataset = dataset_loading_function(test_dataset)
 
-	train_dataset_temp = load_data(input_directory, dataset="train")
-	for dataset_preprocessing_function in dataset_preprocessing_functions:
-		train_dataset_temp = dataset_preprocessing_function(train_dataset_temp)
+	train_dataset_temp = dataset_loading_functions[0](input_directory, dataset="train")
+	for dataset_loading_function in dataset_loading_functions[1:]:
+		train_dataset_temp = dataset_loading_function(train_dataset_temp)
 
 	total_data_x, total_data_y = train_dataset_temp
 
@@ -228,19 +202,19 @@ def _load_datasets_to_resume(input_directory, model_directory, output_directory,
 	return train_dataset, validate_dataset, test_dataset
 
 
-def start_training(network, settings, dataset_preprocessing_functions=[]):
+def start_training(network, settings):
 	input_directory = settings.input_directory
 	output_directory = settings.output_directory
 	assert not os.path.exists(output_directory)
 	os.mkdir(output_directory)
 
 	datasets = _load_datasets_to_start(input_directory, output_directory, settings.validation_data,
-	                                   dataset_preprocessing_functions)
+	                                   settings.data_pipe)
 
 	_train_model(network, settings, datasets)
 
 
-def resume_training(network, settings, dataset_preprocessing_functions=[]):
+def resume_training(network, settings):
 	input_directory = settings.input_directory
 	output_directory = settings.output_directory
 	assert not os.path.exists(output_directory)
@@ -250,7 +224,7 @@ def resume_training(network, settings, dataset_preprocessing_functions=[]):
 	assert os.path.exists(model_directory)
 
 	datasets = _load_datasets_to_resume(input_directory, model_directory, output_directory,
-	                                    dataset_preprocessing_functions)
+	                                    settings.data_pipe)
 
 	_train_model(network, settings, datasets)
 
