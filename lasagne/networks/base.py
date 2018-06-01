@@ -959,10 +959,10 @@ class RecurrentNetwork(FeedForwardNetwork):
 	             validation_interval=-1,
 
 	             sequence_length=1,
-
-	             incoming_mask=None,
 	             window_size=1,
 	             position_offset=0,
+
+	             incoming_mask=None,
 	             # gradient_steps=-1,
 	             # gradient_clipping=0,
 	             ):
@@ -1000,7 +1000,7 @@ class RecurrentNetwork(FeedForwardNetwork):
 	def parse_sequence(self, dataset):
 		if dataset is None:
 			return None
-		return parse_sequence(dataset, self._window_size, self._sequence_length, self._position_offset)
+		return parse_sequence(dataset, self._sequence_length, self._window_size, self._position_offset)
 
 	def build_functions(self):
 		super(RecurrentNetwork, self).build_functions()
@@ -1324,7 +1324,38 @@ class AdaptiveRecurrentNetwork(RecurrentNetwork):
 #
 #
 
-def parse_sequence(dataset, window_size, sequence_length, position_offset=-1):
+def parse_sequence_test(dataset, sequence_length, window_size=1, position_offset=-1):
+	if dataset is None:
+		return None
+
+	sequence_set_x, sequence_set_y = dataset
+	# Parse data into sequences
+
+	dataset_x = -numpy.ones((0, sequence_length, window_size), dtype=numpy.int)
+	#sequence_m = numpy.zeros((0, sequence_length), dtype=numpy.int8)
+	dataset_y = numpy.zeros(0, sequence_length, dtype=numpy.int)
+
+	sequence_indices_by_instance = [0]
+	for sequence_x, sequence_y in zip(sequence_set_x, sequence_set_y):
+		for index in xrange(len()):
+
+
+		# context_windows = get_context_windows(train_sequence_x, window_size)
+		# train_minibatch, train_minibatch_masks = get_mini_batches(context_windows, backprop_step)
+		instance_sequence_x, instance_sequence_m = get_context_sequences(sequence_x, sequence_length, window_size,
+		                                                                 position_offset)
+		assert len(instance_sequence_x) == len(instance_sequence_m)
+		assert len(instance_sequence_x) == len(sequence_y)
+
+		dataset_x = numpy.concatenate((dataset_x, instance_sequence_x), axis=0)
+		sequence_m = numpy.concatenate((sequence_m, instance_sequence_m), axis=0)
+		dataset_y = numpy.concatenate((dataset_y, sequence_y), axis=0)
+
+		sequence_indices_by_instance.append(len(dataset_y))
+
+	return dataset_x, dataset_y, sequence_m, sequence_indices_by_instance
+
+def parse_sequence(dataset, sequence_length, window_size=1, position_offset=-1):
 	if dataset is None:
 		return None
 
