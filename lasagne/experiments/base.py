@@ -218,7 +218,7 @@ def start_training(network, settings, dataset_preprocessing_function=None):
 
 	datasets = load_datasets_to_start(input_directory, output_directory, settings.validation_data)
 
-	train_model(network, settings, datasets)
+	train_model(network, settings, datasets, dataset_preprocessing_function)
 
 
 def resume_training(network, settings, dataset_preprocessing_function=None):
@@ -232,7 +232,7 @@ def resume_training(network, settings, dataset_preprocessing_function=None):
 
 	datasets = load_datasets_to_resume(input_directory, model_directory, output_directory)
 
-	train_model(network, settings, datasets)
+	train_model(network, settings, datasets, dataset_preprocessing_function)
 
 
 def train_model(network, settings, datasets, dataset_preprocessing_function=None):
