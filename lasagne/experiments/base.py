@@ -1,6 +1,6 @@
 import logging
-import pickle
 import os
+import pickle
 import random
 import sys
 import timeit
@@ -120,14 +120,15 @@ def split_train_data_to_cross_validate(input_directory, number_of_folds=5, outpu
 
 	return
 
-#def config_model(construct_parser_function, validate_arguments_function):
+
+# def config_model(construct_parser_function, validate_arguments_function):
 def config_model(model_parser, validate_arguments_function):
 	"""
 	Demonstrate stochastic gradient descent optimization for a multilayer perceptron
 	This is demonstrated on MNIST.
 	"""
 
-	#arguments, additionals = construct_parser_function().parse_known_args()
+	# arguments, additionals = construct_parser_function().parse_known_args()
 	arguments, additionals = model_parser.parse_known_args()
 
 	settings = validate_arguments_function(arguments)
@@ -152,10 +153,17 @@ def validate_config(settings):
 	return settings
 
 
-def load_datasets_to_start(input_directory, output_directory, number_of_validate_data):
+def _load_datasets_to_start(input_directory, output_directory, number_of_validate_data,
+                            dataset_preprocessing_functions=[]):
 	test_dataset = load_data(input_directory, dataset="test")
+	for dataset_preprocessing_function in dataset_preprocessing_functions:
+		test_dataset = dataset_preprocessing_function(test_dataset)
+
 	if number_of_validate_data >= 0:
 		train_dataset_temp = load_data(input_directory, dataset="train")
+		for dataset_preprocessing_function in dataset_preprocessing_functions:
+			train_dataset_temp = dataset_preprocessing_function(train_dataset_temp)
+
 		total_data_x, total_data_y = train_dataset_temp
 
 		assert number_of_validate_data >= 0 and number_of_validate_data < len(total_data_y)
@@ -180,15 +188,25 @@ def load_datasets_to_start(input_directory, output_directory, number_of_validate
 	# validate_dataset = None
 	else:
 		train_dataset = load_data(input_directory, dataset="train")
+		for dataset_preprocessing_function in dataset_preprocessing_functions:
+			train_dataset = dataset_preprocessing_function(train_dataset)
+
 		validate_dataset = load_data(input_directory, dataset="validate")
+		for dataset_preprocessing_function in dataset_preprocessing_functions:
+			validate_dataset = dataset_preprocessing_function(validate_dataset)
 
 	return train_dataset, validate_dataset, test_dataset
 
 
-def load_datasets_to_resume(input_directory, model_directory, output_directory):
+def _load_datasets_to_resume(input_directory, model_directory, output_directory, dataset_preprocessing_functions=[]):
 	test_dataset = load_data(input_directory, dataset="test")
+	for dataset_preprocessing_function in dataset_preprocessing_functions:
+		test_dataset = dataset_preprocessing_function(test_dataset)
 
 	train_dataset_temp = load_data(input_directory, dataset="train")
+	for dataset_preprocessing_function in dataset_preprocessing_functions:
+		train_dataset_temp = dataset_preprocessing_function(train_dataset_temp)
+
 	total_data_x, total_data_y = train_dataset_temp
 
 	train_indices = numpy.load(os.path.join(model_directory, "train.index.npy"))
@@ -210,18 +228,19 @@ def load_datasets_to_resume(input_directory, model_directory, output_directory):
 	return train_dataset, validate_dataset, test_dataset
 
 
-def start_training(network, settings, dataset_preprocessing_function=None):
+def start_training(network, settings, dataset_preprocessing_functions=[]):
 	input_directory = settings.input_directory
 	output_directory = settings.output_directory
 	assert not os.path.exists(output_directory)
 	os.mkdir(output_directory)
 
-	datasets = load_datasets_to_start(input_directory, output_directory, settings.validation_data)
+	datasets = _load_datasets_to_start(input_directory, output_directory, settings.validation_data,
+	                                   dataset_preprocessing_functions)
 
-	train_model(network, settings, datasets)
+	_train_model(network, settings, datasets)
 
 
-def resume_training(network, settings, dataset_preprocessing_function=None):
+def resume_training(network, settings, dataset_preprocessing_functions=[]):
 	input_directory = settings.input_directory
 	output_directory = settings.output_directory
 	assert not os.path.exists(output_directory)
@@ -230,12 +249,13 @@ def resume_training(network, settings, dataset_preprocessing_function=None):
 	model_directory = settings.model_directory
 	assert os.path.exists(model_directory)
 
-	datasets = load_datasets_to_resume(input_directory, model_directory, output_directory)
+	datasets = _load_datasets_to_resume(input_directory, model_directory, output_directory,
+	                                    dataset_preprocessing_functions)
 
-	train_model(network, settings, datasets)
+	_train_model(network, settings, datasets)
 
 
-def train_model(network, settings, datasets, dataset_preprocessing_function=None):
+def _train_model(network, settings, datasets):
 	output_directory = settings.output_directory
 	assert os.path.exists(output_directory)
 
@@ -248,10 +268,12 @@ def train_model(network, settings, datasets, dataset_preprocessing_function=None
 		train_dataset, validate_dataset, test_dataset = debug.subsample_dataset(train_dataset, validate_dataset,
 		                                                                        test_dataset)
 
-	if dataset_preprocessing_function is not None:
-		train_dataset = dataset_preprocessing_function(train_dataset)
-		validate_dataset = dataset_preprocessing_function(validate_dataset)
-		test_dataset = dataset_preprocessing_function(test_dataset)
+	'''
+	if dataset_preprocessing_functions is not None:
+		train_dataset = dataset_preprocessing_functions(train_dataset)
+		validate_dataset = dataset_preprocessing_functions(validate_dataset)
+		test_dataset = dataset_preprocessing_functions(test_dataset)
+	'''
 
 	print("========== ==========", "parameters", "========== ==========")
 	for key, value in list(vars(settings).items()):
