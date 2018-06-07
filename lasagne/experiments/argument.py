@@ -2,9 +2,9 @@ import datetime
 import logging
 import os
 
-from . import debug, data
-from lasagne import objectives, updates
 from lasagne import Xregularization, Xpolicy
+from lasagne import objectives, updates
+from . import debug, data
 
 logger = logging.getLogger(__name__)
 
@@ -113,8 +113,10 @@ def add_generic_options(model_parser):
 	model_parser.add_argument("--learning_rate", dest="learning_rate", action='store', default="1e-2",
 	                          help="learning policy [1e-2,constant]")
 
-	model_parser.add_argument("--max_norm_constraint", dest="max_norm_constraint", type=float, action='store',
-	                          default=0, help="max norm constraint [0 - None]")
+	model_parser.add_argument("--gradient_global_max_norm", dest="gradient_global_max_norm", type=float, action='store',
+	                          default=0, help="global max norm of gradient constraint [0 - None]")
+	model_parser.add_argument("--parameter_local_max_norm", dest="parameter_local_max_norm", type=float, action='store',
+	                          default=0, help="local max norm of parameter constraint [0 - None]")
 
 	# generic argument set 5
 	model_parser.add_argument("--data_pipe", dest='data_pipe', action='store', default="load_features_labels",
@@ -153,7 +155,8 @@ def validate_generic_options(arguments):
 	#	arguments = validate_resume_arguments(arguments)
 
 	arguments.learning_rate = parse_parameter_policy(arguments.learning_rate)
-	assert arguments.max_norm_constraint >= 0
+	assert arguments.parameter_local_max_norm >= 0
+	assert arguments.gradient_global_max_norm >= 0
 
 	# generic argument set data pipe
 	data_pipe = []
@@ -321,6 +324,7 @@ def validate_adaptive_options(arguments):
 	# assert (arguments.adaptable_update_interval >= 0)
 
 	return arguments
+
 
 def discriminative_adaptive_resume_parser():
 	from . import add_adaptive_options

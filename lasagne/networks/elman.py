@@ -249,7 +249,7 @@ class DynamicElmanNetwork(networks.AdaptiveRecurrentNetwork):
 	             dropout_rate_update_interval=1,
 	             update_hidden_layer_dropout_only=False,
 
-	             max_norm_constraint=0,
+	             parameter_local_max_norm=0,
 	             total_norm_constraint=0,
 	             normalize_embeddings=False,
 
@@ -272,7 +272,7 @@ class DynamicElmanNetwork(networks.AdaptiveRecurrentNetwork):
 			# dropout_learning_rate_decay,
 			dropout_rate_update_interval,
 
-			max_norm_constraint,
+			parameter_local_max_norm,
 			total_norm_constraint,
 			normalize_embeddings,
 			validation_interval,

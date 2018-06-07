@@ -39,8 +39,6 @@ def add_elman_options(model_parser):
 	# model argument set 4
 	model_parser.add_argument("--recurrent_type", dest="recurrent_type", action='store', default='LSTMLayer',
 	                          help="recurrent layer type [default=LSTMLayer]")
-	model_parser.add_argument("--total_norm_constraint", dest="total_norm_constraint", action='store', default=0,
-	                          type=float, help="total norm constraint [0]")
 
 	'''
 	It is highly recomended that---in this implementation---to realize backward pass through the concept of input mask (hence to support different input sequence lenght).
@@ -144,7 +142,6 @@ def validate_elman_arguments(arguments):
 	# model argument set 4
 	# assert arguments.recurrent_style in ["elman", "bi-elman"]
 	arguments.recurrent_type = getattr(layers.recurrent, arguments.recurrent_type)
-	assert arguments.total_norm_constraint >= 0
 	# assert arguments.gradient_steps >= -1 and arguments.gradient_steps < arguments.sequence_length
 	# assert arguments.gradient_clipping >= 0
 
@@ -232,14 +229,6 @@ def start_elman(settings):
 	# input_mask_shape = (None, settings.sequence_length)
 	# input_mask_layer = layers.InputLayer(shape=input_mask_shape, input_var=theano.tensor.imatrix())
 
-	# self._recurrent_type = recurrent_type
-	# self._gradient_steps = gradient_steps
-	# self._gradient_clipping = gradient_clipping
-
-	# self._sequence_length = sequence_length
-
-	# self._position_offset = position_offset
-
 	network = networks.RecurrentNetwork(
 		incoming=input_layer,
 		# incoming_mask=input_mask_layer,
@@ -248,11 +237,11 @@ def start_elman(settings):
 		update_function=settings.update,
 		learning_rate_policy=settings.learning_rate,
 
-		max_norm_constraint=settings.max_norm_constraint,
-		validation_interval=settings.validation_interval,
+		parameter_local_max_norm=settings.parameter_local_max_norm,
+		gradient_global_max_norm=settings.gradient_global_max_norm,
 
-		total_norm_constraint=0,
 		normalize_embeddings=False,
+		validation_interval=settings.validation_interval,
 
 		sequence_length=settings.sequence_length,
 		window_size=settings.window_size,

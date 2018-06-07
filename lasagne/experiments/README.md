@@ -181,6 +181,7 @@ The network starts with an embedding layer of 200 dimension.
 		--learning_rate=1.0,exponential_decay,0.5,4 \
 		--layer_dimensions=[200*200]*10000 \
 		--layer_nonlinearities=[tanh*tanh]*softmax \
+		--gradient_global_max_norm=5 \
 		--debug=subsample_dataset
 	
 Under any circumstances, you may also get help information and usage hints by adding `-h` or `--help` option.
