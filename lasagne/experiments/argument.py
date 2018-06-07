@@ -117,7 +117,7 @@ def add_generic_options(model_parser):
 	                          default=0, help="max norm constraint [0 - None]")
 
 	# generic argument set 5
-	model_parser.add_argument("--data_pipe", dest='data_pipe', action='append', default=["load_features_labels"],
+	model_parser.add_argument("--data_pipe", dest='data_pipe', action='store', default="load_features_labels",
 	                          help="dataset loading/preprocessing pipeline [None]")
 
 	model_parser.add_argument("--snapshot", dest='snapshot', action='append', default=[],
@@ -157,7 +157,7 @@ def validate_generic_options(arguments):
 
 	# generic argument set data pipe
 	data_pipe = []
-	for data_function in arguments.data_pipe:
+	for data_function in arguments.data_pipe.split(param_deliminator):
 		data_function = getattr(data, data_function)
 		data_pipe.append(data_function)
 	arguments.data_pipe = data_pipe

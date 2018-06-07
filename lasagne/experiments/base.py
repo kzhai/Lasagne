@@ -156,9 +156,6 @@ def _load_datasets_to_start(input_directory, output_directory, number_of_validat
 		validate_set_y = total_data_y[validate_indices]
 		validate_dataset = (validate_set_x, validate_set_y)
 		logger.info("successfully load data %s with %d to validate..." % (input_directory, len(validate_set_x)))
-	# if len(validate_indices) > 0:
-	# else:
-	# validate_dataset = None
 	else:
 		train_dataset = dataset_loading_functions[0](input_directory, dataset="train")
 		for dataset_loading_function in dataset_loading_functions[1:]:
@@ -293,7 +290,20 @@ def _train_model(network, settings, datasets):
 			                            output_file=function_outputs_file)
 		# debugger.debug_function_output(network, test_dataset)
 
-		network.train(train_dataset, validate_dataset, test_dataset, settings.minibatch_size, output_directory)
+		network.train(train_dataset, settings.minibatch_size)
+
+		if validate_dataset is not None and len(validate_dataset[1]) > 0:
+			output_file = None
+			if output_directory is not None:
+				output_file = os.path.join(output_directory, 'model.pkl')
+			network.validate(validate_dataset, output_file)
+
+		if test_dataset is not None:
+			# if output_directory != None:
+			# output_file = os.path.join(output_directory, 'model-%d.pkl' % self.epoch_index)
+			# cPickle.dump(self, open(output_file, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
+			network.test(test_dataset)
+
 		network.epoch_index += 1
 
 		# if settings.snapshot_interval > 0 and network.epoch_index % settings.snapshot_interval == 0:
