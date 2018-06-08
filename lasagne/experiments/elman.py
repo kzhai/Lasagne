@@ -237,8 +237,8 @@ def start_elman(settings):
 		update_function=settings.update,
 		learning_rate_policy=settings.learning_rate,
 
-		parameter_local_max_norm=settings.parameter_local_max_norm,
-		gradient_global_max_norm=settings.gradient_global_max_norm,
+		parameter_max_local_l2_norm=settings.parameter_max_local_l2_norm,
+		gradient_max_global_l2_norm=settings.gradient_max_global_l2_norm,
 
 		normalize_embeddings=False,
 		validation_interval=settings.validation_interval,

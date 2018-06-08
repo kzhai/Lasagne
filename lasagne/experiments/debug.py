@@ -1,14 +1,14 @@
 import logging
 import os
-import timeit
 
 import numpy
 import theano
 import theano.tensor as T
 
-from lasagne import layers
-from lasagne import nonlinearities, objectives, updates, Xregularization
-#from ..layers import DenseLayer, AdaptiveDropoutLayer
+from lasagne import Xregularization
+from lasagne import layers, updates
+
+# from ..layers import DenseLayer, AdaptiveDropoutLayer
 
 logger = logging.getLogger(__name__)
 
@@ -59,20 +59,11 @@ def display_architecture(network, **kwargs):
 		print("debug: output size after %s is %s" % (layer, layers.get_output_shape(layer, input_shape)))
 
 
-def debug_function_output(network, dataset, **kwargs):
-	dataset_x, dataset_y = dataset
-
-	number_of_data = dataset_x.shape[0]
-	data_indices = numpy.random.permutation(number_of_data)
-
-	minibatch_size = kwargs.get('minibatch_size', number_of_data)
-	output_file = kwargs.get('output_file', None)
-
+def debug_function_output(network, dataset, minibatch_size=20, output_file=None):
 	# Create a train_loss expression for training, i.e., a scalar objective we want to minimize (for our multi-class problem, it is the cross-entropy train_loss):
 	stochastic_loss = network.get_loss(network._output_variable)
 	stochastic_objective = network.get_objectives(network._output_variable)
-	stochastic_accuracy = network.get_objectives(network._output_variable,
-	                                             objective_functions="categorical_accuracy")
+	stochastic_accuracy = network.get_objectives(network._output_variable, objective_functions="categorical_accuracy")
 
 	# Create a train_loss expression for validation/testing. The crucial difference here is that we do a deterministic forward pass through the networks, disabling dropout layers.
 	deterministic_loss = network.get_loss(network._output_variable, deterministic=True)
@@ -80,29 +71,77 @@ def debug_function_output(network, dataset, **kwargs):
 	deterministic_accuracy = network.get_objectives(network._output_variable,
 	                                                objective_functions="categorical_accuracy", deterministic=True)
 
+	trainable_params = network.get_network_params(trainable=True)
+	trainable_grads = theano.tensor.grad(stochastic_loss, trainable_params)
+	scaled_trainable_grads, gradient_global_norm = updates.total_norm_constraint(trainable_grads,
+	                                                                             network.gradient_max_global_l2_norm,
+	                                                                             return_norm=True)
+
+	'''
+	if network.parameter_max_local_l2_norm > 0:
+		for param in network.get_network_params(trainable=True, regularizable=True):
+			ndim = param.ndim
+			if ndim == 2:  # DenseLayer
+				sum_over = (0,)
+			elif ndim in [3, 4, 5]:  # Conv{1,2,3}DLayer
+				sum_over = tuple(range(1, ndim))
+			elif ndim == 6:  # LocallyConnected{2}DLayer
+				sum_over = tuple(range(1, ndim))
+			else:
+				continue
+			# raise ValueError("Unsupported tensor dimensionality {}.".format(ndim))
+			trainable_params_nondeterministic_updates[param] = updates.norm_constraint(
+				trainable_params_nondeterministic_updates[param],
+				network.parameter_max_local_l2_norm,
+				norm_axes=sum_over)
+	'''
+
 	stochastic_function_output_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
-		outputs=[stochastic_accuracy, stochastic_loss, stochastic_objective],
+		outputs=[stochastic_accuracy, stochastic_loss, stochastic_objective, gradient_global_norm],
 		on_unused_input='raise'
 	)
 
 	deterministic_function_output_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
-		outputs=[deterministic_accuracy, deterministic_loss, deterministic_objective],
+		outputs=[deterministic_accuracy, deterministic_loss, deterministic_objective, gradient_global_norm],
 		on_unused_input='raise'
 	)
 
+	#
+	#
+	#
+
+	dataset_x, dataset_y = dataset
+
+	number_of_data = dataset_x.shape[0]
+	minibatch_indices = numpy.random.permutation(number_of_data)[:minibatch_size]
+	minibatch_x = dataset_x[(minibatch_indices,) + (slice(None),) * (len(dataset_y.shape) - 1)]
+	minibatch_y = dataset_y[(minibatch_indices,) + (slice(None),) * (len(dataset_y.shape) - 1)]
+	minibatch_y = numpy.reshape(minibatch_y, (numpy.prod(minibatch_y.shape)))
+
+	function_stochastic_output = stochastic_function_output_debugger(minibatch_x, minibatch_y)
+	function_deterministic_output = deterministic_function_output_debugger(minibatch_x, minibatch_y)
+
+	print(function_stochastic_output)
+	print(function_deterministic_output)
+
+	'''
+	data_indices = numpy.random.permutation(number_of_data)
+	
 	minibatch_start_index = 0
 	minibatch_index = 0
 	minibatch_outputs = numpy.zeros((int(numpy.ceil(1. * number_of_data / minibatch_size)), 9))
 
 	while minibatch_start_index < number_of_data:
-		# automatically handles the left-over data
 		minibatch_indices = data_indices[minibatch_start_index:minibatch_start_index + minibatch_size]
+		
+		minibatch_x = dataset_x[(minibatch_indices,) + (slice(None),) * (len(dataset_x.shape) - 1)]
+		minibatch_y = dataset_y[(minibatch_indices,) + (slice(None),) * (len(dataset_y.shape) - 1)]
 
-		minibatch_x = dataset_x[minibatch_indices, :]
-		minibatch_y = dataset_y[minibatch_indices]
-
+		#
+		#
+		#
 		function_stochastic_output = stochastic_function_output_debugger(minibatch_x, minibatch_y)
 		function_deterministic_output = deterministic_function_output_debugger(minibatch_x, minibatch_y)
 
@@ -113,17 +152,16 @@ def debug_function_output(network, dataset, **kwargs):
 		minibatch_outputs[minibatch_index, 0] = current_minibatch_size
 		minibatch_outputs[minibatch_index, 1:5] = function_stochastic_output
 		minibatch_outputs[minibatch_index, 5:9] = function_deterministic_output
+		#
+		#
+		#
 
 		minibatch_start_index += minibatch_size
 		minibatch_index += 1
-
-	assert numpy.sum(minibatch_outputs[:, 0]) == number_of_data, (numpy.sum(minibatch_outputs[:, 0]), number_of_data)
-
+	
 	if output_file != None:
 		numpy.save(output_file, minibatch_outputs)
-
-	dataset_outputs = numpy.sum(minibatch_outputs[:, 0][:, numpy.newaxis] * minibatch_outputs[:, 1:],
-	                            axis=0) / number_of_data
+	dataset_outputs = numpy.mean(minibatch_outputs[:, 0][:, numpy.newaxis] * minibatch_outputs[:, 1:], axis=0)
 
 	logger.debug("stochastic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
 	             (dataset_outputs[1], dataset_outputs[2], dataset_outputs[3], dataset_outputs[0] * 100))
@@ -134,7 +172,7 @@ def debug_function_output(network, dataset, **kwargs):
 	             (dataset_outputs[5], dataset_outputs[6], dataset_outputs[7], dataset_outputs[4] * 100))
 	print("debug: deterministic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
 	      (dataset_outputs[5], dataset_outputs[6], dataset_outputs[7], dataset_outputs[4] * 100))
-
+	'''
 
 def debug_rademacher_p_2_q_2(network, minibatch, rescale=False, **kwargs):
 	input_layer = Xregularization.find_input_layer(network)

@@ -108,8 +108,8 @@ def start_lenet(settings):
 		objective_functions=settings.objective,
 		update_function=settings.update,
 		learning_rate_policy=settings.learning_rate,
-		parameter_local_max_norm=settings.parameter_local_max_norm,
-		gradient_global_max_norm=settings.gradient_global_max_norm,
+		parameter_max_local_l2_norm=settings.parameter_local_max_norm,
+		gradient_max_global_l2_norm=settings.gradient_global_max_norm,
 		validation_interval=settings.validation_interval,
 	)
 
@@ -151,8 +151,8 @@ def resume_lenet(settings):
 		objective_functions=settings.objective,
 		update_function=settings.update,
 		learning_rate_policy=settings.learning_rate,
-		parameter_local_max_norm=settings.parameter_local_max_norm,
-		gradient_global_max_norm=settings.gradient_global_max_norm,
+		parameter_max_local_l2_norm=settings.parameter_local_max_norm,
+		gradient_max_global_l2_norm=settings.gradient_global_max_norm,
 		validation_interval=settings.validation_interval,
 	)
 
@@ -179,8 +179,8 @@ def start_lenetA(settings):
 		adaptable_learning_rate_policy=settings.adaptable_learning_rate,
 		# adaptable_update_interval=settings.adaptable_update_interval,
 		adaptable_training_mode=settings.adaptable_training_mode,
-		parameter_local_max_norm=settings.parameter_local_max_norm,
-		gradient_global_max_norm=settings.gradient_global_max_norm,
+		parameter_max_local_l2_norm=settings.parameter_local_max_norm,
+		gradient_max_global_l2_norm=settings.gradient_global_max_norm,
 		validation_interval=settings.validation_interval,
 	)
 
@@ -226,8 +226,8 @@ def resume_lenetA(settings):
 		adaptable_learning_rate_policy=settings.adaptable_learning_rate,
 		# adaptable_update_interval=settings.adaptable_update_interval,
 		adaptable_training_mode=settings.adaptable_training_mode,
-		parameter_local_max_norm=settings.parameter_local_max_norm,
-		gradient_global_max_norm=settings.gradient_global_max_norm,
+		parameter_max_local_l2_norm=settings.parameter_local_max_norm,
+		gradient_max_global_l2_norm=settings.gradient_global_max_norm,
 		validation_interval=settings.validation_interval,
 	)
 

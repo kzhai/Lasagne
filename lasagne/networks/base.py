@@ -88,8 +88,8 @@ class Network(object):
 		self.set_learning_rate_policy(learning_rate_policy)
 		self.__set_regularizers()
 
-		self.parameter_local_max_norm = parameter_local_max_norm
-		self.gradient_global_max_norm = gradient_global_max_norm
+		self.parameter_max_local_l2_norm = parameter_local_max_norm
+		self.gradient_max_global_l2_norm = gradient_global_max_norm
 
 	# self.set_max_norm_constraint(max_norm_constraint)
 
@@ -231,11 +231,11 @@ class Network(object):
 		self.learning_rate_policy_change_stack.append((self.epoch_index, self.learning_rate_policy))
 
 	def set_max_norm_constraint(self, max_norm_constraint):
-		self.parameter_local_max_norm = max_norm_constraint
-		self.max_norm_constraint_change_stack.append((self.epoch_index, self.parameter_local_max_norm))
+		self.parameter_max_local_l2_norm = max_norm_constraint
+		self.max_norm_constraint_change_stack.append((self.epoch_index, self.parameter_max_local_l2_norm))
 
 	def set_total_norm_constraint(self, total_norm_constraint):
-		self.gradient_global_max_norm = total_norm_constraint
+		self.gradient_max_global_l2_norm = total_norm_constraint
 
 	def __update_learning_rate(self):
 		self._learning_rate_variable.set_value(
@@ -263,16 +263,16 @@ class FeedForwardNetwork(Network):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 	             learning_rate_policy=[1e-3, Xpolicy.constant],
-	             parameter_local_max_norm=0,
-	             gradient_global_max_norm=0,
+	             parameter_max_local_l2_norm=0,
+	             gradient_max_global_l2_norm=0,
 	             validation_interval=-1,
 	             ):
 		super(FeedForwardNetwork, self).__init__(incoming,
 		                                         objective_functions,
 		                                         update_function,
 		                                         learning_rate_policy,
-		                                         parameter_local_max_norm,
-		                                         gradient_global_max_norm,
+		                                         parameter_max_local_l2_norm,
+		                                         gradient_max_global_l2_norm,
 		                                         )
 
 		self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
@@ -359,18 +359,16 @@ class FeedForwardNetwork(Network):
 		# Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
 		trainable_params = self.get_network_params(trainable=True)
 
-		if self.gradient_global_max_norm > 0:
+		if self.gradient_max_global_l2_norm > 0:
 			trainable_grads = theano.tensor.grad(stochastic_loss, trainable_params)
-			scaled_trainable_grads = updates.total_norm_constraint(trainable_grads, self.gradient_global_max_norm)
+			scaled_trainable_grads = updates.total_norm_constraint(trainable_grads, self.gradient_max_global_l2_norm)
 			trainable_params_nondeterministic_updates = self._update_function(scaled_trainable_grads, trainable_params,
-			                                                                  self._learning_rate_variable,
-			                                                                  momentum=0.95)
+			                                                                  self._learning_rate_variable)
 		else:
 			trainable_params_nondeterministic_updates = self._update_function(stochastic_loss, trainable_params,
-			                                                                  self._learning_rate_variable,
-			                                                                  momentum=0.95)
+			                                                                  self._learning_rate_variable)
 
-		if self.parameter_local_max_norm > 0:
+		if self.parameter_max_local_l2_norm > 0:
 			for param in self.get_network_params(trainable=True, regularizable=True):
 				ndim = param.ndim
 				if ndim == 2:  # DenseLayer
@@ -384,7 +382,7 @@ class FeedForwardNetwork(Network):
 				# raise ValueError("Unsupported tensor dimensionality {}.".format(ndim))
 				trainable_params_nondeterministic_updates[param] = updates.norm_constraint(
 					trainable_params_nondeterministic_updates[param],
-					self.parameter_local_max_norm,
+					self.parameter_max_local_l2_norm,
 					norm_axes=sum_over)
 
 		# Compile a function performing a training step on a mini-batch (by giving the updates dictionary) and returning the corresponding training train_loss:
@@ -482,7 +480,7 @@ class FeedForwardNetwork(Network):
 			# automatically handles the left-over data
 			minibatch_indices = data_indices[minibatch_start_index:minibatch_start_index + minibatch_size]
 
-			minibatch_x = train_dataset_x[(minibatch_indices,) + (slice(None),) * (len(train_dataset_y.shape) - 1)]
+			minibatch_x = train_dataset_x[(minibatch_indices,) + (slice(None),) * (len(train_dataset_x.shape) - 1)]
 			minibatch_y = train_dataset_y[(minibatch_indices,) + (slice(None),) * (len(train_dataset_y.shape) - 1)]
 
 			train_minibatch_function_output = self.train_minibatch((minibatch_x, minibatch_y))
@@ -542,16 +540,16 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 	             adaptable_training_mode="train_adaptables_networkwise",
 	             adaptable_training_delay=10,
 
-	             parameter_local_max_norm=0,
-	             gradient_global_max_norm=0,
+	             parameter_max_local_l2_norm=0,
+	             gradient_max_global_l2_norm=0,
 	             validation_interval=-1,
 	             ):
 		super(AdaptiveFeedForwardNetwork, self).__init__(incoming,
 		                                                 objective_functions,
 		                                                 update_function,
 		                                                 learning_rate_policy,
-		                                                 parameter_local_max_norm,
-		                                                 gradient_global_max_norm,
+		                                                 parameter_max_local_l2_norm,
+		                                                 gradient_max_global_l2_norm,
 		                                                 validation_interval,
 		                                                 )
 		self._adaptable_learning_rate_variable = theano.shared(value=numpy.array(1e-3).astype(theano.config.floatX),
@@ -919,8 +917,8 @@ class RecurrentNetwork(FeedForwardNetwork):
 	             learning_rate_policy=1e-3,
 	             # learning_rate_decay=None,
 
-	             parameter_local_max_norm=0,
-	             gradient_global_max_norm=0,
+	             parameter_max_local_l2_norm=0,
+	             gradient_max_global_l2_norm=0,
 
 	             normalize_embeddings=False,
 	             validation_interval=-1,
@@ -938,8 +936,8 @@ class RecurrentNetwork(FeedForwardNetwork):
 		                                       update_function,
 		                                       learning_rate_policy,
 		                                       # learning_rate_decay,
-		                                       parameter_local_max_norm,
-		                                       gradient_global_max_norm,
+		                                       parameter_max_local_l2_norm,
+		                                       gradient_max_global_l2_norm,
 		                                       validation_interval
 		                                       )
 
@@ -1025,7 +1023,7 @@ class AdaptiveRecurrentNetwork(RecurrentNetwork):
 	             # dropout_learning_rate_decay=None,
 	             dropout_rate_update_interval=0,
 
-	             parameter_local_max_norm=0,
+	             parameter_max_local_l2_norm=0,
 	             total_norm_constraint=0,
 	             fnormalize_embeddings=False,
 
@@ -1047,7 +1045,7 @@ class AdaptiveRecurrentNetwork(RecurrentNetwork):
 			learning_rate_policy,
 			# learning_rate_decay,
 
-			parameter_local_max_norm,
+			parameter_max_local_l2_norm,
 			total_norm_constraint,
 			normalize_embeddings,
 

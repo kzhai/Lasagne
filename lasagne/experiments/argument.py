@@ -113,10 +113,10 @@ def add_generic_options(model_parser):
 	model_parser.add_argument("--learning_rate", dest="learning_rate", action='store', default="1e-2",
 	                          help="learning policy [1e-2,constant]")
 
-	model_parser.add_argument("--gradient_global_max_norm", dest="gradient_global_max_norm", type=float, action='store',
-	                          default=0, help="global max norm of gradient constraint [0 - None]")
-	model_parser.add_argument("--parameter_local_max_norm", dest="parameter_local_max_norm", type=float, action='store',
-	                          default=0, help="local max norm of parameter constraint [0 - None]")
+	model_parser.add_argument("--gradient_max_global_l2_norm", dest="gradient_max_global_l2_norm", type=float,
+	                          action='store', default=0, help="max global l2 norm of gradient constraint [0 - None]")
+	model_parser.add_argument("--parameter_max_local_l2_norm", dest="parameter_max_local_l2_norm", type=float,
+	                          action='store', default=0, help="max local l2 norm of parameter constraint [0 - None]")
 
 	# generic argument set 5
 	model_parser.add_argument("--data_pipe", dest='data_pipe', action='store', default="load_features_labels",
@@ -155,8 +155,8 @@ def validate_generic_options(arguments):
 	#	arguments = validate_resume_arguments(arguments)
 
 	arguments.learning_rate = parse_parameter_policy(arguments.learning_rate)
-	assert arguments.parameter_local_max_norm >= 0
-	assert arguments.gradient_global_max_norm >= 0
+	assert arguments.parameter_max_local_l2_norm >= 0
+	assert arguments.gradient_max_global_l2_norm >= 0
 
 	# generic argument set data pipe
 	data_pipe = []
