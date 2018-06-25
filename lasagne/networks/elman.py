@@ -98,11 +98,11 @@ def ElmanNetworkFromSpecifications(
 	                                       input_size=vocabulary_dimension,
 	                                       output_size=embedding_dimension,
 	                                       W=init.GlorotNormal())
-	print_output_dimension("after embedding layer", neural_network, sequence_length, window_size)
+	#print_output_dimension("after embedding layer", neural_network, sequence_length, window_size)
 
 	neural_network = layers.ReshapeLayer(neural_network,
 	                                     (-1, sequence_length, window_size * embedding_dimension))
-	print_output_dimension("after window merge", neural_network, sequence_length, window_size)
+	#print_output_dimension("after window merge", neural_network, sequence_length, window_size)
 
 	previous_layer_dimension = layers.get_output_shape(neural_network)
 	activation_probability = layers.sample_activation_probability(previous_layer_dimension[1:],
@@ -112,7 +112,7 @@ def ElmanNetworkFromSpecifications(
 		                                                              dropout_layer_index])
 	neural_network = layer_activation_types[dropout_layer_index](neural_network,
 	                                                             activation_probability=activation_probability)
-	print_output_dimension("after embedding dropout", neural_network, sequence_length, window_size)
+	#print_output_dimension("after embedding dropout", neural_network, sequence_length, window_size)
 	dropout_layer_index += 1
 
 	#
@@ -148,22 +148,14 @@ def ElmanNetworkFromSpecifications(
 		if isinstance(layer_dimension, int):
 			if not isinstance(neural_network, layers.DenseLayer):
 				previous_layer_dimension = layers.get_output_shape(neural_network)
-				#if layer_index > last_rnn_layer_index:
-					#neural_network = layers.ReshapeLayer(neural_network, (-1, numpy.prod(previous_layer_dimension[1:])))
-				#else:
+				# if layer_index > last_rnn_layer_index:
+				# neural_network = layers.ReshapeLayer(neural_network, (-1, numpy.prod(previous_layer_dimension[1:])))
+				# else:
 				neural_network = layers.ReshapeLayer(neural_network, (-1, previous_layer_dimension[-1]))
 
-				print_output_dimension("after reshape (for dense layer)", neural_network, sequence_length, window_size)
+				#print_output_dimension("after reshape (for dense layer)", neural_network, sequence_length, window_size)
 
-			neural_network = layers.DenseLayer(neural_network,
-			                                   layer_dimension,
-			                                   W=init.GlorotUniform(
-				                                   gain=Xinit.GlorotUniformGain[layer_nonlinearity]),
-			                                   nonlinearity=layer_nonlinearity)
-
-			print_output_dimension("after dense layer %i" % layer_index, neural_network, sequence_length, window_size)
-
-			if dropout_layer_index>=len(layer_activation_types):
+			if dropout_layer_index >= len(layer_activation_types):
 				continue
 
 			previous_layer_dimension = layers.get_output_shape(neural_network)
@@ -176,15 +168,21 @@ def ElmanNetworkFromSpecifications(
 			                                                             activation_probability=activation_probability)
 			dropout_layer_index += 1
 
-			print_output_dimension("after dropout layer %i" % layer_index, neural_network, sequence_length, window_size)
+			#print_output_dimension("after dropout layer %i" % layer_index, neural_network, sequence_length, window_size)
 
+			neural_network = layers.DenseLayer(neural_network,
+			                                   layer_dimension,
+			                                   W=init.GlorotUniform(
+				                                   gain=Xinit.GlorotUniformGain[layer_nonlinearity]),
+			                                   nonlinearity=layer_nonlinearity)
+
+			#print_output_dimension("after dense layer %i" % layer_index, neural_network, sequence_length, window_size)
 		elif isinstance(layer_dimension, list):
 			if not isinstance(neural_network, recurrent_type):
 				previous_layer_dimension = layers.get_output_shape(neural_network)
 				neural_network = layers.ReshapeLayer(neural_network,
 				                                     (-1, sequence_length, previous_layer_dimension[-1]))
-				print_output_dimension("after reshape (for recurrent layer)", neural_network, sequence_length,
-				                       window_size)
+				#print_output_dimension("after reshape (for recurrent layer)", neural_network, sequence_length, window_size)
 
 			layer_dimension = layer_dimension[0]
 			layer_nonlinearity = layer_nonlinearity[0]
@@ -195,24 +193,48 @@ def ElmanNetworkFromSpecifications(
 				                                       # gradient_steps=self._gradient_steps,
 				                                       # grad_clipping=self._gradient_clipping,
 				                                       mask_input=input_mask_layer,
-				                                       #only_return_final=(layer_index == last_rnn_layer_index)
+				                                       # only_return_final=(layer_index == last_rnn_layer_index)
 				                                       )
 			elif recurrent_type == layers.recurrent.LSTMLayer:
+				'''
+				ingate=layers.Gate(W_in=init.Uniform(0.1), W_hid=init.Uniform(0.1), W_cell=init.Uniform(0.1), nonlinearity=layer_nonlinearity),
+				forgetgate=layers.Gate(W_in=init.Uniform(0.1), W_hid=init.Uniform(0.1), W_cell=init.Uniform(0.1), nonlinearity=layer_nonlinearity),
+				cell=layers.Gate(W_in=init.Uniform(0.1), W_hid=init.Uniform(0.1), W_cell=None, nonlinearity=layer_nonlinearity), 
+				outgate=layers.Gate(W_in=init.Uniform(0.1), W_hid=init.Uniform(0.1), W_cell=init.Uniform(0.1), b=init.Constant(0.), nonlinearity=layer_nonlinearity),
+				'''
 				neural_network = layers.LSTMLayer(neural_network,
 				                                  layer_dimension,
+				                                  # ingate=layers.Gate(),
+				                                  # forgetgate=layers.Gate(),
+				                                  # cell=layers.Gate(W_cell=None, nonlinearity=nonlinearities.tanh),
+				                                  # outgate=layers.Gate(),
 				                                  nonlinearity=layer_nonlinearity,
-				                                  # gradient_steps=self._gradient_steps,
-				                                  # grad_clipping=self._gradient_clipping,
+				                                  # cell_init=init.Constant(0.),
+				                                  # hid_init=init.Constant(0.),
+				                                  #
+				                                  backwards=False,
+				                                  learn_init=False,
+				                                  peepholes=False,
+				                                  gradient_steps=-1,
+				                                  grad_clipping=0,
+				                                  unroll_scan=False,
+				                                  precompute_input=False,
 				                                  mask_input=input_mask_layer,
-				                                  #only_return_final=(layer_index == last_rnn_layer_index)
+				                                  only_return_final=False,
+				                                  # only_return_final=(layer_index == last_rnn_layer_index)
 				                                  )
 
-			print_output_dimension("after recurrent layer %i" % layer_index, neural_network, sequence_length,
-			                       window_size)
+			#print_output_dimension("after recurrent layer %i" % layer_index, neural_network, sequence_length, window_size)
 		else:
 			logger.error("Unrecognized layer specifications...")
 			sys.stderr.serialize("Unrecognized layer specifications...\n")
 			sys.exit()
+
+	'''
+	previous_layer_dimension = layers.get_output_shape(neural_network)
+	neural_network = layers.ReshapeLayer(neural_network, (-1, sequence_length, previous_layer_dimension[-1]))
+	print_output_dimension("after reshape (for output)", neural_network, sequence_length, window_size)
+	'''
 
 	return neural_network
 
@@ -253,7 +275,7 @@ class DynamicElmanNetwork(networks.AdaptiveRecurrentNetwork):
 	             total_norm_constraint=0,
 	             normalize_embeddings=False,
 
-	             validation_interval=-1,
+	             #validation_interval=-1,
 	             ):
 		# input_shape = (None, sequence_length, window_size)
 		# input_mask_shape = (None, sequence_length)
@@ -275,7 +297,7 @@ class DynamicElmanNetwork(networks.AdaptiveRecurrentNetwork):
 			parameter_max_local_l2_norm,
 			total_norm_constraint,
 			normalize_embeddings,
-			validation_interval,
+			#validation_interval,
 
 			window_size,
 			position_offset,

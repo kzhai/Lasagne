@@ -6,7 +6,7 @@ import theano
 import theano.tensor as T
 
 from lasagne import Xregularization
-from lasagne import layers, updates
+from lasagne import layers, updates, regularization
 
 # from ..layers import DenseLayer, AdaptiveDropoutLayer
 
@@ -77,34 +77,21 @@ def debug_function_output(network, dataset, minibatch_size=20, output_file=None)
 	                                                                             network.gradient_max_global_l2_norm,
 	                                                                             return_norm=True)
 
-	'''
-	if network.parameter_max_local_l2_norm > 0:
-		for param in network.get_network_params(trainable=True, regularizable=True):
-			ndim = param.ndim
-			if ndim == 2:  # DenseLayer
-				sum_over = (0,)
-			elif ndim in [3, 4, 5]:  # Conv{1,2,3}DLayer
-				sum_over = tuple(range(1, ndim))
-			elif ndim == 6:  # LocallyConnected{2}DLayer
-				sum_over = tuple(range(1, ndim))
-			else:
-				continue
-			# raise ValueError("Unsupported tensor dimensionality {}.".format(ndim))
-			trainable_params_nondeterministic_updates[param] = updates.norm_constraint(
-				trainable_params_nondeterministic_updates[param],
-				network.parameter_max_local_l2_norm,
-				norm_axes=sum_over)
-	'''
+	param_norms = []
+	for param in network.get_network_params(trainable=True, regularizable=True):
+		print(param)
+		param_norms.append(regularization.l2(param))
 
 	stochastic_function_output_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
-		outputs=[stochastic_accuracy, stochastic_loss, stochastic_objective, gradient_global_norm],
+		outputs=[stochastic_accuracy, stochastic_loss, stochastic_objective, gradient_global_norm] + param_norms,
 		on_unused_input='raise'
 	)
 
 	deterministic_function_output_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
-		outputs=[deterministic_accuracy, deterministic_loss, deterministic_objective, gradient_global_norm],
+		outputs=[deterministic_accuracy, deterministic_loss, deterministic_objective,
+		         gradient_global_norm] + param_norms,
 		on_unused_input='raise'
 	)
 
@@ -173,6 +160,11 @@ def debug_function_output(network, dataset, minibatch_size=20, output_file=None)
 	print("debug: deterministic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
 	      (dataset_outputs[5], dataset_outputs[6], dataset_outputs[7], dataset_outputs[4] * 100))
 	'''
+
+def debug_l2_norm(network, settings=None, **kwargs):
+	for network_layer in network.get_network_layers():
+		for param in network_layer.get_params("trainable"):
+			print("debug: %s %s %s" % (type(network_layer), param.name, numpy.linalg.norm(param.eval(),2, axis=-1)))
 
 def debug_rademacher_p_2_q_2(network, minibatch, rescale=False, **kwargs):
 	input_layer = Xregularization.find_input_layer(network)
@@ -324,6 +316,9 @@ def snapshot_dense(network, settings=None, **kwargs):
 			                          "dense.%d.epoch.%d.npy" % (dense_layer_index, network.epoch_index))
 			numpy.save(dense_file, [layer_weight, layer_bias])
 		dense_layer_index += 1
+
+
+
 
 
 def snapshot_convolution(network, settings, **kwargs):

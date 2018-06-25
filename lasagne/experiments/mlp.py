@@ -172,7 +172,7 @@ def start_mlp(settings):
 		learning_rate_policy=settings.learning_rate,
 		parameter_max_local_l2_norm=settings.parameter_max_local_l2_norm,
 		gradient_max_global_l2_norm=settings.gradient_max_global_l2_norm,
-		validation_interval=settings.validation_interval,
+		#validation_interval=settings.validation_interval,
 	)
 	mlp = networks.MultiLayerPerceptronFromSpecifications(
 		network._input_layer,
@@ -199,7 +199,7 @@ def resume_mlp(settings):
 		learning_rate_policy=settings.learning_rate,
 		parameter_max_local_l2_norm=settings.parameter_max_local_l2_norm,
 		gradient_max_global_l2_norm=settings.gradient_max_global_l2_norm,
-		validation_interval=settings.validation_interval,
+		#validation_interval=settings.validation_interval,
 	)
 
 	model = pickle.load(open(settings.model_file, 'rb'))
@@ -227,7 +227,7 @@ def start_mlpA(settings):
 		adaptable_training_mode=settings.adaptable_training_mode,
 		parameter_max_local_l2_norm=settings.parameter_max_local_l2_norm,
 		gradient_max_global_l2_norm=settings.gradient_max_global_l2_norm,
-		validation_interval=settings.validation_interval,
+		#validation_interval=settings.validation_interval,
 	)
 
 	mlp = networks.AdaptedMultiLayerPerceptronFromSpecifications(
@@ -258,7 +258,7 @@ def resume_mlpA(settings):
 		adaptable_training_mode=settings.adaptable_training_mode,
 		parameter_max_local_l2_norm=settings.parameter_max_local_l2_norm,
 		gradient_max_global_l2_norm=settings.gradient_max_global_l2_norm,
-		validation_interval=settings.validation_interval,
+		#validation_interval=settings.validation_interval,
 	)
 
 	model = pickle.load(open(settings.model_file, 'rb'))

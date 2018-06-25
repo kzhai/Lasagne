@@ -248,9 +248,8 @@ def add_discriminative_options(model_parser):
 	# model argument set
 	model_parser.add_argument("--validation_data", dest="validation_data", type=int, action='store', default=0,
 	                          help="validation data [0 - no validation data used], -1 - load validate.(feature|label).npy for validation]")
-	model_parser.add_argument("--validation_interval", dest="validation_interval", type=int, action='store',
-	                          default=1000,
-	                          help="validation interval in number of mini-batches [1000]")
+	#model_parser.add_argument("--validation_interval", dest="validation_interval", type=int, action='store',
+	                          #default=1000, help="validation interval in number of mini-batches [1000]")
 
 	return model_parser
 
@@ -260,7 +259,7 @@ def validate_discriminative_options(arguments):
 
 	# model argument set
 	assert (arguments.validation_data >= -1)
-	assert (arguments.validation_interval > 0)
+	#assert (arguments.validation_interval > 0)
 
 	return arguments
 

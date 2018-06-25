@@ -175,13 +175,16 @@ The network starts with an embedding layer of 200 dimension.
 	python -um lasagne.experiments.elman start-elman \
 		--input_directory=./ptb_20x1x1/ \
 		--output_directory=./ptb_20x1x1/ \
-		--minibatch_size=100 \
+		--update=sgd \
+		--minibatch_size=20 \
 		--number_of_epochs=15 \
+		--sequence_length=20 \
 		--embedding_dimension=200 \
-		--learning_rate=1.0,exponential_decay,0.5,4 \
+		--learning_rate=1.0,exponential_decay,0.5,1,4 \
 		--layer_dimensions=[200*200]*10000 \
 		--layer_nonlinearities=[tanh*tanh]*softmax \
 		--gradient_max_global_l2_norm=5 \
-		--debug=subsample_dataset
-	
+		--debug=subsample_dataset 
+
 Under any circumstances, you may also get help information and usage hints by adding `-h` or `--help` option.
+ 

@@ -44,8 +44,8 @@ class Network(object):
 	             objective_functions=objectives.categorical_crossentropy,
 	             update_function=updates.nesterov_momentum,
 	             learning_rate_policy=[1e-3, Xpolicy.constant],
-	             parameter_local_max_norm=0,
-	             gradient_global_max_norm=0,
+	             max_parameter_local_l2_norm=0,
+	             max_gradient_global_l2_norm=0,
 	             ):
 		if isinstance(incoming, tuple):
 			self._input_shape = incoming
@@ -88,10 +88,9 @@ class Network(object):
 		self.set_learning_rate_policy(learning_rate_policy)
 		self.__set_regularizers()
 
-		self.parameter_max_local_l2_norm = parameter_local_max_norm
-		self.gradient_max_global_l2_norm = gradient_global_max_norm
-
-	# self.set_max_norm_constraint(max_norm_constraint)
+		# self.set_max_norm_constraint(max_norm_constraint)
+		self.max_parameter_local_l2_norm = max_parameter_local_l2_norm
+		self.max_gradient_global_l2_norm = max_gradient_global_l2_norm
 
 	def get_network_input(self, **kwargs):
 		return layers.get_output(self._input_layer, **kwargs)
@@ -231,15 +230,19 @@ class Network(object):
 		self.learning_rate_policy_change_stack.append((self.epoch_index, self.learning_rate_policy))
 
 	def set_max_norm_constraint(self, max_norm_constraint):
-		self.parameter_max_local_l2_norm = max_norm_constraint
-		self.max_norm_constraint_change_stack.append((self.epoch_index, self.parameter_max_local_l2_norm))
+		self.max_parameter_local_l2_norm = max_norm_constraint
+		self.max_norm_constraint_change_stack.append((self.epoch_index, self.max_parameter_local_l2_norm))
 
 	def set_total_norm_constraint(self, total_norm_constraint):
-		self.gradient_max_global_l2_norm = total_norm_constraint
+		self.max_gradient_global_l2_norm = total_norm_constraint
 
 	def __update_learning_rate(self):
 		self._learning_rate_variable.set_value(
 			adjust_parameter_according_to_policy(self.learning_rate_policy, self.epoch_index))
+
+		logger.info(
+			"learning rate: %g" % (adjust_parameter_according_to_policy(self.learning_rate_policy, self.epoch_index)))
+		print("learning rate: %g" % (adjust_parameter_according_to_policy(self.learning_rate_policy, self.epoch_index)))
 
 	def __update_regularizer_weight(self):
 		if not hasattr(self, "_regularizer_lambda_policy"):
@@ -265,7 +268,7 @@ class FeedForwardNetwork(Network):
 	             learning_rate_policy=[1e-3, Xpolicy.constant],
 	             parameter_max_local_l2_norm=0,
 	             gradient_max_global_l2_norm=0,
-	             validation_interval=-1,
+	             #validation_interval=-1,
 	             ):
 		super(FeedForwardNetwork, self).__init__(incoming,
 		                                         objective_functions,
@@ -277,7 +280,7 @@ class FeedForwardNetwork(Network):
 
 		self._output_variable = theano.tensor.ivector()  # the labels are presented as 1D vector of [int] labels
 
-		self.validation_interval = validation_interval
+		#self.validation_interval = validation_interval
 		self.best_epoch_index = 0
 		self.best_minibatch_index = 0
 		self.best_validate_accuracy = 0
@@ -293,7 +296,8 @@ class FeedForwardNetwork(Network):
 		else:
 			# TODO: expand to multiple objective functions
 			temp_objective_function = getattr(objectives, objective_functions)
-			objective = theano.tensor.mean(temp_objective_function(output, label), dtype=theano.config.floatX)
+			objective = theano.tensor.mean(temp_objective_function(output, label),
+			                               dtype=theano.config.floatX)
 		return objective
 
 	def get_regularizers(self, regularizer_functions=None, **kwargs):
@@ -359,16 +363,17 @@ class FeedForwardNetwork(Network):
 		# Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
 		trainable_params = self.get_network_params(trainable=True)
 
-		if self.gradient_max_global_l2_norm > 0:
+		if self.max_gradient_global_l2_norm > 0:
 			trainable_grads = theano.tensor.grad(stochastic_loss, trainable_params)
-			scaled_trainable_grads = updates.total_norm_constraint(trainable_grads, self.gradient_max_global_l2_norm)
-			trainable_params_nondeterministic_updates = self._update_function(scaled_trainable_grads, trainable_params,
-			                                                                  self._learning_rate_variable)
+			scaled_trainable_grads = updates.total_norm_constraint(trainable_grads, self.max_gradient_global_l2_norm)
+			trainable_params_stochastic_updates = self._update_function(scaled_trainable_grads, trainable_params,
+			                                                            self._learning_rate_variable)
+		# print("check...", self.max_gradient_global_l2_norm)
 		else:
-			trainable_params_nondeterministic_updates = self._update_function(stochastic_loss, trainable_params,
-			                                                                  self._learning_rate_variable)
+			trainable_params_stochastic_updates = self._update_function(stochastic_loss, trainable_params,
+			                                                            self._learning_rate_variable)
 
-		if self.parameter_max_local_l2_norm > 0:
+		if self.max_parameter_local_l2_norm > 0:
 			for param in self.get_network_params(trainable=True, regularizable=True):
 				ndim = param.ndim
 				if ndim == 2:  # DenseLayer
@@ -380,17 +385,17 @@ class FeedForwardNetwork(Network):
 				else:
 					continue
 				# raise ValueError("Unsupported tensor dimensionality {}.".format(ndim))
-				trainable_params_nondeterministic_updates[param] = updates.norm_constraint(
-					trainable_params_nondeterministic_updates[param],
-					self.parameter_max_local_l2_norm,
+				trainable_params_stochastic_updates[param] = updates.norm_constraint(
+					trainable_params_stochastic_updates[param],
+					self.max_parameter_local_l2_norm,
 					norm_axes=sum_over)
 
 		# Compile a function performing a training step on a mini-batch (by giving the updates dictionary) and returning the corresponding training train_loss:
-		self._function_train_trainable_params_nondeterministic = theano.function(
+		self._function_train_trainable_params_stochastic = theano.function(
 			# inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
 			inputs=[self._input_variable, self._output_variable],
 			outputs=[stochastic_loss, stochastic_objective, stochastic_accuracy],
-			updates=trainable_params_nondeterministic_updates,
+			updates=trainable_params_stochastic_updates,
 			on_unused_input='warn'
 		)
 
@@ -512,8 +517,8 @@ class FeedForwardNetwork(Network):
 		minibatch_x, minibatch_y = minibatch
 
 		minibatch_running_time = timeit.default_timer()
-		train_trainable_params_function_outputs = self._function_train_trainable_params_nondeterministic(minibatch_x,
-		                                                                                                 minibatch_y)
+		train_trainable_params_function_outputs = self._function_train_trainable_params_stochastic(minibatch_x,
+		                                                                                           minibatch_y)
 		minibatch_average_train_loss, minibatch_average_train_objective, minibatch_average_train_accuracy = train_trainable_params_function_outputs
 
 		minibatch_running_time = timeit.default_timer() - minibatch_running_time
@@ -542,7 +547,7 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 
 	             parameter_max_local_l2_norm=0,
 	             gradient_max_global_l2_norm=0,
-	             validation_interval=-1,
+	             #validation_interval=-1,
 	             ):
 		super(AdaptiveFeedForwardNetwork, self).__init__(incoming,
 		                                                 objective_functions,
@@ -550,7 +555,7 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 		                                                 learning_rate_policy,
 		                                                 parameter_max_local_l2_norm,
 		                                                 gradient_max_global_l2_norm,
-		                                                 validation_interval,
+		                                                 #validation_interval,
 		                                                 )
 		self._adaptable_learning_rate_variable = theano.shared(value=numpy.array(1e-3).astype(theano.config.floatX),
 		                                                       name="adaptable_learning_rate")
@@ -897,8 +902,9 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 			self.adaptable_training_mode(train_dataset, minibatch_size)
 			epoch_running_time_temp = timeit.default_timer() - epoch_running_time_temp
 
+		# return epoch_running_time
 
-# return epoch_running_time
+		return
 
 
 #
@@ -921,7 +927,7 @@ class RecurrentNetwork(FeedForwardNetwork):
 	             gradient_max_global_l2_norm=0,
 
 	             normalize_embeddings=False,
-	             validation_interval=-1,
+	             #validation_interval=-1,
 
 	             sequence_length=1,
 	             window_size=1,
@@ -938,7 +944,7 @@ class RecurrentNetwork(FeedForwardNetwork):
 		                                       # learning_rate_decay,
 		                                       parameter_max_local_l2_norm,
 		                                       gradient_max_global_l2_norm,
-		                                       validation_interval
+		                                       #validation_interval
 		                                       )
 
 		self.normalize_embeddings = normalize_embeddings
@@ -961,6 +967,24 @@ class RecurrentNetwork(FeedForwardNetwork):
 		self._sequence_length = sequence_length
 		self._window_size = window_size
 		self._position_offset = position_offset
+
+	def get_objectives(self, label, objective_functions=None, threshold=1e-9, **kwargs):
+		output = self.get_output(**kwargs)
+		# output = theano.tensor.clip(output, threshold, 1.0 - threshold)
+		if objective_functions is None:
+			# objective = theano.tensor.mean(self._objective_functions(output, label), dtype=theano.config.floatX)
+			objective = 0
+			for objective_function, weight in list(self._objective_functions.items()):
+				objective += weight * theano.tensor.mean(
+					theano.tensor.reshape(objective_function(output, label), (-1, self._sequence_length)), axis=0,
+					dtype=theano.config.floatX)
+		else:
+			# TODO: expand to multiple objective functions
+			temp_objective_function = getattr(objectives, objective_functions)
+			objective = theano.tensor.mean(
+				theano.tensor.reshape(temp_objective_function(output, label), (-1, self._sequence_length)), axis=0,
+				dtype=theano.config.floatX)
+		return theano.tensor.sum(objective)
 
 	def parse_sequence(self, dataset):
 		if dataset is None:
@@ -986,12 +1010,66 @@ class RecurrentNetwork(FeedForwardNetwork):
 	def test(self, test_dataset):
 		test_dataset_x, test_dataset_y = test_dataset
 		test_dataset_y = numpy.reshape(test_dataset_y, (numpy.prod(test_dataset_y.shape)))
-		return super(RecurrentNetwork, self).test((test_dataset_x, test_dataset_y))
+
+		test_running_time = timeit.default_timer()
+		test_function_outputs = self._function_test(test_dataset_x, test_dataset_y)
+		average_test_loss, average_test_objective, average_test_accuracy = test_function_outputs
+		test_running_time = timeit.default_timer() - test_running_time
+
+		average_test_loss /= self._sequence_length
+		average_test_objective /= self._sequence_length
+		average_test_accuracy /= self._sequence_length
+
+		logger.info(
+			'\t\ttest: epoch %i, minibatch %i, duration %fs, loss %f, regularizer %f, accuracy %f%%' % (
+				self.epoch_index, self.minibatch_index, test_running_time, average_test_objective,
+				average_test_loss - average_test_objective, average_test_accuracy * 100))
+		print(
+			'\t\ttest: epoch %i, minibatch %i, duration %fs, objective %f = loss %f + regularizer %f, accuracy %f%%' % (
+				self.epoch_index, self.minibatch_index, test_running_time, average_test_loss, average_test_objective,
+				average_test_loss - average_test_objective, average_test_accuracy * 100))
 
 	def validate(self, validate_dataset, best_model_file_path=None):
 		validate_dataset_x, validate_dataset_y = validate_dataset
 		validate_dataset_y = numpy.reshape(validate_dataset_y, (numpy.prod(validate_dataset_y.shape)))
-		return super(RecurrentNetwork, self).validate((validate_dataset_x, validate_dataset_y))
+
+		validate_running_time = timeit.default_timer()
+		validate_function_outputs = self._function_test(validate_dataset_x, validate_dataset_y)
+		average_validate_loss, average_validate_objective, average_validate_accuracy = validate_function_outputs
+		validate_running_time = timeit.default_timer() - validate_running_time
+
+		average_validate_loss /= self._sequence_length
+		average_validate_objective /= self._sequence_length
+		average_validate_accuracy /= self._sequence_length
+
+		logger.info('\tvalidate: epoch %i, minibatch %i, duration %fs, loss %f, regularizer %f, accuracy %f%%' % (
+			self.epoch_index, self.minibatch_index, validate_running_time, average_validate_objective,
+			average_validate_loss - average_validate_objective, average_validate_accuracy * 100))
+		print(
+			'\tvalidate: epoch %i, minibatch %i, duration %fs, objective %f = loss %f + regularizer %f, accuracy %f%%' % (
+				self.epoch_index, self.minibatch_index, validate_running_time, average_validate_loss,
+				average_validate_objective, average_validate_loss - average_validate_objective,
+				average_validate_accuracy * 100))
+
+		# if we got the best validation score until now
+		if average_validate_accuracy > self.best_validate_accuracy:
+			self.best_epoch_index = self.epoch_index
+			self.best_minibatch_index = self.minibatch_index
+			self.best_validate_accuracy = average_validate_accuracy
+			# self.best_validate_model = copy.deepcopy(self)
+
+			if best_model_file_path is not None:
+				# save the best model
+				# cPickle.dump(self, open(best_model_file_path, 'wb'), protocol=cPickle.HIGHEST_PROTOCOL)
+				logger.info('\tbest model found: epoch %i, minibatch %i, loss %f, regularizer %f, accuracy %f%%' % (
+					self.epoch_index, self.minibatch_index, average_validate_objective,
+					average_validate_loss - average_validate_objective, average_validate_accuracy * 100))
+
+	def train_epoch(self, train_dataset, minibatch_size):
+		epoch_running_time, epoch_average_train_loss, epoch_average_train_objective, epoch_average_train_accuracy = super(
+			RecurrentNetwork, self).train_epoch(train_dataset, minibatch_size)
+
+		return epoch_running_time, epoch_average_train_loss / self._sequence_length, epoch_average_train_objective / self._sequence_length, epoch_average_train_accuracy / self._sequence_length
 
 	def train_minibatch(self, minibatch):
 		minibatch_x, minibatch_y = minibatch
@@ -1029,7 +1107,7 @@ class AdaptiveRecurrentNetwork(RecurrentNetwork):
 
 	             # learning_rate_decay_style=None,
 	             # learning_rate_decay_parameter=0,
-	             validation_interval=-1,
+	             #validation_interval=-1,
 
 	             window_size=1,
 	             position_offset=0,
@@ -1049,7 +1127,7 @@ class AdaptiveRecurrentNetwork(RecurrentNetwork):
 			total_norm_constraint,
 			normalize_embeddings,
 
-			validation_interval,
+			#validation_interval,
 
 			window_size,
 			position_offset,

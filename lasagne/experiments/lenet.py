@@ -110,7 +110,7 @@ def start_lenet(settings):
 		learning_rate_policy=settings.learning_rate,
 		parameter_max_local_l2_norm=settings.parameter_local_max_norm,
 		gradient_max_global_l2_norm=settings.gradient_global_max_norm,
-		validation_interval=settings.validation_interval,
+		#validation_interval=settings.validation_interval,
 	)
 
 	lenet = networks.LeNetFromSpecifications(
@@ -153,7 +153,7 @@ def resume_lenet(settings):
 		learning_rate_policy=settings.learning_rate,
 		parameter_max_local_l2_norm=settings.parameter_local_max_norm,
 		gradient_max_global_l2_norm=settings.gradient_global_max_norm,
-		validation_interval=settings.validation_interval,
+		#validation_interval=settings.validation_interval,
 	)
 
 	model = pickle.load(open(settings.model_file, 'rb'))
@@ -181,7 +181,7 @@ def start_lenetA(settings):
 		adaptable_training_mode=settings.adaptable_training_mode,
 		parameter_max_local_l2_norm=settings.parameter_local_max_norm,
 		gradient_max_global_l2_norm=settings.gradient_global_max_norm,
-		validation_interval=settings.validation_interval,
+		#validation_interval=settings.validation_interval,
 	)
 
 	lenet = networks.AdaptiveLeNetFromSpecifications(
@@ -228,7 +228,7 @@ def resume_lenetA(settings):
 		adaptable_training_mode=settings.adaptable_training_mode,
 		parameter_max_local_l2_norm=settings.parameter_local_max_norm,
 		gradient_max_global_l2_norm=settings.gradient_global_max_norm,
-		validation_interval=settings.validation_interval,
+		#validation_interval=settings.validation_interval,
 	)
 
 	model = pickle.load(open(settings.model_file, 'rb'))

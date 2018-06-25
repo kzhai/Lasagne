@@ -29,8 +29,8 @@ def add_elman_options(model_parser):
 	                          help="window size [1] for local aggregation or transformation")
 	model_parser.add_argument("--position_offset", dest="position_offset", action='store', default=-1, type=int,
 	                          help="position offset of current word in window [-1=window_size/2]")
-	model_parser.add_argument("--sequence_length", dest="sequence_length", action='store', default=10, type=int,
-	                          help="longest sequnece length for back propagation steps [10]")
+	model_parser.add_argument("--sequence_length", dest="sequence_length", action='store', default=-1, type=int,
+	                          help="longest sequnece length for back propagation steps [-1]")
 
 	# model argument set 3
 	model_parser.add_argument("--embedding_dimension", dest="embedding_dimension", action='store', default=-1, type=int,
@@ -240,8 +240,8 @@ def start_elman(settings):
 		parameter_max_local_l2_norm=settings.parameter_max_local_l2_norm,
 		gradient_max_global_l2_norm=settings.gradient_max_global_l2_norm,
 
-		normalize_embeddings=False,
-		validation_interval=settings.validation_interval,
+		normalize_embeddings=settings.normalize_embeddings,
+		#validation_interval=settings.validation_interval,
 
 		sequence_length=settings.sequence_length,
 		window_size=settings.window_size,

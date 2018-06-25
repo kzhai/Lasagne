@@ -238,7 +238,6 @@ def _train_model(network, settings, datasets):
 	if debug.subsample_dataset in settings.debug:
 		train_dataset, validate_dataset, test_dataset = debug.subsample_dataset(train_dataset, validate_dataset,
 		                                                                        test_dataset)
-
 	'''
 	if dataset_preprocessing_functions is not None:
 		train_dataset = dataset_preprocessing_functions(train_dataset)
@@ -288,6 +287,8 @@ def _train_model(network, settings, datasets):
 			                                     "function_outputs_train.epoch_%d.npy" % (network.epoch_index))
 			debug.debug_function_output(network, train_dataset, minibatch_size=settings.minibatch_size,
 			                            output_file=function_outputs_file)
+		if debug.debug_l2_norm in settings.debug:
+			debug.debug_l2_norm(network, settings)
 		# debugger.debug_function_output(network, test_dataset)
 
 		network.train(train_dataset, settings.minibatch_size)
