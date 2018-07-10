@@ -13,8 +13,8 @@ __all__ = [
 	"validate_dense_arguments",
 	"add_dropout_options",
 	"validate_dropout_arguments",
-	#"add_dropout_init_options",
-	#"validate_dropout_init_arguments",
+	# "add_dropout_init_options",
+	# "validate_dropout_init_arguments",
 ]
 
 
@@ -127,8 +127,9 @@ def validate_dropout_arguments(arguments, number_of_layers):
 		assert len(layer_activation_types) == number_of_layers
 	assert layer_activation_types[0] not in {"FastDropoutLayer", "VariationalDropoutTypeBLayer"}
 	for layer_activation_type_index in range(len(layer_activation_types)):
-		if layer_activation_types[layer_activation_type_index] in {"BernoulliDropoutLayer", "GaussianDropoutLayer",
-		                                                           "FastDropoutLayer"}:
+		if layer_activation_types[layer_activation_type_index] in {"BernoulliDropoutLayer",
+		                                                           "GaussianDropoutSrivastavaLayer",
+		                                                           "GaussianDropoutWangLayer", "FastDropoutLayer"}:
 			pass
 		elif layer_activation_types[layer_activation_type_index] in {"VariationalDropoutLayer",
 		                                                             "VariationalDropoutTypeALayer",
@@ -172,7 +173,7 @@ def start_mlp(settings):
 		learning_rate_policy=settings.learning_rate,
 		parameter_max_local_l2_norm=settings.parameter_max_local_l2_norm,
 		gradient_max_global_l2_norm=settings.gradient_max_global_l2_norm,
-		#validation_interval=settings.validation_interval,
+		# validation_interval=settings.validation_interval,
 	)
 	mlp = networks.MultiLayerPerceptronFromSpecifications(
 		network._input_layer,
@@ -199,7 +200,7 @@ def resume_mlp(settings):
 		learning_rate_policy=settings.learning_rate,
 		parameter_max_local_l2_norm=settings.parameter_max_local_l2_norm,
 		gradient_max_global_l2_norm=settings.gradient_max_global_l2_norm,
-		#validation_interval=settings.validation_interval,
+		# validation_interval=settings.validation_interval,
 	)
 
 	model = pickle.load(open(settings.model_file, 'rb'))
@@ -227,7 +228,7 @@ def start_mlpA(settings):
 		adaptable_training_mode=settings.adaptable_training_mode,
 		parameter_max_local_l2_norm=settings.parameter_max_local_l2_norm,
 		gradient_max_global_l2_norm=settings.gradient_max_global_l2_norm,
-		#validation_interval=settings.validation_interval,
+		# validation_interval=settings.validation_interval,
 	)
 
 	mlp = networks.AdaptedMultiLayerPerceptronFromSpecifications(
@@ -258,7 +259,7 @@ def resume_mlpA(settings):
 		adaptable_training_mode=settings.adaptable_training_mode,
 		parameter_max_local_l2_norm=settings.parameter_max_local_l2_norm,
 		gradient_max_global_l2_norm=settings.gradient_max_global_l2_norm,
-		#validation_interval=settings.validation_interval,
+		# validation_interval=settings.validation_interval,
 	)
 
 	model = pickle.load(open(settings.model_file, 'rb'))
@@ -328,7 +329,7 @@ def main():
 	elif arguments.run_model == "start-mlpA":
 		arguments = validate_discriminative_options(arguments)
 		arguments, number_of_layers = validate_dense_arguments(arguments)
-		#number_of_layers = len(arguments.dense_dimensions)
+		# number_of_layers = len(arguments.dense_dimensions)
 		arguments = validate_dropout_arguments(arguments, number_of_layers)
 		arguments = validate_adaptive_options(arguments)
 

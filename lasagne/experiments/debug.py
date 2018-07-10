@@ -161,10 +161,12 @@ def debug_function_output(network, dataset, minibatch_size=20, output_file=None)
 	      (dataset_outputs[5], dataset_outputs[6], dataset_outputs[7], dataset_outputs[4] * 100))
 	'''
 
+
 def debug_l2_norm(network, settings=None, **kwargs):
 	for network_layer in network.get_network_layers():
 		for param in network_layer.get_params("trainable"):
-			print("debug: %s %s %s" % (type(network_layer), param.name, numpy.linalg.norm(param.eval(),2, axis=-1)))
+			print("debug: %s %s %s" % (type(network_layer), param.name, numpy.linalg.norm(param.eval(), 2, axis=-1)))
+
 
 def debug_rademacher_p_2_q_2(network, minibatch, rescale=False, **kwargs):
 	input_layer = Xregularization.find_input_layer(network)
@@ -316,9 +318,6 @@ def snapshot_dense(network, settings=None, **kwargs):
 			                          "dense.%d.epoch.%d.npy" % (dense_layer_index, network.epoch_index))
 			numpy.save(dense_file, [layer_weight, layer_bias])
 		dense_layer_index += 1
-
-
-
 
 
 def snapshot_convolution(network, settings, **kwargs):

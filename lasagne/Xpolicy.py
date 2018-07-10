@@ -1,3 +1,4 @@
+
 import numpy
 import numpy.random
 import theano
@@ -143,7 +144,7 @@ def plot_learning_rate(x, y, output_file_path=None):
 	plt.plot(x, y, 'o-')
 	plt.title('Learning Rate')
 	plt.ylabel('Learning rate')
-	#ax.set_ylim(0, 0.1)
+	# ax.set_ylim(0, 0.1)
 
 	if output_file_path is None:
 		plt.show()
@@ -156,10 +157,12 @@ def main():
 	# learning_rate = [natural_exp_decay(1, x, 1, 1000) for x in iteration]
 	# print numpy.asarray(iteration)
 	# print numpy.asarray(learning_rate)
-	#learning_rate = [logarithmic_growth(0.01, x, growth_steps=100, growth_inertia=100) for x in iteration]
-	learning_rate = [inverse_time_decay(0.01, global_step=x, decay_steps=1, decay_rate=1, decay_delay=0, decay_power=1) for x in iteration]
-	plot_learning_rate(numpy.asarray(iteration), numpy.asarray(learning_rate))
+	# learning_rate = [logarithmic_growth(0.01, x, growth_steps=100, growth_inertia=100) for x in iteration]
+	# learning_rate = [inverse_time_decay(0.01, global_step=x, decay_steps=1, decay_rate=1, decay_delay=0, decay_power=1) for x in iteration]
+	# plot_learning_rate(numpy.asarray(iteration), numpy.asarray(learning_rate))
 
+	learning_rate = [exponential_decay(1.0, x, 1, 0.5, 4) for x in iteration]
+	print(learning_rate)
 
 if __name__ == '__main__':
 	main()

@@ -180,11 +180,16 @@ The network starts with an embedding layer of 200 dimension.
 		--number_of_epochs=15 \
 		--sequence_length=20 \
 		--embedding_dimension=200 \
-		--learning_rate=1.0,exponential_decay,0.5,1,4 \
+		--learning_rate=1.0,exponential_decay,1,0.5,4 \
 		--layer_dimensions=[200*200]*10000 \
 		--layer_nonlinearities=[tanh*tanh]*softmax \
 		--gradient_max_global_l2_norm=5 \
 		--debug=subsample_dataset 
+		
+		
+python3 -um lasagne.experiments.elman start-elmanA --input_directory=../PyANN/input/ptb_sequence\=20_window\=1_offset\=1/ --output_direct
+ory=../PyANN/output/ptb/ --update=sgd --minibatch_size=20 --number_of_epochs=15 --sequence_length=20 --embedding_dimension=100 --learning_rate=1.0,exponential_decay,1,0.5,4 --layer_dimensions=[200*
+200]*10000 --layer_nonlinearities=[tanh*tanh]*softmax --gradient_max_global_l2_norm=5 --debug=subsample_dataset --layer_activation_types=AdaptiveDropoutLayer --layer_activation_parameters=1 --regul
+arizer=rademacher:1e-4 --adaptable_learning_rate=1e-3		
 
 Under any circumstances, you may also get help information and usage hints by adding `-h` or `--help` option.
- 

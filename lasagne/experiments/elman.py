@@ -279,6 +279,64 @@ def start_elman(settings):
 
 	start_training(network, settings)
 
+def start_elmanA(settings):
+	# settings = validate_config(settings)
+
+	# input_shape = (None, settings.sequence_length, settings.window_size)
+	input_shape = (None, settings.sequence_length)
+	# input_layer = layers.InputLayer(shape=input_shape, input_var=theano.tensor.itensor3())
+	input_layer = layers.InputLayer(shape=input_shape, input_var=theano.tensor.imatrix())
+
+	# input_mask_shape = (None, settings.sequence_length)
+	# input_mask_layer = layers.InputLayer(shape=input_mask_shape, input_var=theano.tensor.imatrix())
+
+	network = networks.AdaptiveRecurrentNetwork(
+		incoming=input_layer,
+		# incoming_mask=input_mask_layer,
+
+		objective_functions=settings.objective,
+		update_function=settings.update,
+		learning_rate_policy=settings.learning_rate,
+
+		adaptable_learning_rate_policy=settings.adaptable_learning_rate,
+		# adaptable_update_interval=settings.adaptable_update_interval,
+		adaptable_training_mode=settings.adaptable_training_mode,
+
+		parameter_max_local_l2_norm=settings.parameter_max_local_l2_norm,
+		gradient_max_global_l2_norm=settings.gradient_max_global_l2_norm,
+
+		normalize_embeddings=settings.normalize_embeddings,
+		#validation_interval=settings.validation_interval,
+
+		sequence_length=settings.sequence_length,
+		window_size=settings.window_size,
+		position_offset=settings.position_offset,
+	)
+
+	elman = networks.ElmanNetworkFromSpecifications(
+		input_layer=network._input_layer,
+
+		vocabulary_dimension=settings.vocabulary_dimension,
+		embedding_dimension=settings.embedding_dimension,
+		sequence_length=settings.sequence_length,
+
+		layer_dimensions=settings.layer_dimensions,
+		layer_nonlinearities=settings.layer_nonlinearities,
+
+		recurrent_type=settings.recurrent_type,
+
+		layer_activation_types=settings.layer_activation_types,
+		layer_activation_parameters=settings.layer_activation_parameters,
+		layer_activation_styles=settings.layer_activation_styles,
+
+		input_mask_layer=None,
+		window_size=settings.window_size,
+	)
+
+	network.set_network(elman)
+	network.set_regularizers(settings.regularizer)
+
+	start_training(network, settings)
 
 #
 #
@@ -344,7 +402,7 @@ def main():
 		arguments = validate_dropout_arguments(arguments, number_of_dense_layers)
 		arguments = validate_adaptive_options(arguments)
 
-	# start_elmanA(arguments)
+		start_elmanA(arguments)
 	elif arguments.run_model == "resume-elmanA":
 		arguments = validate_discriminative_options(arguments)
 		arguments = validate_resume_options(arguments)

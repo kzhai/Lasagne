@@ -110,7 +110,7 @@ def split_train_data_to_cross_validate(input_directory, number_of_folds=5, outpu
 
 
 def validate_config(settings):
-	#test_dataset = load_features_labels(settings.input_directory, dataset="test")
+	# test_dataset = load_features_labels(settings.input_directory, dataset="test")
 	dataset_loading_functions = settings.data_pipe
 	input_directory = settings.input_directory
 	test_dataset = dataset_loading_functions[0](input_directory, dataset="test")
