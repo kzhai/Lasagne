@@ -60,6 +60,7 @@ def display_architecture(network, **kwargs):
 
 
 def debug_function_output(network, dataset, minibatch_size=20, output_file=None):
+	'''
 	# Create a train_loss expression for training, i.e., a scalar objective we want to minimize (for our multi-class problem, it is the cross-entropy train_loss):
 	stochastic_loss = network.get_loss(network._output_variable)
 	stochastic_objective = network.get_objectives(network._output_variable)
@@ -70,9 +71,10 @@ def debug_function_output(network, dataset, minibatch_size=20, output_file=None)
 	deterministic_objective = network.get_objectives(network._output_variable, deterministic=True)
 	deterministic_accuracy = network.get_objectives(network._output_variable,
 	                                                objective_functions="categorical_accuracy", deterministic=True)
+	'''
 
 	trainable_params = network.get_network_params(trainable=True)
-	trainable_grads = theano.tensor.grad(stochastic_loss, trainable_params)
+	trainable_grads = theano.tensor.grad(network._stochastic_loss, trainable_params)
 	scaled_trainable_grads, gradient_global_norm = updates.total_norm_constraint(trainable_grads,
 	                                                                             network.gradient_max_global_l2_norm,
 	                                                                             return_norm=True)
@@ -84,13 +86,14 @@ def debug_function_output(network, dataset, minibatch_size=20, output_file=None)
 
 	stochastic_function_output_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
-		outputs=[stochastic_accuracy, stochastic_loss, stochastic_objective, gradient_global_norm] + param_norms,
+		outputs=[network._stochastic_accuracy, network._stochastic_loss, network._stochastic_objective,
+		         gradient_global_norm] + param_norms,
 		on_unused_input='raise'
 	)
 
 	deterministic_function_output_debugger = theano.function(
 		inputs=[network._input_variable, network._output_variable],
-		outputs=[deterministic_accuracy, deterministic_loss, deterministic_objective,
+		outputs=[network._deterministic_accuracy, network._deterministic_loss, network._deterministic_objective,
 		         gradient_global_norm] + param_norms,
 		on_unused_input='raise'
 	)
@@ -113,59 +116,24 @@ def debug_function_output(network, dataset, minibatch_size=20, output_file=None)
 	print(function_stochastic_output)
 	print(function_deterministic_output)
 
-	'''
-	data_indices = numpy.random.permutation(number_of_data)
-	
-	minibatch_start_index = 0
-	minibatch_index = 0
-	minibatch_outputs = numpy.zeros((int(numpy.ceil(1. * number_of_data / minibatch_size)), 9))
-
-	while minibatch_start_index < number_of_data:
-		minibatch_indices = data_indices[minibatch_start_index:minibatch_start_index + minibatch_size]
-		
-		minibatch_x = dataset_x[(minibatch_indices,) + (slice(None),) * (len(dataset_x.shape) - 1)]
-		minibatch_y = dataset_y[(minibatch_indices,) + (slice(None),) * (len(dataset_y.shape) - 1)]
-
-		#
-		#
-		#
-		function_stochastic_output = stochastic_function_output_debugger(minibatch_x, minibatch_y)
-		function_deterministic_output = deterministic_function_output_debugger(minibatch_x, minibatch_y)
-
-		function_stochastic_output.append(function_stochastic_output[-2] - function_stochastic_output[-1])
-		function_deterministic_output.append(function_deterministic_output[-2] - function_deterministic_output[-1])
-
-		current_minibatch_size = len(data_indices[minibatch_start_index:minibatch_start_index + minibatch_size])
-		minibatch_outputs[minibatch_index, 0] = current_minibatch_size
-		minibatch_outputs[minibatch_index, 1:5] = function_stochastic_output
-		minibatch_outputs[minibatch_index, 5:9] = function_deterministic_output
-		#
-		#
-		#
-
-		minibatch_start_index += minibatch_size
-		minibatch_index += 1
-	
-	if output_file != None:
-		numpy.save(output_file, minibatch_outputs)
-	dataset_outputs = numpy.mean(minibatch_outputs[:, 0][:, numpy.newaxis] * minibatch_outputs[:, 1:], axis=0)
-
-	logger.debug("stochastic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
-	             (dataset_outputs[1], dataset_outputs[2], dataset_outputs[3], dataset_outputs[0] * 100))
-	print("debug: stochastic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
-	      (dataset_outputs[1], dataset_outputs[2], dataset_outputs[3], dataset_outputs[0] * 100))
-
-	logger.debug("deterministic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
-	             (dataset_outputs[5], dataset_outputs[6], dataset_outputs[7], dataset_outputs[4] * 100))
-	print("debug: deterministic: loss %g, objective %g, regularizer %g, accuracy %g%%" %
-	      (dataset_outputs[5], dataset_outputs[6], dataset_outputs[7], dataset_outputs[4] * 100))
-	'''
-
 
 def debug_l2_norm(network, settings=None, **kwargs):
 	for network_layer in network.get_network_layers():
 		for param in network_layer.get_params("trainable"):
-			print("debug: %s %s %s" % (type(network_layer), param.name, numpy.linalg.norm(param.eval(), 2, axis=-1)))
+			parameter = param.eval()
+			print("debug:", type(network_layer), param.name, parameter.shape, numpy.max(parameter),
+			      numpy.min(parameter), numpy.mean(parameter), numpy.sum(parameter))
+
+		if isinstance(network_layer, layers.GaussianDropoutWangLayer):
+			sigma = T.nnet.sigmoid(network_layer.logit_sigma)
+			print("sigma:", sigma.eval().shape, numpy.max(sigma.eval()), numpy.min(sigma.eval()),
+			      numpy.mean(sigma.eval()), numpy.sum(sigma.eval()))
+			temp = sigma * T.square(network_layer.theta)
+			print("temp:", temp.eval().shape, numpy.max(temp.eval()), numpy.min(temp.eval()),
+			      numpy.mean(temp.eval()), numpy.sum(temp.eval()))
+
+
+# numpy.linalg.norm(parameter, 2, axis=-1)
 
 
 def debug_rademacher_p_2_q_2(network, minibatch, rescale=False, **kwargs):

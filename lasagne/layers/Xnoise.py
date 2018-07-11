@@ -8,7 +8,7 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 from lasagne.layers import Layer, MergeLayer
 from lasagne.layers import get_all_layers
-from lasagne import init, nonlinearities
+from lasagne import init, layers, nonlinearities
 from lasagne import Xinit
 from lasagne.random import get_rng
 
@@ -299,7 +299,6 @@ class GaussianDropoutWangLayer(MergeLayer):
 			# sample from the Gaussian that dropout would produce
 			sigma_z = T.sqrt(T.dot(T.square(inputs[1]),
 			                       self.sigma * T.square(self.theta)))
-			#print(numpy.max(sigma_z.eval()), numpy.min(sigma_z.eval()))
 			randn = self._srng.normal(size=inputs[0].shape, avg=0.0, std=1.)
 			return self.nonlinearity(mu_z + sigma_z * randn)
 

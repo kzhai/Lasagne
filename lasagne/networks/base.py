@@ -351,28 +351,28 @@ class FeedForwardNetwork(Network):
 
 	def build_functions(self):
 		# Create a train_loss expression for training, i.e., a scalar objective we want to minimize (for our multi-class problem, it is the cross-entropy train_loss):
-		stochastic_loss = self.get_loss(self._output_variable)
-		stochastic_objective = self.get_objectives(self._output_variable)
+		self._stochastic_loss = self.get_loss(self._output_variable)
+		self._stochastic_objective = self.get_objectives(self._output_variable)
 		# nondeterministic_regularizer = self.get_regularizers()
-		stochastic_accuracy = self.get_objectives(self._output_variable, objective_functions="categorical_accuracy")
+		self._stochastic_accuracy = self.get_objectives(self._output_variable, objective_functions="categorical_accuracy")
 
 		# Create a train_loss expression for validation/testing. The crucial difference here is that we do a deterministic forward pass through the networks, disabling dropout layers.
-		deterministic_loss = self.get_loss(self._output_variable, deterministic=True)
-		deterministic_objective = self.get_objectives(self._output_variable, deterministic=True)
+		self._deterministic_loss = self.get_loss(self._output_variable, deterministic=True)
+		self._deterministic_objective = self.get_objectives(self._output_variable, deterministic=True)
 		# deterministic_regularizer = self.get_regularizers(deterministic=True)
-		deterministic_accuracy = self.get_objectives(self._output_variable, objective_functions="categorical_accuracy",
+		self._deterministic_accuracy = self.get_objectives(self._output_variable, objective_functions="categorical_accuracy",
 		                                             deterministic=True)
 
 		# Create update expressions for training, i.e., how to modify the parameters at each training step. Here, we'll use Stochastic Gradient Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
 		trainable_params = self.get_network_params(trainable=True)
 
 		if self.gradient_max_global_l2_norm > 0:
-			trainable_grads = theano.tensor.grad(stochastic_loss, trainable_params)
+			trainable_grads = theano.tensor.grad(self._stochastic_loss, trainable_params)
 			scaled_trainable_grads = updates.total_norm_constraint(trainable_grads, self.gradient_max_global_l2_norm)
 			trainable_params_stochastic_updates = self._update_function(scaled_trainable_grads, trainable_params,
 			                                                            self._learning_rate_variable)
 		else:
-			trainable_params_stochastic_updates = self._update_function(stochastic_loss, trainable_params,
+			trainable_params_stochastic_updates = self._update_function(self._stochastic_loss, trainable_params,
 			                                                            self._learning_rate_variable)
 
 		if self.parameter_max_local_l2_norm > 0:
@@ -396,7 +396,7 @@ class FeedForwardNetwork(Network):
 		self._function_train_trainable_params_stochastic = theano.function(
 			# inputs=[self._input_variable, self._output_variable, self._learning_rate_variable],
 			inputs=[self._input_variable, self._output_variable],
-			outputs=[stochastic_loss, stochastic_objective, stochastic_accuracy],
+			outputs=[self._stochastic_loss, self._stochastic_objective, self._stochastic_accuracy],
 			updates=trainable_params_stochastic_updates,
 			on_unused_input='warn'
 		)
@@ -404,7 +404,7 @@ class FeedForwardNetwork(Network):
 		# Compile a second function computing the validation train_loss and accuracy:
 		self._function_test = theano.function(
 			inputs=[self._input_variable, self._output_variable],
-			outputs=[deterministic_loss, deterministic_objective, deterministic_accuracy],
+			outputs=[self._deterministic_loss, self._deterministic_objective, self._deterministic_accuracy],
 			on_unused_input='warn'
 		)
 
@@ -654,12 +654,14 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 		'''
 
 	def build_functions_for_adaptables(self):
+		'''
 		# Create a train_loss expression for validation/testing. The crucial difference here is that we do a deterministic forward pass through the networks, disabling dropout layers.
 		deterministic_loss = self.get_loss(self._output_variable, deterministic=True)
 		deterministic_objective = self.get_objectives(self._output_variable, deterministic=True)
 		# deterministic_regularizer = self.get_regularizers(deterministic=True)
 		deterministic_accuracy = self.get_objectives(self._output_variable, objective_functions="categorical_accuracy",
 		                                             deterministic=True)
+		'''
 
 		adaptable_params = self.get_network_params(adaptable=True)
 
@@ -673,13 +675,13 @@ class AdaptiveFeedForwardNetwork(FeedForwardNetwork):
 			trainable_params_stochastic_updates = self._update_function(stochastic_loss, trainable_params,
 			                                                            self._learning_rate_variable)
 		'''
-		adaptable_params_deterministic_updates = self._update_function(deterministic_loss, adaptable_params,
+		adaptable_params_deterministic_updates = self._update_function(self._deterministic_loss, adaptable_params,
 		                                                               self._adaptable_learning_rate_variable)
 
 		# Compile a second function computing the validation train_loss and accuracy:
 		self._function_train_adaptable_params_deterministic = theano.function(
 			inputs=[self._input_variable, self._output_variable],
-			outputs=[deterministic_loss, deterministic_objective, deterministic_accuracy],
+			outputs=[self._deterministic_loss, self._deterministic_objective, self._deterministic_accuracy],
 			updates=adaptable_params_deterministic_updates,
 			on_unused_input='warn'
 		)
